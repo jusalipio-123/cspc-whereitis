@@ -1,9 +1,6 @@
 // routes/reports.js
 // Rule: every POST redirects with 303 and shows a flash. Every GET is safe and
-// idempotent. Client-side required attributes are convenience only - anyone
-// can send this request with curl and skip the form entirely, so we always
-// validate on the server.
-
+// idempotent. Client-side required attributes are convenience only 
 const express = require('express');
 const router = express.Router();
 const reportModel = require('../models/reportModel');
