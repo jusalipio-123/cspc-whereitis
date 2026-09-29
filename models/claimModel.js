@@ -3,7 +3,10 @@
 // -----------------------------------------------------------------------
 // All claim reads/writes. Every query uses ? placeholders.
 // -----------------------------------------------------------------------
-
+// Cookie format: <userId>.<studentNo>.<expiresAtMs>.<hmacSha256Signature>
+// The HMAC is computed over "<userId>.<studentNo>.<expiresAtMs>" using
+// PROCESS_SECRET from .env. Any tampering invalidates the signature and
+// the identity is treated as null.
 const { pool } = require('../db');
 
 const DETAIL_SELECT = `
