@@ -1,0 +1,40 @@
+<!-- CSPC WhereITis — views/reports/print.ejs -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Receipt <%= report.reference_no %> | CSPC WhereITis</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="print-body">
+  <article class="receipt">
+    <header class="receipt__head">
+      <h1>CSPC WhereITis &mdash; Report Receipt</h1>
+      <p class="receipt__ref"><strong>Reference:</strong> <code><%= report.reference_no %></code></p>
+    </header>
+    <dl class="receipt__meta">
+      <dt>Title</dt><dd><%= report.title %></dd>
+      <dt>Kind</dt><dd><%= report.kind %></dd>
+      <dt>Category</dt><dd><%= report.category_name %></dd>
+      <dt>Location</dt><dd><%= report.location_name %></dd>
+      <dt>Date</dt><dd><%= report.occurred_on %></dd>
+      <% if (report.holding_location) { %><dt>Held at</dt><dd><%= report.holding_location %></dd><% } %>
+      <dt>Status</dt><dd><%= report.status %></dd>
+      <dt>Filed by</dt><dd><%= report.reporter_name %></dd>
+    </dl>
+    <p class="receipt__note">
+      Keep this reference number. Present it to the Student Affairs office when
+      collecting a found item or checking on a lost report.
+    </p>
+    <div class="receipt__qr" aria-hidden="true">
+      <!-- Simple placeholder block — a real QR generator is Week 11+ work. -->
+      <div class="receipt__qr-block"><%= report.reference_no %></div>
+    </div>
+    <p class="receipt__footer">Camarines Sur Polytechnic Colleges &middot; College of Computer Studies</p>
+  </article>
+  <p class="print-actions no-print">
+    <button type="button" onclick="window.print()">Print</button>
+    <a href="/reports/<%= report.reference_no %>">Back to report</a>
+  </p>
+</body>
+</html>

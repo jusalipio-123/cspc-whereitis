@@ -1,0 +1,69 @@
+<!-- CSPC WhereITis — views/myReports/index.ejs -->
+<%- include('../partials/head', { title: 'My Reports' }) %>
+<%- include('../partials/nav') %>
+
+<main id="main" class="container">
+  <%- include('../partials/flash') %>
+
+  <h1>My Reports</h1>
+  <p class="muted">Signed in as <strong><%= identity.studentNo %></strong>.</p>
+
+  <form method="post" action="/my-reports/sign-out" class="inline"
+        data-confirm="Sign out of My Reports?">
+    <button type="submit" class="btn btn--ghost btn--sm">Sign out of My Reports</button>
+  </form>
+
+  <section class="my-section" aria-labelledby="my-reports-h">
+    <h2 id="my-reports-h">My reports (<%= reports.length %>)</h2>
+    <% if (reports.length === 0) { %>
+      <div class="empty-state">
+        <%- icons.search %>
+        <p>You haven't filed any reports yet.</p>
+        <a class="btn btn--primary" href="/reports/new">Report an item</a>
+      </div>
+    <% } else { %>
+      <ul class="card-grid">
+        <% reports.forEach(function (r) { %>
+          <li><%- include('../partials/reportCard', { report: r }) %></li>
+        <% }); %>
+      </ul>
+    <% } %>
+  </section>
+
+  <section class="my-section" aria-labelledby="my-claims-h">
+    <h2 id="my-claims-h">My claims (<%= claims.length %>)</h2>
+    <% if (claims.length === 0) { %>
+      <div class="empty-state">
+        <p>You haven't filed any claims yet.</p>
+      </div>
+    <% } else { %>
+      <ul class="claim-list">
+        <% claims.forEach(function (c) { %>
+          <li class="claim-row">
+            <a href="/claims/<%= c.id %>">Claim #<%= c.id %></a> —
+            <strong><%= c.report_title %></strong> &middot;
+            <span class="pill pill--<%= c.status === 'approved' ? 'returned' : c.status === 'rejected' ? 'archived' : 'open' %>"><%= c.status %></span>
+            <p class="muted">Filed <%= c.created_at %></p>
+          </li>
+        <% }); %>
+      </ul>
+    <% } %>
+  </section>
+
+  <section class="my-section" aria-labelledby="my-bookmarks-h">
+    <h2 id="my-bookmarks-h">My bookmarks (<%= bookmarks.length %>)</h2>
+    <% if (bookmarks.length === 0) { %>
+      <div class="empty-state">
+        <p>You haven't bookmarked anything yet.</p>
+      </div>
+    <% } else { %>
+      <ul class="card-grid">
+        <% bookmarks.forEach(function (r) { %>
+          <li><%- include('../partials/reportCard', { report: r }) %></li>
+        <% }); %>
+      </ul>
+    <% } %>
+  </section>
+</main>
+
+<%- include('../partials/foot') %>

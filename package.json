@@ -1,0 +1,23 @@
+{
+  "name": "cspc-whereitis",
+  "version": "1.0.0",
+  "description": "CSPC WhereITis — Lost & Found Management System",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "express": "^4.19.0",
+    "ejs": "^3.1.0",
+    "mysql2": "^3.11.0",
+    "dotenv": "^16.4.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  },
+  "license": "MIT"
+}

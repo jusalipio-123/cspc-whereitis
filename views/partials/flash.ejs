@@ -1,0 +1,12 @@
+<!-- CSPC WhereITis — views/partials/flash.ejs -->
+<% if (typeof flash !== 'undefined' && flash) { %>
+  <div class="flash flash--<%= flash.type %>" role="status" data-autodismiss="6000">
+    <span class="flash__icon" aria-hidden="true">
+      <%- flash.type === 'ok' ? icons.check : flash.type === 'err' ? icons.alert : icons.info %>
+    </span>
+    <span class="flash__message"><%= flash.message %></span>
+    <button type="button" class="flash__close" aria-label="Dismiss" data-dismiss-flash>
+      <%- icons.x %>
+    </button>
+  </div>
+<% } %>

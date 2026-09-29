@@ -1,0 +1,127 @@
+<!-- CSPC WhereITis — views/reports/new.ejs -->
+<%
+  const _allTags = typeof allTags !== 'undefined' ? allTags : [];
+  const _selectedTagIds = typeof selectedTagIds !== 'undefined' ? selectedTagIds : [];
+%>
+<%- include('../partials/head', { title: title }) %>
+<%- include('../partials/nav') %>
+
+<main id="main" class="container">
+  <%- include('../partials/flash') %>
+
+  <h1>Report an item</h1>
+
+  <form method="post" action="/reports" class="form">
+
+    <fieldset class="fieldset">
+      <legend>What happened?</legend>
+      <label class="radio-card">
+        <input type="radio" name="kind" value="lost"
+               <%= (values.kind || '') === 'lost' ? 'checked' : '' %> required>
+        <span><strong>I lost something</strong><br>
+        <small>Post a lost report so others can help find it.</small></span>
+      </label>
+      <label class="radio-card">
+        <input type="radio" name="kind" value="found"
+               <%= (values.kind || '') === 'found' ? 'checked' : '' %>>
+        <span><strong>I found something</strong><br>
+        <small>Post a found report and say where you are holding it.</small></span>
+      </label>
+      <% if (errors.kind) { %>
+        <p class="field-error" id="err-kind"><%= errors.kind %></p>
+      <% } %>
+    </fieldset>
+
+    <div class="field">
+      <label for="title">Item title <span aria-hidden="true">*</span></label>
+      <input id="title" name="title" class="input" type="text"
+             maxlength="120" required
+             value="<%= values.title || '' %>"
+             <%= errors.title ? 'aria-invalid="true" aria-describedby="err-title"' : '' %>>
+      <% if (errors.title) { %><p class="field-error" id="err-title"><%= errors.title %></p><% } %>
+      <p class="field-hint">A short name. Example: "Black leather wallet".</p>
+    </div>
+
+    <div class="field">
+      <label for="category_id">Category</label>
+      <select id="category_id" name="category_id" class="select" required
+              <%= errors.category_id ? 'aria-invalid="true" aria-describedby="err-cat"' : '' %>>
+        <option value="">Choose a category</option>
+        <% categories.forEach(function (c) { %>
+          <option value="<%= c.id %>" <%= String(values.category_id) === String(c.id) ? 'selected' : '' %>><%= c.name %></option>
+        <% }); %>
+      </select>
+      <% if (errors.category_id) { %><p class="field-error" id="err-cat"><%= errors.category_id %></p><% } %>
+    </div>
+
+    <div class="field">
+      <label for="location_id">Location (where it was lost or found)</label>
+      <select id="location_id" name="location_id" class="select" required
+              <%= errors.location_id ? 'aria-invalid="true" aria-describedby="err-loc"' : '' %>>
+        <option value="">Choose a location</option>
+        <% locations.forEach(function (l) { %>
+          <option value="<%= l.id %>" <%= String(values.location_id) === String(l.id) ? 'selected' : '' %>><%= l.name %><%= l.zone ? ' · ' + l.zone : '' %></option>
+        <% }); %>
+      </select>
+      <% if (errors.location_id) { %><p class="field-error" id="err-loc"><%= errors.location_id %></p><% } %>
+    </div>
+
+    <div class="field">
+      <label for="occurred_on">Date lost or found</label>
+      <input id="occurred_on" name="occurred_on" class="input" type="date"
+             value="<%= values.occurred_on || '' %>" required
+             <%= errors.occurred_on ? 'aria-invalid="true" aria-describedby="err-date"' : '' %>>
+      <% if (errors.occurred_on) { %><p class="field-error" id="err-date"><%= errors.occurred_on %></p><% } %>
+    </div>
+
+    <div class="field">
+      <label for="description">Description</label>
+      <textarea id="description" name="description" class="textarea" rows="5"
+                maxlength="1000" required
+                data-charcount data-charcount-min="20" data-charcount-max="1000"
+                <%= errors.description ? 'aria-invalid="true" aria-describedby="err-desc"' : '' %>><%= values.description || '' %></textarea>
+      <% if (errors.description) { %><p class="field-error" id="err-desc"><%= errors.description %></p><% } %>
+      <p class="field-hint">At least 20 characters. Colour, brand, distinguishing marks &mdash; anything helps.</p>
+    </div>
+
+    <div class="field" data-found-only>
+      <label for="holding_location">Holding location (required for found items)</label>
+      <input id="holding_location" name="holding_location" class="input" type="text"
+             maxlength="160"
+             value="<%= values.holding_location || '' %>"
+             <%= errors.holding_location ? 'aria-invalid="true" aria-describedby="err-hold"' : '' %>>
+      <p class="field-hint">Where is the item being kept? Example: "CCS Dean's office, 2nd floor."</p>
+      <% if (errors.holding_location) { %><p class="field-error" id="err-hold"><%= errors.holding_location %></p><% } %>
+    </div>
+
+    <fieldset class="fieldset" <%= errors.tag_ids ? 'aria-describedby="err-tags"' : '' %>>
+      <legend>Tags (optional)</legend>
+      <p class="field-hint">Pick up to 3. Used to filter and to help people
+      find related reports.</p>
+      <div class="tag-picker">
+        <% _allTags.forEach(function (t) { %>
+          <label class="tag-chip">
+            <input type="checkbox" name="tag_ids" value="<%= t.id %>"
+                   <%= _selectedTagIds.includes(t.id) ? 'checked' : '' %>>
+            <span><%= t.label %></span>
+          </label>
+        <% }); %>
+      </div>
+      <% if (errors.tag_ids) { %><p class="field-error" id="err-tags"><%= errors.tag_ids %></p><% } %>
+    </fieldset>
+
+    <div class="field">
+      <label for="photo_url">Photo URL (optional)</label>
+      <input id="photo_url" name="photo_url" class="input" type="url"
+             value="<%= values.photo_url || '' %>" placeholder="https://...">
+      <p class="field-hint">This term we accept a link only &mdash; no file upload yet.</p>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn--primary">Post report</button>
+      <a href="/reports" class="btn btn--ghost">Cancel</a>
+    </div>
+  </form>
+</main>
+
+<%- include('../partials/foot') %>

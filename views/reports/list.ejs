@@ -1,0 +1,116 @@
+<!-- CSPC WhereITis — views/reports/list.ejs -->
+<%
+  const _allTags = typeof allTags !== 'undefined' ? allTags : [];
+%>
+<%- include('../partials/head', { title: 'Reports' }) %>
+<%- include('../partials/nav') %>
+
+<main id="main" class="container">
+  <%- include('../partials/flash') %>
+
+  <h1>Reports</h1>
+  <p class="muted"><%= total %> item<%= total === 1 ? '' : 's' %> found.</p>
+
+  <form class="filters" method="get" action="/reports">
+    <div class="field">
+      <label for="filter-kind">Kind</label>
+      <select id="filter-kind" name="kind" class="select">
+        <option value="">Any</option>
+        <option value="lost" <%= filters.kind === 'lost' ? 'selected' : '' %>>Lost</option>
+        <option value="found" <%= filters.kind === 'found' ? 'selected' : '' %>>Found</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="filter-category">Category</label>
+      <select id="filter-category" name="category" class="select">
+        <option value="">Any</option>
+        <% categories.forEach(function (c) { %>
+          <option value="<%= c.slug %>" <%= filters.category === c.slug ? 'selected' : '' %>><%= c.name %></option>
+        <% }); %>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="filter-location">Location</label>
+      <select id="filter-location" name="location" class="select">
+        <option value="">Any</option>
+        <% locations.forEach(function (l) { %>
+          <option value="<%= l.id %>" <%= String(filters.location) === String(l.id) ? 'selected' : '' %>><%= l.name %></option>
+        <% }); %>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="f-tag">Tag</label>
+      <select id="f-tag" name="tag" class="select">
+        <option value="">Any</option>
+        <% _allTags.forEach(function (t) { %>
+          <option value="<%= t.slug %>" <%= filters.tag === t.slug ? 'selected' : '' %>>
+            <%= t.label %>
+          </option>
+        <% }); %>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="filter-status">Status</label>
+      <select id="filter-status" name="status" class="select">
+        <option value="">Any</option>
+        <option value="open" <%= filters.status === 'open' ? 'selected' : '' %>>Open</option>
+        <option value="matched" <%= filters.status === 'matched' ? 'selected' : '' %>>Matched</option>
+        <option value="claimed" <%= filters.status === 'claimed' ? 'selected' : '' %>>Claimed</option>
+        <option value="returned" <%= filters.status === 'returned' ? 'selected' : '' %>>Returned</option>
+        <option value="archived" <%= filters.status === 'archived' ? 'selected' : '' %>>Archived</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="filter-from">From</label>
+      <input id="filter-from" type="date" name="from" class="input" value="<%= filters.from || '' %>">
+    </div>
+
+    <div class="field">
+      <label for="filter-to">To</label>
+      <input id="filter-to" type="date" name="to" class="input" value="<%= filters.to || '' %>">
+    </div>
+
+    <div class="field">
+      <label for="filter-q">Search</label>
+      <input id="filter-q" type="search" name="q" class="input" value="<%= filters.q || '' %>">
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn--primary" type="submit">Apply filters</button>
+      <a class="btn btn--ghost" href="/reports">Clear</a>
+    </div>
+  </form>
+
+  <%
+    // Pagination base URL: every current filter value except `page`,
+    // re-serialised, so Prev/Next keep the rest of the query string.
+    const paginationParams = new URLSearchParams();
+    Object.keys(filters).forEach(function (key) {
+      if (filters[key]) paginationParams.set(key, filters[key]);
+    });
+    const paginationBaseUrl = '/reports?' + paginationParams.toString();
+  %>
+
+  <% if (rows.length === 0) { %>
+    <div class="empty-state">
+      <%- icons.search %>
+      <p>No reports match those filters yet.</p>
+      <p class="muted">Try widening the date range or clearing the search box.</p>
+      <a class="btn btn--primary" href="/reports/new">Report an item</a>
+    </div>
+  <% } else { %>
+    <ul class="card-grid">
+      <% rows.forEach(function (r) { %>
+        <li><%- include('../partials/reportCard', { report: r }) %></li>
+      <% }); %>
+    </ul>
+    <%- include('../partials/pagination', { page: page, totalPages: totalPages, baseUrl: paginationBaseUrl }) %>
+  <% } %>
+</main>
+
+<%- include('../partials/foot') %>

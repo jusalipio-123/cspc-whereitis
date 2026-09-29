@@ -1,0 +1,36 @@
+<!-- CSPC WhereITis — views/partials/nav.ejs -->
+<header class="site-header" role="banner">
+  <div class="container nav-row">
+    <a class="brand" href="/" aria-label="CSPC WhereITis home">
+      <img class="brand__seal" src="/img/cspc-seal.jpg" alt=""
+     width="44" height="44"
+     onerror="this.style.display='none';">
+      <span class="brand-text">
+        <strong>CSPC WhereITis</strong>
+        <small>Lost &amp; Found</small>
+      </span>
+    </a>
+    <nav class="primary-nav" aria-label="Primary">
+      <a href="/reports">Reports</a>
+      <a href="/reports?kind=lost">Lost</a>
+      <a href="/reports?kind=found">Found</a>
+      <a href="/help">Help</a>
+    </nav>
+
+    <% if (typeof identity !== 'undefined' && identity) { %>
+      <a class="btn btn--ghost btn--sm" href="/my-reports">
+        <%- icons.user %> Hi, <%= identity.studentNo %>
+      </a>
+      <form method="post" action="/sign-out" class="inline">
+        <input type="hidden" name="next" value="<%= typeof currentPath !== 'undefined' ? currentPath : '/' %>">
+        <button class="btn btn--ghost btn--sm" type="submit">Sign out</button>
+      </form>
+    <% } else { %>
+      <a class="btn btn--ghost btn--sm" href="/sign-in">
+        <%- icons.user %> Sign in
+      </a>
+    <% } %>
+
+    <a class="btn btn--primary nav-cta" href="/reports/new">Report an item</a>
+  </div>
+</header>

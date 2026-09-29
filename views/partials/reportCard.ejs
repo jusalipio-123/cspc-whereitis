@@ -1,0 +1,69 @@
+<!-- CSPC WhereITis — views/partials/reportCard.ejs -->
+<%
+  function ageBucket(d) {
+    if (d <= 14) return 'fresh';
+    if (d <= 60) return 'warm';
+    if (d <= 89) return 'old';
+    return 'stale';
+  }
+  const snippet = (report.description || '').slice(0, 120) + ((report.description || '').length > 120 ? '…' : '');
+%>
+<article class="card report-card report-card--<%= report.kind %> report-card--<%= report.status %>">
+  <div class="report-card__photo-wrap">
+    <% if (report.photo_url) { %>
+      <img class="report-card__photo" src="<%= report.photo_url %>"
+           alt="" loading="lazy">
+    <% } else { %>
+      <img class="report-card__photo" src="/img/placeholder.svg"
+           alt="" loading="lazy">
+    <% } %>
+    <% if (report.status === 'returned') { %>
+      <span class="report-card__kind-pill report-card__kind-pill--returned">
+        RETURNED
+      </span>
+    <% } else { %>
+      <span class="report-card__kind-pill report-card__kind-pill--<%= report.kind %>">
+        <%= report.kind === 'lost' ? 'Lost' : 'Found' %>
+      </span>
+    <% } %>
+  </div>
+
+  <div class="report-card__top">
+    <span class="pill pill--<%= report.status %>"><%= report.status.charAt(0).toUpperCase() + report.status.slice(1) %></span>
+  </div>
+
+  <h3 class="report-card__title">
+    <a href="/reports/<%= report.reference_no %>"><%= report.title %></a>
+  </h3>
+
+  <% if (report.tags && report.tags.length) { %>
+    <p class="report-card__tags">
+      <% report.tags.forEach(function (t) { %>
+        <a class="tag-chip tag-chip--sm" href="/reports?tag=<%= t.slug %>">
+          <%= t.label %>
+        </a>
+      <% }); %>
+    </p>
+  <% } %>
+
+  <p class="report-card__ref"><code><%= report.reference_no %></code></p>
+
+  <p class="report-card__snippet"><%= snippet %></p>
+
+  <p class="report-card__location">
+    <%- icons.location %> <%= report.location_name %>
+  </p>
+  <p class="report-card__date">
+    <%- icons.calendar %> <%= new Date(report.occurred_on).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) %>
+  </p>
+
+  <% if (report.kind === 'found' && typeof report.days_held !== 'undefined') { %>
+    <span class="days-badge days-badge--<%= ageBucket(report.days_held) %>">
+      <%- icons.clock %> <%= report.days_held %> days held
+    </span>
+  <% } %>
+
+  <% if (typeof bookmarked !== 'undefined' && bookmarked) { %>
+    <span class="report-card__bookmark" aria-hidden="true"><%- icons.bookmark %></span>
+  <% } %>
+</article>

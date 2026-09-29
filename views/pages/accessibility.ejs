@@ -1,0 +1,74 @@
+<!-- CSPC WhereITis — views/pages/accessibility.ejs -->
+<%- include('../partials/head', { title: 'Accessibility Statement' }) %>
+<%- include('../partials/nav') %>
+
+<main id="main" class="container">
+  <%- include('../partials/flash') %>
+
+  <h1>Accessibility Statement</h1>
+  <p class="lead">WhereITis aims to meet WCAG 2.2 Level AA. This page describes
+  what we have done, what we have not, and how to report a barrier.</p>
+
+  <h2>The four POUR principles, in plain words</h2>
+  <ul>
+    <li><strong>Perceivable</strong> — everyone can perceive the content, including
+    people using screen readers or enlarged text.</li>
+    <li><strong>Operable</strong> — everyone can operate the interface, including
+    people who use only a keyboard.</li>
+    <li><strong>Understandable</strong> — the content and the interface make sense
+    on first read.</li>
+    <li><strong>Robust</strong> — the content works across browsers and assistive
+    technologies, now and in the future.</li>
+  </ul>
+
+  <h2>What has been done in this build</h2>
+  <ul>
+    <li>Every form control has a <code>&lt;label for&gt;</code> bound to its id.</li>
+    <li>Every error message is text and is announced to assistive tech via
+    <code>aria-invalid</code> and <code>aria-describedby</code>.</li>
+    <li>Every task can be completed with the keyboard alone.</li>
+    <li>Text contrast targets 4.5:1 or better.</li>
+    <li>Status is never conveyed by colour alone — every status pill carries a
+    text label.</li>
+    <li>A skip link appears on focus so screen-reader and keyboard users can jump
+    straight to the main content.</li>
+    <li>Focus rings are visible on every interactive element.</li>
+    <li>Every meaningful image has alternative text; decorative images have empty
+    alt attributes.</li>
+    <li>Mobile-first layout — works on small screens first, then scales up.</li>
+    <li>Motion is reduced when your device requests it
+    (<code>prefers-reduced-motion</code>).</li>
+    <li>Touch targets are at least 44&times;44 pixels.</li>
+    <li>Body text is at least 16 pixels.</li>
+  </ul>
+
+  <h2>What is still incomplete</h2>
+  <ul>
+    <li>We have not yet had an external WCAG 2.2 AA audit. Our statement of
+    compliance is based on self-testing only.</li>
+    <li>Some older pages use slightly denser prose than is ideal for readers with
+    cognitive disabilities — we are rewriting the longest sections.</li>
+    <li>We have not yet tested with every popular screen reader. NVDA and VoiceOver
+    are the primary targets.</li>
+    <li>Print stylesheet is provided, but we have not tested it on all printers.</li>
+  </ul>
+
+  <h2>Keyboard-only instructions</h2>
+  <ul>
+    <li><strong>Tab</strong> — move forward through links, buttons, and form fields.</li>
+    <li><strong>Shift + Tab</strong> — move backward.</li>
+    <li><strong>Enter</strong> — activate a link or a button.</li>
+    <li><strong>Space</strong> — toggle a checkbox, or press a button.</li>
+    <li><strong>Skip link</strong> — press Tab once when a page loads. A "Skip to
+    main content" link appears at the top. Press Enter to jump past the navigation
+    into the page.</li>
+  </ul>
+
+  <h2>How to report a barrier</h2>
+  <p>Email <a href="mailto:accessibility@cspc.edu.ph">accessibility@cspc.edu.ph</a>
+  or tell any staff member at the College of Computer Studies or the IT office.
+  You do not need to fill in any form. We will respond within five working days
+  and, where possible, fix the barrier within one month.</p>
+</main>
+
+<%- include('../partials/foot') %>

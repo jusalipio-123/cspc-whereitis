@@ -1,0 +1,124 @@
+<!-- CSPC WhereITis — views/home.ejs -->
+<%- include('partials/head', { title: 'Home' }) %>
+<%- include('partials/nav') %>
+
+<main id="main">
+  <section class="hero hero--campus">
+    <div class="hero__overlay">
+      <p class="hero__kicker">CSPC WHEREITIS</p>
+      <h1 class="hero__headline">
+        Kung nawala, hanapin dito.<br>
+        <span class="hero__headline-accent">Kung nakita, i-report dito.</span>
+      </h1>
+      <p class="hero__sub">
+        Tulong-tulong tayo para sa mas maayos at ligtas na pamayanan sa
+        Camarines Sur Polytechnic Colleges.
+      </p>
+
+      <div class="hero__actions">
+        <a class="hero__action-card" href="/reports/new?kind=lost">
+          <span class="hero__action-icon hero__action-icon--lost">
+            <%- icons.lost %>
+          </span>
+          <span class="hero__action-label">Report Lost Item</span>
+          <span class="hero__action-arrow" aria-hidden="true">&rarr;</span>
+        </a>
+        <a class="hero__action-card" href="/reports/new?kind=found">
+          <span class="hero__action-icon hero__action-icon--found">
+            <%- icons.found %>
+          </span>
+          <span class="hero__action-label">Report Found Item</span>
+          <span class="hero__action-arrow" aria-hidden="true">&rarr;</span>
+        </a>
+      </div>
+
+      <form class="hero__search" method="get" action="/reports" role="search">
+        <label for="hero-q" class="visually-hidden">Search lost and found items</label>
+        <span class="hero__search-icon" aria-hidden="true"><%- icons.search %></span>
+        <input id="hero-q" class="hero__search-input" type="search" name="q"
+               placeholder="Search lost and found items...">
+        <button class="hero__search-btn" type="submit">Search</button>
+      </form>
+    </div>
+  </section>
+
+  <div class="container">
+    <%- include('partials/flash') %>
+
+    <section class="counters counters--hero" aria-label="Live counts">
+      <div class="stat-card">
+        <span class="stat-card__icon stat-card__icon--blue"><%- icons.info %></span>
+        <div>
+          <strong><%= (counts.openLost || 0) + (counts.openFound || 0) %></strong>
+          <span>Total Reports</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-card__icon stat-card__icon--green"><%- icons.search %></span>
+        <div>
+          <strong><%= counts.openLost || 0 %></strong>
+          <span>Open Lost</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-card__icon stat-card__icon--amber"><%- icons.check %></span>
+        <div>
+          <strong><%= counts.returnedThisMonth || 0 %></strong>
+          <span>Returned This Month</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-card__icon stat-card__icon--purple"><%- icons.user %></span>
+        <div>
+          <strong><%= counts.openFound || 0 %></strong>
+          <span>Open Found</span>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="latest-h">
+      <div class="section-header">
+        <h2 id="latest-h">Latest Reports</h2>
+        <a class="section-header__link" href="/reports">View All Reports &rarr;</a>
+      </div>
+
+      <% if (latestReports.length === 0) { %>
+        <div class="empty-state">
+          <%- icons.search %>
+          <p>Wala pang naka-report dito &mdash; ikaw ba ang una?</p>
+          <a class="btn btn--primary" href="/reports/new">Report an item</a>
+        </div>
+      <% } else { %>
+        <ul class="card-grid">
+          <% latestReports.forEach(function (r) { %>
+            <li><%- include('partials/reportCard', { report: r }) %></li>
+          <% }); %>
+        </ul>
+      <% } %>
+    </section>
+
+    <section aria-labelledby="returned-h">
+      <div class="section-header section-header--green">
+        <h2 id="returned-h">Recently Returned</h2>
+        <a class="section-header__link" href="/reports?status=returned">
+          View all &rarr;
+        </a>
+      </div>
+
+      <% if (!recentlyReturned || recentlyReturned.length === 0) { %>
+        <div class="empty-state empty-state--green">
+          <%- icons.check %>
+          <p>Items that get returned to their owners will appear here.</p>
+        </div>
+      <% } else { %>
+        <ul class="card-grid">
+          <% recentlyReturned.forEach(function (r) { %>
+            <li><%- include('partials/reportCard', { report: r }) %></li>
+          <% }); %>
+        </ul>
+      <% } %>
+    </section>
+  </div>
+</main>
+
+<%- include('partials/foot') %>

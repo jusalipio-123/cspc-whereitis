@@ -1,0 +1,17 @@
+<!-- CSPC WhereITis — views/errors/422.ejs -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Not allowed | CSPC WhereITis</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <main id="main" class="container error-page">
+    <h1>Not allowed</h1>
+    <p><%= typeof message !== 'undefined' ? message : 'That action cannot be performed from the current state.' %></p>
+    <p><a href="/">Go to the home page</a></p>
+  </main>
+</body>
+</html>

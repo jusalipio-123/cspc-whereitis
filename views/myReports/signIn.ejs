@@ -1,0 +1,72 @@
+<!-- CSPC WhereITis — views/myReports/signIn.ejs -->
+<%- include('../partials/head', { title: 'Sign in to My Reports' }) %>
+<%- include('../partials/nav') %>
+
+<main id="main" class="container">
+  <%- include('../partials/flash') %>
+
+  <h1>Sign in to My Reports</h1>
+  <p class="muted">Enter your student number and your 4-digit PIN. You set your PIN when you filed your first report.</p>
+
+  <form method="post" action="/sign-in" class="form form--narrow">
+    <% if (typeof next !== 'undefined' && next) { %>
+      <input type="hidden" name="next" value="<%= next %>">
+    <% } %>
+
+    <div class="field">
+      <label for="student_no">Student number</label>
+      <input
+        id="student_no"
+        name="student_no"
+        class="input"
+        type="text"
+        maxlength="20"
+        required
+        autocomplete="username"
+        value="<%= values.student_no || '' %>"
+        <%= errors.student_no ? 'aria-invalid="true" aria-describedby="err-sn"' : '' %>
+      >
+      <% if (errors.student_no) { %>
+        <p class="field-error" id="err-sn"><%= errors.student_no %></p>
+      <% } %>
+    </div>
+
+    <div class="field">
+      <label for="pin">4-digit PIN</label>
+      <input
+        id="pin"
+        name="pin"
+        class="input"
+        type="password"
+        inputmode="numeric"
+        pattern="\d{4}"
+        maxlength="4"
+        required
+        autocomplete="current-password"
+        <%= errors.pin ? 'aria-invalid="true" aria-describedby="err-pin"' : '' %>
+      >
+      <% if (errors.pin) { %>
+        <p class="field-error" id="err-pin"><%= errors.pin %></p>
+      <% } %>
+    </div>
+
+    <div class="field">
+      <label class="checkbox">
+        <input type="checkbox" name="remember" data-remember-student-no>
+        Remember my student number on this device
+      </label>
+      <p class="field-hint">We never remember your PIN — only the student number.</p>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn--primary">Sign in</button>
+      <a href="/" class="btn btn--ghost">Cancel</a>
+    </div>
+  </form>
+
+  <p class="muted text-center">
+    This is a midterm-only sign-in. Week 11 replaces it with real accounts and passwords.
+  </p>
+</main>
+
+<%- include('../partials/foot') %>

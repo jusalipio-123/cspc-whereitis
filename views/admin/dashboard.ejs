@@ -1,0 +1,70 @@
+<!-- CSPC WhereITis — views/admin/dashboard.ejs -->
+<%
+  // NOTE: routes/admin.js (GET /admin) passes monthlyCounts,
+  // categoryDistribution, topLocations, returnedThisMonth, agingOver60,
+  // and statusCounts — those exact keys are used below rather than the
+  // shorthand names (monthly/categoryDist/aging60) so this view matches
+  // what the route actually renders with.
+%>
+<%- include('../partials/head', { title: 'Admin dashboard' }) %>
+<%- include('../partials/nav') %>
+
+<main id="main" class="container">
+  <%- include('../partials/flash') %>
+
+  <h1>Admin dashboard</h1>
+
+  <section class="counters counters--admin" aria-label="Summary">
+    <div class="counter"><strong><%= returnedThisMonth %></strong> <span>Returned this month</span></div>
+    <div class="counter"><strong><%= agingOver60 %></strong> <span>Aging over 60 days</span></div>
+  </section>
+
+  <section aria-labelledby="monthly-h">
+    <h2 id="monthly-h">Monthly counts (last 12 months)</h2>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>Month</th><th>Kind</th><th>Count</th></tr></thead>
+        <tbody>
+          <% monthlyCounts.forEach(function (m) { %>
+            <tr><td><%= m.ym %></td><td><%= m.kind %></td><td><%= m.n %></td></tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="cat-h">
+    <h2 id="cat-h">Category distribution</h2>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>Category</th><th>Reports</th></tr></thead>
+        <tbody>
+          <% categoryDistribution.forEach(function (c) { %>
+            <tr><td><%= c.name %></td><td><%= c.n %></td></tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="loc-h">
+    <h2 id="loc-h">Top locations</h2>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>Location</th><th>Reports</th></tr></thead>
+        <tbody>
+          <% topLocations.forEach(function (l) { %>
+            <tr><td><%= l.name %></td><td><%= l.n %></td></tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <p>
+    <a class="btn btn--primary" href="/admin/export.csv">Export current month CSV</a>
+    <a class="btn btn--ghost" href="/admin/bulk">Bulk status update</a>
+  </p>
+</main>
+
+<%- include('../partials/foot') %>

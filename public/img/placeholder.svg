@@ -1,0 +1,7 @@
+<svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="placeholder-title">
+  <title id="placeholder-title">Placeholder image</title>
+  <rect width="400" height="300" fill="#e3e6ea"/>
+  <circle cx="290" cy="70" r="28" fill="#c9d1db"/>
+  <path d="M0 230 L110 140 L180 200 L260 110 L400 230 L400 300 L0 300 Z" fill="#c9d1db"/>
+  <path d="M0 250 L90 190 L160 240 L240 170 L400 260 L400 300 L0 300 Z" fill="#b7c0cb"/>
+</svg>

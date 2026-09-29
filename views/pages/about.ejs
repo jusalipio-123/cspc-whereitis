@@ -1,0 +1,89 @@
+<!-- CSPC WhereITis — views/pages/about.ejs -->
+<%- include('../partials/head', { title: 'About' }) %>
+<%- include('../partials/nav') %>
+
+<main id="main" class="container">
+  <%- include('../partials/flash') %>
+
+  <h1>About CSPC WhereITis</h1>
+  <p class="lead">CSPC WhereITis is the campus Lost &amp; Found service for Camarines
+  Sur Polytechnic Colleges. It exists so that a lost umbrella, ID, or phone has
+  somewhere obvious to go — and somewhere obvious to be found.</p>
+
+  <h2>Who uses it</h2>
+  <ul>
+    <li><strong>Students</strong> — report lost items, report found items, file
+        claims, track their own reports.</li>
+    <li><strong>Staff and the custodian office</strong> — verify claims, mark items
+        returned, archive unclaimed items after the holding period.</li>
+    <li><strong>Admin</strong> — see monthly counts, export reports, manage the
+        category and location lists.</li>
+  </ul>
+
+  <h2>How matching works</h2>
+  <p>When you file a report, WhereITis quietly looks for reports of the opposite
+  kind in the same category within a set window (default 30 days). Each candidate
+  is scored on simple, explainable rules: same category, same location, close
+  dates, overlapping words in the title and description. The score and every
+  reason are shown to you on the report page. There is no AI, no black box — just
+  a checklist you can read.</p>
+
+  <h2>What this midterm does NOT include</h2>
+  <p>This is a CCIT 106 midterm project, built inside Weeks 1–8. The following are
+  deliberately out of scope and will be added in later weeks:</p>
+  <ul>
+    <li>Real image file upload (we accept a photo URL only, this term)</li>
+    <li>Email or SMS notifications</li>
+    <li>Two-factor authentication</li>
+    <li>Native mobile app</li>
+    <li>Live chat</li>
+    <li>Payment or fine collection</li>
+    <li>Integration with the Registrar's student information system</li>
+    <li>AI image recognition to match items</li>
+  </ul>
+
+  <h2>Week 11–16 handoff</h2>
+  <p>The system is designed so the following can be dropped in without rewrites.
+  Everything below is documented in the README's handoff section.</p>
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr><th>Feature</th><th>Week</th><th>Why it is not here yet</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Real login + bcrypt passwords</td><td>11</td><td>Replaces the PIN + signed-cookie approach</td></tr>
+        <tr><td>express-session</td><td>11</td><td>Replaces the whereitis_id cookie</td></tr>
+        <tr><td>Role middleware requireRole()</td><td>11</td><td>Staff/admin routes are currently open on the honour system</td></tr>
+        <tr><td>Rate limiting on /my-reports/sign-in</td><td>12</td><td>Currently unlimited</td></tr>
+        <tr><td>CSRF tokens on every POST form</td><td>12</td><td>Currently none</td></tr>
+        <tr><td>helmet() + Content-Security-Policy</td><td>12</td><td>Currently no CSP</td></tr>
+        <tr><td>Server-side HTML escaping audit</td><td>12</td><td>We escape, but there is no automated check yet</td></tr>
+        <tr><td>WCAG 2.2 AA audit + fixes</td><td>13</td><td>Statement written, but no external audit</td></tr>
+        <tr><td>Usability heuristic evaluation</td><td>13</td><td>Designed to Nielsen's heuristics, not yet reviewed by others</td></tr>
+        <tr><td>Vitest unit tests</td><td>15</td><td>Manual test cases only this term</td></tr>
+        <tr><td>SuperTest route tests</td><td>15</td><td>Manual only</td></tr>
+        <tr><td>Mutation testing on the matching engine</td><td>15</td><td>Not yet</td></tr>
+        <tr><td>Source code inspection report</td><td>15</td><td>Not yet</td></tr>
+        <tr><td>Deployment (Fly.io or similar)</td><td>16</td><td>Local only this term</td></tr>
+        <tr><td>Database-backed session store</td><td>16</td><td>In-memory not used, so nothing to migrate</td></tr>
+        <tr><td>Managed MySQL + backups</td><td>16</td><td>Local MySQL only</td></tr>
+        <tr><td>User guide on the deployed URL</td><td>16</td><td>Written, not hosted</td></tr>
+        <tr><td>Turnover note</td><td>16</td><td>Not yet written</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Gender-fair by design</h2>
+  <p>WhereITis does not collect gender, civil status, religion, birthday, or any
+  government ID number. None of these is read by any screen or report in the
+  system, so under the proportionality principle of RA 10173 they are not
+  collected at all. The interface uses <em>chairperson</em>, <em>staff</em>,
+  <em>first-year student</em>, and <em>they / their</em> — never <em>chairman</em>,
+  <em>manpower</em>, <em>freshman</em>, or a generic <em>he</em>.</p>
+
+  <h2>Credits</h2>
+  <p>Built by CCIT 106 students at Camarines Sur Polytechnic Colleges, College of
+  Computer Studies. Source code is MIT-licensed.</p>
+</main>
+
+<%- include('../partials/foot') %>
