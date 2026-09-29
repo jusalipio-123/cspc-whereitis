@@ -77,10 +77,9 @@ async function listByUser(userId) {
   return rows;
 }
 
-// approve: FR-06 — approving a claim auto-rejects every other pending
-// claim on the same report and moves the report to 'claimed', all inside
-// one transaction so the report can never be left with two "winning"
-// claims or a status that doesn't match its claims.
+// Approves one claim and auto-rejects every other pending claim on the
+// same report, in ONE transaction, then sets the report to 'claimed' and
+// writes a history row. See FR-06.
 async function approve(claimId, decidedBy, note = null) {
   const conn = await pool.getConnection();
   try {
