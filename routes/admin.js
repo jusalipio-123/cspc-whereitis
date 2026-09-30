@@ -241,6 +241,9 @@ router.get('/', requireIdentity, (req, res, next) => {
 });
 
 // GET /admin/export.csv
+   // Streams a CSV export of the current month's reports. For this volume
+   // we buffer the full response in memory; for >10k rows we would switch
+   // to a streaming writer.
 router.get('/export.csv', requireIdentity, async (req, res, next) => {
   try {
     // No streaming needed for this volume; if the dataset grows past
