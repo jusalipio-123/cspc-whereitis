@@ -5,6 +5,9 @@
 // never be loaded by the public report page, the print receipt, or any
 // guest-facing route. Every query uses ? placeholders.
 // -----------------------------------------------------------------------
+   // Staff-only internal notes. These are never shown on the public report
+   // page — the route only passes them to the view when the signed-in user
+   // has role='staff' or role='admin'.
 
 const { pool } = require('../db');
 
