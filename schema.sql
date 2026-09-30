@@ -366,6 +366,8 @@ USE whereitis;
 -- one report" rule. ON DELETE CASCADE on both sides: a tag link has no
 -- meaning once either the report or the tag is gone. idx_report_tags_tag
 -- serves the reverse lookup "all reports carrying this tag".
+   -- Fixed allow-list of tags. A dedicated table (not a comma-separated
+   -- column on reports) so we can index and filter cleanly.
 -- ---------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS tags (
   id INT PRIMARY KEY AUTO_INCREMENT,
