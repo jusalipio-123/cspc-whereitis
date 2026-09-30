@@ -92,6 +92,9 @@ function isInt(opts, label) {
 // isIsoDate: dates come from <input type="date"> as YYYY-MM-DD strings;
 // this checks the exact shape AND that it parses to a real calendar date
 // (e.g. rejects 2026-02-30), before the string ever reaches a DATE column.
+   // Parse the date components directly and rebuild with Date.UTC so the
+   // check is timezone-safe. Using local midnight + toISOString() would
+   // silently roll the date backward in UTC+ timezones (e.g. Philippines UTC+8).
 function isIsoDate(label) {
   return (value) => {
     const v = coerce(value);
