@@ -94,6 +94,14 @@
       <% if (errors.tag_ids) { %><p class="field-error" id="err-tags"><%= errors.tag_ids %></p><% } %>
     </fieldset>
 
+    <div class="field">
+      <label for="photo_url">Photo link (optional)</label>
+      <input id="photo_url" name="photo_url" class="input" type="url" maxlength="500"
+             value="<%= values.photo_url || '' %>" placeholder="https://example.com/photo.jpg"
+             <%= errors.photo_url ? 'aria-invalid="true" aria-describedby="err-photo"' : '' %>>
+      <% if (errors.photo_url) { %><p class="field-error" id="err-photo"><%= errors.photo_url %></p><% } %>
+    </div>
+
     <div class="form-actions">
       <button type="submit" class="btn btn--primary">Save changes</button>
       <a href="/reports/<%= report.reference_no %>" class="btn btn--ghost">Cancel</a>

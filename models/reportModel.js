@@ -18,7 +18,8 @@ const DETAIL_SELECT = `
     u.full_name  AS reporter_name,
     c.name       AS category_name,
     c.slug       AS category_slug,
-    l.name       AS location_name
+    l.name       AS location_name,
+    DATEDIFF(NOW(), r.occurred_on) AS days_held
   FROM reports r
   JOIN users u      ON u.id = r.user_id
   JOIN categories c ON c.id = r.category_id
@@ -94,6 +95,7 @@ async function findById(id) {
 async function list(filters = {}) {
   const {
     kind, category_id, location_id, status, from, to, q, tag_slug,
+    sort = 'newest', active_only = false,
     page = 1, perPage = 12,
   } = filters;
 
@@ -104,6 +106,8 @@ async function list(filters = {}) {
   if (category_id) { where.push('r.category_id = ?'); params.push(category_id); }
   if (location_id) { where.push('r.location_id = ?'); params.push(location_id); }
   if (status) { where.push('r.status = ?'); params.push(status); }
+  // Lost / Found boards only show items that are still unresolved unless asked otherwise.
+  else if (active_only) { where.push("r.status IN ('open','matched')"); }
   if (from) { where.push('r.occurred_on >= ?'); params.push(from); }
   if (to) { where.push('r.occurred_on <= ?'); params.push(to); }
   if (tag_slug) { where.push('tg.slug = ?'); params.push(tag_slug); }
@@ -115,6 +119,15 @@ async function list(filters = {}) {
 
   const whereClause = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
   const tagJoin = tag_slug ? TAG_JOIN : '';
+
+  // ORDER BY comes from a fixed allow-list; the user value is never interpolated.
+  const ORDERS = {
+    newest: 'r.created_at DESC',   // most recently reported
+    oldest: 'r.occurred_on ASC',   // missing / held the longest
+    recent: 'r.occurred_on DESC',  // happened most recently
+    title:  'r.title ASC',
+  };
+  const orderBy = ORDERS[sort] || ORDERS.newest;
 
   const [countRows] = await pool.execute(
     `SELECT COUNT(*) AS total FROM reports r ${tagJoin} ${whereClause}`,
@@ -130,7 +143,7 @@ async function list(filters = {}) {
   // They are sent as strings because mysql2's execute() sends JS numbers
   // as DOUBLE, which MySQL 8.0.22+ rejects for LIMIT/OFFSET placeholders.
   const [rows] = await pool.execute(
-    `${DETAIL_SELECT} ${tagJoin} ${whereClause} ORDER BY r.created_at DESC LIMIT ? OFFSET ?`,
+    `${DETAIL_SELECT} ${tagJoin} ${whereClause} ORDER BY ${orderBy} LIMIT ? OFFSET ?`,
     [...params, String(safePerPage), String(offset)]
   );
   await attachTags(rows);
@@ -359,6 +372,59 @@ async function findForMatching(reportId, windowDays) {
   return rows;
 }
 
+// overview: numbers for the All-reports dashboard. One query, reshaped.
+async function overview() {
+  const [rows] = await pool.execute(
+    'SELECT kind, status, COUNT(*) AS total FROM reports GROUP BY kind, status'
+  );
+  const out = {
+    total: 0,
+    byStatus: { open: 0, matched: 0, claimed: 0, returned: 0, archived: 0 },
+    lost: { total: 0, active: 0 },
+    found: { total: 0, active: 0, returned: 0 },
+  };
+  rows.forEach((r) => {
+    const n = Number(r.total);
+    out.total += n;
+    out.byStatus[r.status] = (out.byStatus[r.status] || 0) + n;
+    if (out[r.kind]) {
+      out[r.kind].total += n;
+      if (r.status === 'open' || r.status === 'matched') out[r.kind].active += n;
+      if (r.kind === 'found' && r.status === 'returned') out.found.returned += n;
+    }
+  });
+  out.returnRate = out.found.total ? Math.round((out.found.returned / out.found.total) * 100) : 0;
+  return out;
+}
+
+// facets: category + location counts for the Lost / Found sidebars
+// (unresolved items of one kind only).
+async function facets(kind) {
+  const [cats] = await pool.execute(
+    `SELECT c.slug, c.name, COUNT(*) AS n
+       FROM reports r JOIN categories c ON c.id = r.category_id
+      WHERE r.kind = ? AND r.status IN ('open','matched')
+      GROUP BY c.id, c.slug, c.name ORDER BY n DESC, c.name ASC`, [kind]);
+  const [locs] = await pool.execute(
+    `SELECT l.id, l.name, COUNT(*) AS n
+       FROM reports r JOIN locations l ON l.id = r.location_id
+      WHERE r.kind = ? AND r.status IN ('open','matched')
+      GROUP BY l.id, l.name ORDER BY n DESC, l.name ASC`, [kind]);
+  return { categories: cats, locations: locs };
+}
+
+// expiringSoon: found items nearing the end of the holding period.
+async function expiringSoon(minDays = 60, limit = 4) {
+  const [rows] = await pool.execute(
+    `${DETAIL_SELECT}
+     WHERE r.kind = 'found' AND r.status = 'open'
+       AND DATEDIFF(NOW(), r.occurred_on) >= ?
+     ORDER BY r.occurred_on ASC LIMIT ?`,
+    [String(minDays), String(limit)]
+  );
+  return attachTags(rows);
+}
+
 module.exports = {
   create,
   findByReference,
@@ -375,4 +441,7 @@ module.exports = {
   countByStatus,
   itemsAgingOver,
   findForMatching,
+  overview,
+  facets,
+  expiringSoon,
 };
