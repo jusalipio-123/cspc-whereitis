@@ -1,0 +1,114 @@
+<!-- Lost — MISSING-ITEMS BOARD: help owners and finders. Sidebar facets, days missing, "I found this". -->
+<section class="board-hero board-hero--lost">
+  <div>
+    <p class="page-head__eyebrow">Missing items</p>
+    <h1>Have you seen any of these?</h1>
+    <p><strong><%= facets.categories.reduce(function (a, c) { return a + Number(c.n); }, 0) %></strong> items are still missing. If you picked one up, tap <em>I found this</em> and the report form opens already filled in with the category and place.</p>
+  </div>
+  <div class="board-hero__cta">
+    <a class="btn btn--lost" href="/reports/new?kind=lost">I lost something</a>
+    <a class="btn btn--ghost" href="/reports?kind=found">Check found items first</a>
+  </div>
+</section>
+
+<div class="board-layout">
+  <aside class="side" aria-label="Narrow the list">
+    <form method="get" action="/reports" class="side__search">
+      <input type="hidden" name="kind" value="lost">
+      <% if (scope === 'all') { %><input type="hidden" name="scope" value="all"><% } %>
+      <% if (sort !== 'newest') { %><input type="hidden" name="sort" value="<%= sort %>"><% } %>
+      <label class="visually-hidden" for="lost-q">Search missing items</label>
+      <input id="lost-q" type="search" name="q" class="input" placeholder="e.g. black wallet, ID lace" value="<%= filters.q || '' %>">
+      <button class="btn btn--lost btn--sm" type="submit">Search</button>
+    </form>
+
+    <h2 class="side__h">Category</h2>
+    <ul class="facet">
+      <li><a href="<%= urlWith({ category: '' }) %>"<%- !filters.category ? ' aria-current="true"' : '' %>>All categories</a></li>
+      <% facets.categories.forEach(function (c) { %>
+        <li><a href="<%= urlWith({ category: c.slug }) %>"<%- filters.category === c.slug ? ' aria-current="true"' : '' %>><%= c.name %> <span><%= c.n %></span></a></li>
+      <% }); %>
+    </ul>
+
+    <h2 class="side__h">Last seen at</h2>
+    <ul class="facet">
+      <li><a href="<%= urlWith({ location: '' }) %>"<%- !filters.location ? ' aria-current="true"' : '' %>>Anywhere</a></li>
+      <% facets.locations.forEach(function (l) { %>
+        <li><a href="<%= urlWith({ location: String(l.id) }) %>"<%- String(filters.location) === String(l.id) ? ' aria-current="true"' : '' %>><%= l.name %> <span><%= l.n %></span></a></li>
+      <% }); %>
+    </ul>
+
+    <h2 class="side__h">Lost within</h2>
+    <ul class="facet">
+      <li><a href="<%= urlWith({ from: '' }) %>"<%- !filters.from ? ' aria-current="true"' : '' %>>Any time</a></li>
+      <% [[7,'Past week'],[30,'Past 30 days'],[90,'Past 90 days']].forEach(function (w) { %>
+        <li><a href="<%= urlWith({ from: daysAgo(w[0]) }) %>"<%- filters.from === daysAgo(w[0]) ? ' aria-current="true"' : '' %>><%= w[1] %></a></li>
+      <% }); %>
+    </ul>
+
+    <p class="side__foot">
+      <a href="<%= urlWith({ scope: scope === 'all' ? '' : 'all' }) %>"><%= scope === 'all' ? 'Hide reunited / closed items' : 'Also show reunited / closed items' %></a><br>
+      <a href="/reports?kind=lost">Clear all filters</a>
+    </p>
+  </aside>
+
+  <section aria-label="Missing items">
+    <div class="list-bar">
+      <p class="result-count"><strong><%= total %></strong> item<%= total === 1 ? '' : 's' %><%= scope === 'all' ? ' (including closed)' : ' still missing' %></p>
+      <nav class="seg" aria-label="Sort">
+        <a href="<%= urlWith({ sort: '' }) %>"<%- sort === 'newest' ? ' aria-current="true"' : '' %>>Newest reports</a>
+        <a href="<%= urlWith({ sort: 'oldest' }) %>"<%- sort === 'oldest' ? ' aria-current="true"' : '' %>>Missing longest</a>
+      </nav>
+    </div>
+
+    <% if (rows.length === 0) { %>
+      <div class="empty-state">
+        <%- icons.search %>
+        <h3>Nothing matches</h3>
+        <p>No missing items fit those filters. Good news, or try clearing them.</p>
+        <a class="btn btn--ghost" href="/reports?kind=lost">Clear filters</a>
+      </div>
+    <% } else { %>
+      <ul class="missing-list">
+        <% rows.forEach(function (r) {
+             const href = '/reports/' + r.reference_no;
+             const open = r.status === 'open';
+             const d = Number(r.days_held);
+             const tone = d <= 7 ? 'new' : d <= 30 ? 'mid' : 'long';
+             const desc = (r.description || '');
+        %>
+          <li class="missing missing--<%= r.status %>">
+            <div class="missing__days missing__days--<%= tone %>">
+              <% if (r.status === 'returned') { %><strong>&#10003;</strong><span>reunited</span>
+              <% } else if (r.status === 'archived') { %><strong>&ndash;</strong><span>closed</span>
+              <% } else { %><strong><%= d %></strong><span>day<%= d === 1 ? '' : 's' %> missing</span><% } %>
+            </div>
+
+            <div class="missing__main">
+              <p class="missing__cat"><%= r.category_name %></p>
+              <h3 class="missing__title"><a href="<%= href %>"><%= r.title %></a></h3>
+              <% if (r.status === 'matched') { %><p class="missing__alert">Possible match found — staff are verifying.</p><% } %>
+              <p class="missing__desc"><%= desc.slice(0, 170) %><%= desc.length > 170 ? '…' : '' %></p>
+              <p class="missing__meta">
+                <span><strong>Last seen:</strong> <%= r.location_name %></span>
+                <span><strong>Lost on:</strong> <%= fmtDate(r.occurred_on) %></span>
+                <code><%= r.reference_no %></code>
+              </p>
+              <% if (r.tags && r.tags.length) { %>
+                <p class="report-card__tags"><% r.tags.forEach(function (t) { %><a class="tag-chip tag-chip--sm" href="/reports?kind=lost&amp;tag=<%= t.slug %>"><%= t.label %></a><% }); %></p>
+              <% } %>
+            </div>
+
+            <div class="missing__actions">
+              <% if (open) { %>
+                <a class="btn btn--lost btn--sm" href="/reports/new?kind=found&amp;category_id=<%= r.category_id %>&amp;location_id=<%= r.location_id %>">I found this</a>
+              <% } %>
+              <a class="btn btn--ghost btn--sm" href="<%= href %>">Details</a>
+            </div>
+          </li>
+        <% }); %>
+      </ul>
+      <%- include('../partials/pagination', { page: page, totalPages: totalPages, baseUrl: urlWith({}) }) %>
+    <% } %>
+  </section>
+</div>

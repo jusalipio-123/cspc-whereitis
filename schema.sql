@@ -212,6 +212,7 @@ CREATE TABLE reports (
   description       VARCHAR(1000) NOT NULL,
   occurred_on       DATE         NOT NULL,
   holding_location  VARCHAR(160) NULL,     -- required when kind='found'; see CHECK below
+  photo_url         VARCHAR(500) NULL,     -- optional http(s) link to a photo of the item
   status            ENUM('open','matched','claimed','returned','archived') NOT NULL DEFAULT 'open',
   archived_reason   VARCHAR(255) NULL,
   returned_to       VARCHAR(120) NULL,

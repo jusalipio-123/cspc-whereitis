@@ -5,41 +5,39 @@
 
 <main id="main">
   <section class="hero hero--campus">
-    <div class="hero__overlay">
-      <p class="hero__kicker">CSPC WHEREITIS</p>
-      <h1 class="hero__headline">
-        Kung nawala, hanapin dito.<br>
-        <span class="hero__headline-accent">Kung nakita, i-report dito.</span>
-      </h1>
-      <p class="hero__sub">
-        Tulong-tulong tayo para sa mas maayos at ligtas na pamayanan sa
-        Camarines Sur Polytechnic Colleges.
-      </p>
+    <div class="veil" aria-hidden="true">
+      <span class="tint"></span><span class="b4"></span><span class="b3"></span><span class="b2"></span><span class="b1"></span>
+    </div>
+    <div class="container hero__overlay">
+      <div class="hero__text">
+        <p class="hero__kicker">Camarines Sur Polytechnic Colleges</p>
+        <h1 class="hero__headline">
+          <span>Kung nawala, hanapin dito.</span>
+          <span class="hero__headline-accent">Kung nakita, i-report dito.</span>
+        </h1>
+        <p class="hero__sub">
+          Tulong-tulong tayo para sa mas maayos at ligtas na pamayanan sa CSPC.
+          Search the list, or file a report in under two minutes.
+        </p>
 
-      <div class="hero__actions">
-        <a class="hero__action-card" href="/reports/new?kind=lost">
-          <span class="hero__action-icon hero__action-icon--lost">
-            <%- icons.lost %>
-          </span>
-          <span class="hero__action-label">Report Lost Item</span>
-          <span class="hero__action-arrow" aria-hidden="true">&rarr;</span>
-        </a>
-        <a class="hero__action-card" href="/reports/new?kind=found">
-          <span class="hero__action-icon hero__action-icon--found">
-            <%- icons.found %>
-          </span>
-          <span class="hero__action-label">Report Found Item</span>
-          <span class="hero__action-arrow" aria-hidden="true">&rarr;</span>
-        </a>
+        <div class="hero__actions">
+          <a class="btn btn--primary" href="/reports/new?kind=lost">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Report lost item
+          </a>
+          <a class="btn btn--ghost" href="/reports/new?kind=found">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Report found item
+          </a>
+        </div>
+
+        <form class="hero__search" method="get" action="/reports" role="search">
+          <label for="hero-q" class="visually-hidden">Search lost and found items</label>
+          <svg class="hero__search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="hero-q" class="hero__search-input" type="search" name="q"
+                 placeholder="Search lost and found items">
+          <kbd class="hero__search-kbd" aria-hidden="true" title="Press / to search">/</kbd>
+          <button class="hero__search-btn" type="submit">Search<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+        </form>
       </div>
-
-      <form class="hero__search" method="get" action="/reports" role="search">
-        <label for="hero-q" class="visually-hidden">Search lost and found items</label>
-        <span class="hero__search-icon" aria-hidden="true"><%- icons.search %></span>
-        <input id="hero-q" class="hero__search-input" type="search" name="q"
-               placeholder="Search lost and found items...">
-        <button class="hero__search-btn" type="submit">Search</button>
-      </form>
     </div>
   </section>
 
@@ -48,49 +46,71 @@
 
     <section class="counters counters--hero" aria-label="Live counts">
       <div class="stat-card">
-        <span class="stat-card__icon stat-card__icon--blue"><%- icons.info %></span>
+        <i class="stat-card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg></i>
         <div>
-          <strong><%= (counts.openLost || 0) + (counts.openFound || 0) %></strong>
           <span>Total Reports</span>
+          <strong><%= (counts.openLost || 0) + (counts.openFound || 0) %></strong>
         </div>
       </div>
-      <div class="stat-card">
-        <span class="stat-card__icon stat-card__icon--green"><%- icons.search %></span>
+      <div class="stat-card stat-card--lost">
+        <i class="stat-card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></i>
         <div>
-          <strong><%= counts.openLost || 0 %></strong>
           <span>Open Lost</span>
+          <strong><%= counts.openLost || 0 %></strong>
         </div>
       </div>
-      <div class="stat-card">
-        <span class="stat-card__icon stat-card__icon--amber"><%- icons.check %></span>
+      <div class="stat-card stat-card--found">
+        <i class="stat-card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></i>
         <div>
-          <strong><%= counts.returnedThisMonth || 0 %></strong>
-          <span>Returned This Month</span>
-        </div>
-      </div>
-      <div class="stat-card">
-        <span class="stat-card__icon stat-card__icon--purple"><%- icons.user %></span>
-        <div>
-          <strong><%= counts.openFound || 0 %></strong>
           <span>Open Found</span>
+          <strong><%= counts.openFound || 0 %></strong>
         </div>
       </div>
+      <div class="stat-card stat-card--returned">
+        <i class="stat-card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.8 2.8L16 9.5"/></svg></i>
+        <div>
+          <span>Returned This Month</span>
+          <strong><%= counts.returnedThisMonth || 0 %></strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="how" aria-labelledby="how-h">
+      <h2 id="how-h" class="visually-hidden">How it works</h2>
+      <ol class="how__steps">
+        <li>
+          <span class="how__num" aria-hidden="true">1</span>
+          <div><strong>Report</strong><p>Lost or found something? File a report in under two minutes.</p></div>
+        </li>
+        <li>
+          <span class="how__num" aria-hidden="true">2</span>
+          <div><strong>Match</strong><p>Lost and found reports are compared, and staff check possible matches.</p></div>
+        </li>
+        <li>
+          <span class="how__num" aria-hidden="true">3</span>
+          <div><strong>Claim</strong><p>Send a claim with proof of ownership, then pick up your item.</p></div>
+        </li>
+      </ol>
     </section>
 
     <section aria-labelledby="latest-h">
       <div class="section-header">
         <h2 id="latest-h">Latest Reports</h2>
-        <a class="section-header__link" href="/reports">View All Reports &rarr;</a>
+        <a class="section-header__link" href="/reports">View all reports</a>
       </div>
 
       <% if (latestReports.length === 0) { %>
         <div class="empty-state">
-          <%- icons.search %>
+          <span class="empty-state__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 13l2.5-7.5A2 2 0 0 1 7.4 4h9.2a2 2 0 0 1 1.9 1.5L21 13v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 13h5l1 2h6l1-2h5"/></svg></span>
+          <h3>No reports yet</h3>
           <p>Wala pang naka-report dito &mdash; ikaw ba ang una?</p>
-          <a class="btn btn--primary" href="/reports/new">Report an item</a>
+          <div class="empty-state__actions">
+            <a class="btn btn--primary" href="/reports/new?kind=lost">Report lost item</a>
+            <a class="btn btn--ghost" href="/reports/new?kind=found">Report found item</a>
+          </div>
         </div>
       <% } else { %>
-        <ul class="card-grid">
+        <ul class="card-grid card-grid--3">
           <% latestReports.forEach(function (r) { %>
             <li><%- include('partials/reportCard', { report: r }) %></li>
           <% }); %>
@@ -99,16 +119,15 @@
     </section>
 
     <section aria-labelledby="returned-h">
-      <div class="section-header section-header--green">
+      <div class="section-header">
         <h2 id="returned-h">Recently Returned</h2>
-        <a class="section-header__link" href="/reports?status=returned">
-          View all &rarr;
-        </a>
+        <a class="section-header__link" href="/reports?status=returned">View all</a>
       </div>
 
       <% if (!recentlyReturned || recentlyReturned.length === 0) { %>
         <div class="empty-state empty-state--green">
-          <%- icons.check %>
+          <span class="empty-state__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.8 2.8L16 9.5"/></svg></span>
+          <h3>No returns yet</h3>
           <p>Items that get returned to their owners will appear here.</p>
         </div>
       <% } else { %>

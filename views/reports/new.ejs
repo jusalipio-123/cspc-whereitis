@@ -2,6 +2,17 @@
 <%
   const _allTags = typeof allTags !== 'undefined' ? allTags : [];
   const _selectedTagIds = typeof selectedTagIds !== 'undefined' ? selectedTagIds : [];
+  const _errors = errors || {};
+  const _kind = values.kind || '';
+  const _fieldIds = {
+    kind: 'kind-lost', title: 'title', category_id: 'category_id', location_id: 'location_id',
+    occurred_on: 'occurred_on', holding_location: 'holding_location', description: 'description',
+    tag_ids: 'tag-picker', photo_url: 'photo_url'
+  };
+  const _errorKeys = Object.keys(_fieldIds).filter(function (k) { return _errors[k]; });
+  const _now = new Date();
+  const _today = new Date(_now.getTime() - _now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  const _descLen = (values.description || '').length;
 %>
 <%- include('../partials/head', { title: title }) %>
 <%- include('../partials/nav') %>
@@ -9,119 +20,216 @@
 <main id="main" class="container">
   <%- include('../partials/flash') %>
 
-  <h1>Report an item</h1>
-
-  <form method="post" action="/reports" class="form">
-
-    <fieldset class="fieldset">
-      <legend>What happened?</legend>
-      <label class="radio-card">
-        <input type="radio" name="kind" value="lost"
-               <%= (values.kind || '') === 'lost' ? 'checked' : '' %> required>
-        <span><strong>I lost something</strong><br>
-        <small>Post a lost report so others can help find it.</small></span>
-      </label>
-      <label class="radio-card">
-        <input type="radio" name="kind" value="found"
-               <%= (values.kind || '') === 'found' ? 'checked' : '' %>>
-        <span><strong>I found something</strong><br>
-        <small>Post a found report and say where you are holding it.</small></span>
-      </label>
-      <% if (errors.kind) { %>
-        <p class="field-error" id="err-kind"><%= errors.kind %></p>
-      <% } %>
-    </fieldset>
-
-    <div class="field">
-      <label for="title">Item title <span aria-hidden="true">*</span></label>
-      <input id="title" name="title" class="input" type="text"
-             maxlength="120" required
-             value="<%= values.title || '' %>"
-             <%= errors.title ? 'aria-invalid="true" aria-describedby="err-title"' : '' %>>
-      <% if (errors.title) { %><p class="field-error" id="err-title"><%= errors.title %></p><% } %>
-      <p class="field-hint">A short name. Example: "Black leather wallet".</p>
+  <section class="board-hero board-hero--all">
+    <div>
+      <p class="page-head__eyebrow">New report</p>
+      <h1>Report an item</h1>
+      <p>Tell us what was lost or found. The more specific you are, the faster we can match it and get it back to its owner. It takes about two minutes.</p>
     </div>
+  </section>
 
-    <div class="field">
-      <label for="category_id">Category</label>
-      <select id="category_id" name="category_id" class="select" required
-              <%= errors.category_id ? 'aria-invalid="true" aria-describedby="err-cat"' : '' %>>
-        <option value="">Choose a category</option>
-        <% categories.forEach(function (c) { %>
-          <option value="<%= c.id %>" <%= String(values.category_id) === String(c.id) ? 'selected' : '' %>><%= c.name %></option>
+  <% if (_errorKeys.length) { %>
+    <div class="form-alert" role="alert" tabindex="-1" id="form-alert">
+      <strong>We couldn't submit your report. Please fix <%= _errorKeys.length === 1 ? 'this' : 'these ' + _errorKeys.length + ' items' %>:</strong>
+      <ul>
+        <% _errorKeys.forEach(function (k) { %>
+          <li><a href="#<%= _fieldIds[k] %>"><%= _errors[k] %></a></li>
         <% }); %>
-      </select>
-      <% if (errors.category_id) { %><p class="field-error" id="err-cat"><%= errors.category_id %></p><% } %>
+      </ul>
     </div>
+  <% } %>
 
-    <div class="field">
-      <label for="location_id">Location (where it was lost or found)</label>
-      <select id="location_id" name="location_id" class="select" required
-              <%= errors.location_id ? 'aria-invalid="true" aria-describedby="err-loc"' : '' %>>
-        <option value="">Choose a location</option>
-        <% locations.forEach(function (l) { %>
-          <option value="<%= l.id %>" <%= String(values.location_id) === String(l.id) ? 'selected' : '' %>><%= l.name %><%= l.zone ? ' · ' + l.zone : '' %></option>
-        <% }); %>
-      </select>
-      <% if (errors.location_id) { %><p class="field-error" id="err-loc"><%= errors.location_id %></p><% } %>
-    </div>
+  <div class="report-layout">
+    <form method="post" action="/reports" class="report-form" enctype="multipart/form-data" novalidate data-report-form>
 
-    <div class="field">
-      <label for="occurred_on">Date lost or found</label>
-      <input id="occurred_on" name="occurred_on" class="input" type="date"
-             value="<%= values.occurred_on || '' %>" required
-             <%= errors.occurred_on ? 'aria-invalid="true" aria-describedby="err-date"' : '' %>>
-      <% if (errors.occurred_on) { %><p class="field-error" id="err-date"><%= errors.occurred_on %></p><% } %>
-    </div>
-
-    <div class="field">
-      <label for="description">Description</label>
-      <textarea id="description" name="description" class="textarea" rows="5"
-                maxlength="1000" required
-                data-charcount data-charcount-min="20" data-charcount-max="1000"
-                <%= errors.description ? 'aria-invalid="true" aria-describedby="err-desc"' : '' %>><%= values.description || '' %></textarea>
-      <% if (errors.description) { %><p class="field-error" id="err-desc"><%= errors.description %></p><% } %>
-      <p class="field-hint">At least 20 characters. Colour, brand, distinguishing marks &mdash; anything helps.</p>
-    </div>
-
-    <div class="field" data-found-only>
-      <label for="holding_location">Holding location (required for found items)</label>
-      <input id="holding_location" name="holding_location" class="input" type="text"
-             maxlength="160"
-             value="<%= values.holding_location || '' %>"
-             <%= errors.holding_location ? 'aria-invalid="true" aria-describedby="err-hold"' : '' %>>
-      <p class="field-hint">Where is the item being kept? Example: "CCS Dean's office, 2nd floor."</p>
-      <% if (errors.holding_location) { %><p class="field-error" id="err-hold"><%= errors.holding_location %></p><% } %>
-    </div>
-
-    <fieldset class="fieldset" <%= errors.tag_ids ? 'aria-describedby="err-tags"' : '' %>>
-      <legend>Tags (optional)</legend>
-      <p class="field-hint">Pick up to 3. Used to filter and to help people
-      find related reports.</p>
-      <div class="tag-picker">
-        <% _allTags.forEach(function (t) { %>
-          <label class="tag-chip">
-            <input type="checkbox" name="tag_ids" value="<%= t.id %>"
-                   <%= _selectedTagIds.includes(t.id) ? 'checked' : '' %>>
-            <span><%= t.label %></span>
+      <!-- 1 · Type -->
+      <section class="form-section" aria-labelledby="sec-kind">
+        <h2 id="sec-kind" class="form-section__title"><span class="form-section__num" aria-hidden="true">1</span>What would you like to report?</h2>
+        <div class="kind-choice" role="radiogroup" aria-labelledby="sec-kind">
+          <label class="kind-choice__option">
+            <input type="radio" id="kind-lost" name="kind" value="lost" <%= _kind === 'lost' ? 'checked' : '' %> required>
+            <span class="kind-choice__body">
+              <strong>I lost something</strong>
+              <small>Create a lost report so students and staff can look out for it.</small>
+            </span>
           </label>
-        <% }); %>
+          <label class="kind-choice__option">
+            <input type="radio" id="kind-found" name="kind" value="found" <%= _kind === 'found' ? 'checked' : '' %>>
+            <span class="kind-choice__body">
+              <strong>I found something</strong>
+              <small>Create a found report and tell us where the item is being kept.</small>
+            </span>
+          </label>
+        </div>
+        <% if (_errors.kind) { %><p class="field-error"><%= _errors.kind %></p><% } %>
+      </section>
+
+      <!-- 2 · Item -->
+      <section class="form-section" aria-labelledby="sec-item">
+        <h2 id="sec-item" class="form-section__title"><span class="form-section__num" aria-hidden="true">2</span>Item information</h2>
+
+        <div class="field">
+          <label for="title">Item name <span class="req" aria-hidden="true">*</span></label>
+          <input id="title" name="title" class="input" type="text" maxlength="120" required autocomplete="off"
+                 placeholder="e.g. Black leather wallet"
+                 value="<%= values.title || '' %>"
+                 <%= _errors.title ? 'aria-invalid="true" aria-describedby="err-title"' : 'aria-describedby="hint-title"' %>>
+          <% if (_errors.title) { %><p class="field-error" id="err-title"><%= _errors.title %></p><% } %>
+          <p class="field-hint" id="hint-title">A short, specific name. At least 5 characters.</p>
+        </div>
+
+        <div class="field">
+          <label for="category_id">Category <span class="req" aria-hidden="true">*</span></label>
+          <select id="category_id" name="category_id" class="select" required
+                  <%= _errors.category_id ? 'aria-invalid="true" aria-describedby="err-cat"' : '' %>>
+            <option value="">Select a category</option>
+            <% categories.forEach(function (c) { %>
+              <option value="<%= c.id %>" <%= String(values.category_id) === String(c.id) ? 'selected' : '' %>><%= c.name %></option>
+            <% }); %>
+          </select>
+          <% if (_errors.category_id) { %><p class="field-error" id="err-cat"><%= _errors.category_id %></p><% } %>
+        </div>
+
+        <div class="field">
+          <label for="description">Description <span class="req" aria-hidden="true">*</span></label>
+          <textarea id="description" name="description" class="textarea" rows="5" maxlength="1000" required
+                    data-charcount data-charcount-min="20" data-charcount-max="1000"
+                    placeholder="Colour, brand, size, stickers, scratches, contents, or anything that identifies it."
+                    <%= _errors.description ? 'aria-invalid="true" aria-describedby="err-desc"' : 'aria-describedby="hint-desc"' %>><%= values.description || '' %></textarea>
+          <% if (_errors.description) { %><p class="field-error" id="err-desc"><%= _errors.description %></p><% } %>
+          <p class="field-hint" id="hint-desc">At least 20 characters. Do not include phone numbers or ID numbers.</p>
+        </div>
+
+        <% if (_allTags.length) { %>
+          <div class="field" role="group" aria-labelledby="tags-label">
+            <span id="tags-label" class="label">Tags <span class="optional">(optional, up to 3)</span></span>
+            <div class="tag-picker" id="tag-picker" tabindex="-1" data-max-tags="3">
+              <% _allTags.forEach(function (t) { %>
+                <label class="tag-chip tag-chip--pick">
+                  <input type="checkbox" name="tag_ids" value="<%= t.id %>" <%= _selectedTagIds.includes(t.id) ? 'checked' : '' %>>
+                  <span><%= t.label %></span>
+                </label>
+              <% }); %>
+            </div>
+            <% if (_errors.tag_ids) { %><p class="field-error"><%= _errors.tag_ids %></p><% } %>
+          </div>
+        <% } %>
+      </section>
+
+      <!-- 3 · Where & when -->
+      <section class="form-section" aria-labelledby="sec-where">
+        <h2 id="sec-where" class="form-section__title"><span class="form-section__num" aria-hidden="true">3</span>Location and date</h2>
+
+        <div class="field-row">
+          <div class="field">
+            <label for="location_id">
+              <span data-kind-label data-lost="Where did you lose it?" data-found="Where did you find it?">Where was it lost or found?</span>
+              <span class="req" aria-hidden="true">*</span>
+            </label>
+            <select id="location_id" name="location_id" class="select" required
+                    <%= _errors.location_id ? 'aria-invalid="true" aria-describedby="err-loc"' : '' %>>
+              <option value="">Select a location</option>
+              <% locations.forEach(function (l) { %>
+                <option value="<%= l.id %>" <%= String(values.location_id) === String(l.id) ? 'selected' : '' %>><%= l.name %><%= l.zone ? ' · ' + l.zone : '' %></option>
+              <% }); %>
+            </select>
+            <% if (_errors.location_id) { %><p class="field-error" id="err-loc"><%= _errors.location_id %></p><% } %>
+          </div>
+
+          <div class="field">
+            <label for="occurred_on">
+              <span data-kind-label data-lost="Date lost" data-found="Date found">Date lost or found</span>
+              <span class="req" aria-hidden="true">*</span>
+            </label>
+            <input id="occurred_on" name="occurred_on" class="input" type="date" required max="<%= _today %>"
+                   value="<%= values.occurred_on || _today %>"
+                   <%= _errors.occurred_on ? 'aria-invalid="true" aria-describedby="err-date"' : '' %>>
+            <% if (_errors.occurred_on) { %><p class="field-error" id="err-date"><%= _errors.occurred_on %></p><% } %>
+          </div>
+        </div>
+
+        <div class="field" data-found-only>
+          <label for="holding_location">Where is the item now? <span class="req" aria-hidden="true">*</span></label>
+          <input id="holding_location" name="holding_location" class="input" type="text" maxlength="160"
+                 placeholder="e.g. CCS Dean's Office, 2nd floor"
+                 value="<%= values.holding_location || '' %>"
+                 <%= _errors.holding_location ? 'aria-invalid="true" aria-describedby="err-hold"' : 'aria-describedby="hint-hold"' %>>
+          <% if (_errors.holding_location) { %><p class="field-error" id="err-hold"><%= _errors.holding_location %></p><% } %>
+          <p class="field-hint" id="hint-hold">The office or person holding it, so the owner knows where to go.</p>
+        </div>
+      </section>
+
+      <!-- 4 · Photo -->
+      <section class="form-section" aria-labelledby="sec-photo">
+        <h2 id="sec-photo" class="form-section__title"><span class="form-section__num" aria-hidden="true">4</span>Photo <span class="optional">(optional)</span></h2>
+        <div class="field">
+          <label for="photo">Upload a photo</label>
+          <input id="photo" name="photo" class="input" type="file" accept="image/jpeg,image/png,image/gif,image/webp" data-photo-file
+                 <%= _errors.photo_url ? 'aria-invalid="true" aria-describedby="err-photo"' : 'aria-describedby="hint-photo"' %>>
+          <% if (_errors.photo_url) { %><p class="field-error" id="err-photo"><%= _errors.photo_url %><%= _errors.photo_url.indexOf('http') === -1 ? ' Please choose the photo again.' : '' %></p><% } %>
+          <p class="field-hint" id="hint-photo">JPG, PNG, GIF or WebP, up to 5 MB. Or paste an image link below instead.</p>
+        </div>
+        <div class="field">
+          <label for="photo_url">Image link <span class="optional">(optional)</span></label>
+          <input id="photo_url" name="photo_url" class="input" type="url" maxlength="500" inputmode="url" autocomplete="off"
+                 placeholder="https://example.com/photo.jpg"
+                 value="<%= values.photo_url || '' %>">
+          <div class="photo-preview" data-photo-preview hidden>
+            <img alt="Preview of the item photo" data-photo-img>
+            <p class="field-hint" data-photo-msg hidden>We couldn't load that image. Check the file or link, or leave it blank.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="form-actions form-actions--bar">
+        <button type="submit" class="btn btn--primary" data-submit>Submit report</button>
+        <a href="/reports" class="btn btn--ghost">Cancel</a>
+        <p class="form-actions__note"><span class="req" aria-hidden="true">*</span> Required</p>
       </div>
-      <% if (errors.tag_ids) { %><p class="field-error" id="err-tags"><%= errors.tag_ids %></p><% } %>
-    </fieldset>
+    </form>
 
-    <div class="field">
-      <label for="photo_url">Photo URL (optional)</label>
-      <input id="photo_url" name="photo_url" class="input" type="url"
-             value="<%= values.photo_url || '' %>" placeholder="https://...">
-      <p class="field-hint">This term we accept a link only &mdash; no file upload yet.</p>
-    </div>
+    <aside class="report-aside" aria-label="Help">
+      <div class="card aside-card">
+        <h2>Posting as</h2>
+        <p><strong><%= identity ? identity.studentNo : '' %></strong></p>
+        <p class="muted">Your student number is never shown on the public report.</p>
+      </div>
 
-    <div class="form-actions">
-      <button type="submit" class="btn btn--primary">Post report</button>
-      <a href="/reports" class="btn btn--ghost">Cancel</a>
-    </div>
-  </form>
+      <div class="card aside-card" data-show-for="none">
+        <h2>Tips for a good report</h2>
+        <ul>
+          <li>Use a specific name, such as "Blue Hydro Flask bottle".</li>
+          <li>Mention marks only the owner would know.</li>
+          <li>Choose the exact building or area.</li>
+        </ul>
+      </div>
+      <div class="card aside-card" data-show-for="lost" hidden>
+        <h2>Lost something?</h2>
+        <ul>
+          <li>Describe marks, stickers or contents only you would know.</li>
+          <li>Choose the last place you remember having it.</li>
+          <li>Check the <a href="/reports?kind=found">Found items</a> first; it may already be here.</li>
+        </ul>
+      </div>
+      <div class="card aside-card" data-show-for="found" hidden>
+        <h2>Found something?</h2>
+        <ul>
+          <li>Keep the item safe, or hand it to the office you list.</li>
+          <li>Leave out details that would let anyone claim it. Owners prove it with those.</li>
+          <li>Staff verify every claim before releasing the item.</li>
+        </ul>
+      </div>
+
+      <div class="card aside-card">
+        <h2>What happens next</h2>
+        <ol>
+          <li>You get a reference number.</li>
+          <li>We suggest possible matches.</li>
+          <li>Track it any time in <a href="/my-reports">My reports</a>.</li>
+        </ol>
+      </div>
+    </aside>
+  </div>
 </main>
 
 <%- include('../partials/foot') %>

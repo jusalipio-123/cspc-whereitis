@@ -1,0 +1,47 @@
+<!-- CSPC WhereITis — views/pages/cookies.ejs -->
+<%- include('../partials/head', { title: 'Cookie Notice' }) %>
+<%- include('../partials/nav') %>
+
+<main id="main" class="container">
+  <%- include('../partials/flash') %>
+
+  <h1>Cookie Notice</h1>
+  <p class="lead">WhereITis sets exactly one cookie. This page tells you what it
+  is, why, and how to remove it.</p>
+
+  <h2>The one cookie we set</h2>
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Name</th><th>Where it is used</th><th>What it holds</th><th>Lifetime</th><th>Flags</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><code>whereitis_id</code></td>
+          <td>Only on /my-reports</td>
+          <td>A signed number that points at your row in the users table. No
+          personal data is inside the cookie itself.</td>
+          <td>30 minutes</td>
+          <td>HttpOnly, SameSite=Lax, Secure in production</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>What we do NOT set</h2>
+  <ul>
+    <li>No analytics cookies</li>
+    <li>No advertising cookies</li>
+    <li>No third-party cookies</li>
+    <li>No tracking pixels</li>
+  </ul>
+
+  <h2>How to clear the cookie</h2>
+  <p>Sign out of My Reports (the button on that page clears the cookie), or clear
+  cookies for this site through your browser's settings. After clearing, you will
+  need to sign in again.</p>
+
+  <h2>What happens if we add cookies later</h2>
+  <p>Any future cookie must be added to this page before it is deployed. If you
+  notice a cookie not listed here, report it to the IT office — that is a bug.</p>
+</main>
+
+<%- include('../partials/foot') %>

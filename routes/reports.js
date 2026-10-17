@@ -14,6 +14,7 @@ const userModel = require('../models/userModel');
 const matching = require('../lib/matching');
 const validate = require('../middleware/validate');
 const { requireIdentity } = require('../middleware/identity');
+const upload = require('../middleware/upload');
 
 const MATCH_WINDOW_DAYS = Number(process.env.MATCH_WINDOW_DAYS) || 30;
 const MAX_TAGS = 3;
@@ -101,6 +102,23 @@ function validateReportFields(body, allTags) {
   const tagResult = validateTags(body.tag_ids, allTags);
   if (tagResult.error) errors.tag_ids = tagResult.error;
 
+  // Optional photo link: plain http(s) only, so "javascript:" or "data:" URLs
+  // can never end up inside an <img src>.
+  const photoRaw = String(body.photo_url || '').trim();
+  values.photo_url = photoRaw;
+  if (photoRaw) {
+    let validPhoto = photoRaw.length <= 500;
+    if (validPhoto) {
+      try {
+        const u = new URL(photoRaw);
+        validPhoto = u.protocol === 'http:' || u.protocol === 'https:';
+      } catch (err) {
+        validPhoto = false;
+      }
+    }
+    if (!validPhoto) errors.photo_url = 'Enter a valid image link starting with http:// or https://';
+  }
+
   return {
     values,
     errors,
@@ -114,9 +132,12 @@ function validateReportFields(body, allTags) {
 router.get('/', async (req, res, next) => {
   try {
     const { kind, category, location, status, from, to, q, tag } = req.query;
+    const mode = kind === 'lost' ? 'lost' : kind === 'found' ? 'found' : 'all';
+    const sort = ['newest', 'oldest', 'recent', 'title'].includes(req.query.sort) ? req.query.sort : 'newest';
+    const scope = req.query.scope === 'all' ? 'all' : 'active';
     let page = parseInt(req.query.page, 10);
     if (!Number.isInteger(page) || page < 1) page = 1;
-    const perPage = 12;
+    const perPage = mode === 'all' ? 15 : 12;
 
     const [categories, locations, allTags] = await Promise.all([
       categoryModel.list(),
@@ -124,16 +145,13 @@ router.get('/', async (req, res, next) => {
       tagModel.listAll(),
     ]);
 
-    // Filters are resolved against the already-loaded lists. An
-    // unrecognised value is simply ignored, so a stale or mistyped link
-    // degrades to "no filter" instead of a broken page. The location
-    // dropdown submits the location id.
+    // Unrecognised filter values degrade to "no filter" instead of a broken page.
     const categoryRow = category ? categories.find((c) => c.slug === category) : null;
     const locationRow = location ? locations.find((l) => String(l.id) === String(location)) : null;
     const tagRow = tag ? allTags.find((t) => t.slug === tag) : null;
 
     const result = await reportModel.list({
-      kind: kind || null,
+      kind: mode === 'all' ? null : mode,
       category_id: categoryRow ? categoryRow.id : null,
       location_id: locationRow ? locationRow.id : null,
       status: status || null,
@@ -141,17 +159,36 @@ router.get('/', async (req, res, next) => {
       to: to || null,
       q: q || null,
       tag_slug: tagRow ? tagRow.slug : null,
+      sort,
+      // Lost / Found boards hide resolved items unless ?scope=all
+      active_only: mode !== 'all' && scope === 'active',
       page,
       perPage,
     });
 
+    // Each page type gets its own extra data.
+    const extra = {};
+    if (mode === 'all') {
+      extra.overview = await reportModel.overview();
+    } else {
+      extra.facets = await reportModel.facets(mode);
+      const unfiltered = !q && !category && !location && !tag && !from && !to && !status;
+      if (mode === 'found' && page === 1 && unfiltered && scope === 'active') {
+        extra.expiring = await reportModel.expiringSoon(60, 4);
+      }
+    }
+
     res.render('reports/list', {
-      title: 'Browse reports',
+      title: mode === 'lost' ? 'Lost items' : mode === 'found' ? 'Found items' : 'All reports',
       ...result,
+      ...extra,
+      mode,
+      sort,
+      scope,
       categories,
       locations,
       allTags,
-      filters: { kind, category, location, status, from, to, q, tag },
+      filters: { kind: mode === 'all' ? undefined : mode, category, location, status, from, to, q, tag },
     });
   } catch (err) {
     next(err);
@@ -161,6 +198,12 @@ router.get('/', async (req, res, next) => {
 // GET /new
 router.get('/new', async (req, res, next) => {
   try {
+    // Only signed-in students can submit, so sign in first and come straight
+    // back here (the chosen kind and prefilled fields are kept in the URL).
+    if (!req.identity) {
+      return res.redirect(303, '/sign-in?next=' + encodeURIComponent(req.originalUrl));
+    }
+
     const [categories, locations, allTags] = await Promise.all([
       categoryModel.list(),
       locationModel.list(),
@@ -173,7 +216,12 @@ router.get('/new', async (req, res, next) => {
       locations,
       allTags,
       selectedTagIds: [],
-      values: { kind: req.query.kind === 'found' ? 'found' : req.query.kind === 'lost' ? 'lost' : '' },
+      values: {
+        kind: req.query.kind === 'found' ? 'found' : req.query.kind === 'lost' ? 'lost' : '',
+        // Prefill from the Lost board's "I found this" button.
+        category_id: req.query.category_id || '',
+        location_id: req.query.location_id || '',
+      },
       errors: {},
     });
   } catch (err) {
@@ -182,7 +230,7 @@ router.get('/new', async (req, res, next) => {
 });
 
 // POST /
-router.post('/', requireIdentity, async (req, res, next) => {
+router.post('/', requireIdentity, upload.parsePhoto, async (req, res, next) => {
   try {
     const [categories, locations, allTags] = await Promise.all([
       categoryModel.list(),
@@ -190,7 +238,11 @@ router.post('/', requireIdentity, async (req, res, next) => {
       tagModel.listAll(),
     ]);
 
-    const { values, errors, tagIds, ok } = validateReportFields(req.body, allTags);
+    const validated = validateReportFields(req.body, allTags);
+    const { values, errors, tagIds } = validated;
+    let ok = validated.ok;
+    const photoErr = upload.checkPhoto(req);
+    if (photoErr) { errors.photo_url = photoErr; ok = false; }
 
     if (!ok) {
       return res.status(422).render('reports/new', {
@@ -214,7 +266,7 @@ router.post('/', requireIdentity, async (req, res, next) => {
       occurred_on: values.occurred_on,
       holding_location: values.holding_location || null,
       tag_ids: tagIds,
-      photo_url: req.body.photo_url ? String(req.body.photo_url).trim() : null,
+      photo_url: upload.hasPhoto(req) ? await upload.savePhoto(req.file) : (values.photo_url || null),
     });
 
     // 303 (not 302/307) guarantees the browser follows up with a GET, so
@@ -314,7 +366,7 @@ router.get('/:reference/edit', requireIdentity, async (req, res, next) => {
 });
 
 // POST /:reference/edit
-router.post('/:reference/edit', requireIdentity, async (req, res, next) => {
+router.post('/:reference/edit', requireIdentity, upload.parsePhoto, async (req, res, next) => {
   try {
     const report = await reportModel.findByReference(req.params.reference);
 
@@ -340,12 +392,22 @@ router.post('/:reference/edit', requireIdentity, async (req, res, next) => {
 
     // The kind of an existing report cannot change, so it always comes
     // from the stored report, never from the submitted form.
-    const { values, errors, tagIds, ok } = validateReportFields(
+    const validated = validateReportFields(
       { ...req.body, kind: report.kind },
       allTags
     );
+    const { values, errors, tagIds } = validated;
+    let ok = validated.ok;
+    const photoErr = upload.checkPhoto(req);
+    if (photoErr) { errors.photo_url = photoErr; ok = false; }
+
+    // Which photo does the report end up with?
+    //   new file > pasted link > keep the stored upload (unless "remove" is ticked)
+    const keepUpload = !req.body.remove_photo && upload.isUploadPath(report.photo_url);
+    if (!values.photo_url && keepUpload && !upload.hasPhoto(req)) values.photo_url = report.photo_url;
 
     if (!ok) {
+      values.photo_url = report.photo_url;
       return res.status(422).render('reports/edit', {
         title: 'Edit ' + report.reference_no,
         categories,
@@ -358,6 +420,10 @@ router.post('/:reference/edit', requireIdentity, async (req, res, next) => {
       });
     }
 
+    let finalPhoto = values.photo_url || null;
+    if (upload.hasPhoto(req)) finalPhoto = await upload.savePhoto(req.file);
+    values.photo_url = finalPhoto;
+
     await reportModel.updateWhileOpen(report.id, req.identity.userId, {
   title: values.title,
   description: values.description,
@@ -365,8 +431,10 @@ router.post('/:reference/edit', requireIdentity, async (req, res, next) => {
   location_id: values.location_id,
   occurred_on: values.occurred_on,
   holding_location: values.holding_location || null,
-  photo_url: req.body.photo_url ? String(req.body.photo_url).trim() : null,
+  photo_url: values.photo_url || null,
 });
+
+    if (report.photo_url && report.photo_url !== finalPhoto) await upload.removePhoto(report.photo_url);
 
     res.redirect(303, '/reports/' + report.reference_no + '?flash=ok:Report%20updated');
   } catch (err) {

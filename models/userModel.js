@@ -77,6 +77,13 @@ async function create(data) {
   return findById(result.insertId);
 }
 
+// emailExists / studentNoExists: friendly pre-checks for the register form.
+// The UNIQUE keys in schema.sql remain the real guarantee (see register route).
+async function emailExists(email) {
+  const [rows] = await db.pool.query('SELECT 1 FROM users WHERE email = ? LIMIT 1', [email]);
+  return rows.length > 0;
+}
+
 // listAll: admin user-management screen.
 async function listAll() {
   const [rows] = await db.pool.execute('SELECT * FROM users ORDER BY full_name ASC');
@@ -98,6 +105,7 @@ module.exports = {
   findById,
   verifyPin,
   create,
+  emailExists,
   listAll,
   countByRole,
 };

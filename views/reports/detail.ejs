@@ -23,7 +23,7 @@
         <span class="pill pill--<%= report.status %>"><%= report.status %></span>
         <% if (report.kind === 'found' && typeof report.days_held !== 'undefined') { %>
           <span class="days-badge days-badge--<%= ageBucket(report.days_held) %>">
-            <%- icons.clock %> <%= report.days_held %> days held
+            <%= report.days_held %> days held
           </span>
         <% } %>
       </p>
@@ -35,6 +35,13 @@
         </p>
       <% } %>
     </header>
+
+    <% if (report.photo_url) { %>
+      <figure class="detail__photo">
+        <img src="<%= report.photo_url %>" alt="Photo of <%= report.title %>" fetchpriority="high" referrerpolicy="no-referrer"
+             onerror="this.closest('figure').style.display='none';">
+      </figure>
+    <% } %>
 
     <section class="detail__body">
       <p><%= report.description %></p>
@@ -66,12 +73,12 @@
         </a>
       <% } %>
       <a class="btn btn--ghost" href="/reports/<%= report.reference_no %>/print">
-        <%- icons.print %> Print receipt
+        Print receipt
       </a>
       <% if (_identity && _identity.userId === report.user_id) { %>
         <% if (report.status === 'open') { %>
           <a class="btn btn--ghost" href="/reports/<%= report.reference_no %>/edit">
-            <%- icons.edit %> Edit
+            Edit
           </a>
           <form method="post" action="/reports/<%= report.reference_no %>/withdraw" class="inline" data-confirm="Withdraw this report? This cannot be undone.">
             <button class="btn btn--danger btn--sm" type="submit">Withdraw</button>
@@ -81,7 +88,7 @@
       <% if (_identity) { %>
         <form method="post" action="/reports/<%= report.reference_no %>/bookmark" class="inline">
           <button class="btn btn--ghost btn--sm" type="submit">
-            <%- icons.bookmark %> <%= bookmarked ? 'Remove bookmark' : 'Bookmark' %>
+            <%= bookmarked ? 'Remove bookmark' : 'Bookmark' %>
           </button>
         </form>
       <% } %>

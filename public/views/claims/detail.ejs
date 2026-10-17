@@ -1,0 +1,59 @@
+<!-- CSPC WhereITis — views/claims/detail.ejs -->
+<%- include('../partials/head', { title: 'Claim details' }) %>
+<%- include('../partials/nav') %>
+
+<main id="main" class="container">
+  <%- include('../partials/flash') %>
+
+  <h1>Claim details</h1>
+
+  <article class="card claim-card">
+    <header class="claim-card__head">
+      <p class="muted">Claim #<%= claim.id %> &middot; Filed <%= claim.created_at %></p>
+      <p>Against: <a href="/reports/<%= report.reference_no %>"><%= report.title %></a>
+         (<code><%= report.reference_no %></code>)</p>
+      <p>Claimant: <strong><%= claim.claimant_name %></strong></p>
+      <p>Status: <span class="pill pill--<%= claim.status === 'approved' ? 'returned' : claim.status === 'rejected' ? 'archived' : 'open' %>">
+        <%= claim.status %></span></p>
+    </header>
+
+    <section class="claim-card__body">
+      <h2>Proof of ownership</h2>
+      <p><%= claim.proof_text %></p>
+
+      <h2>Distinguishing features</h2>
+      <p><%= claim.distinguishing_features %></p>
+    </section>
+
+    <% if (claim.status !== 'pending' && claim.decision_note) { %>
+      <section class="claim-card__decision">
+        <h2>Decision</h2>
+        <p><%= claim.decision_note %></p>
+        <p class="muted">Decided by <%= claim.decided_by_name || 'staff' %> at <%= claim.decided_at %></p>
+      </section>
+    <% } %>
+  </article>
+
+  <% if (claim.status === 'pending' && canDecide) { %>
+    <section class="claim-actions" aria-labelledby="decide-h">
+      <h2 id="decide-h">Staff decision</h2>
+
+      <form method="post" action="/claims/<%= claim.id %>/approve" class="form inline"
+            data-confirm="Approve this claim? This rejects every other pending claim on the same report.">
+        <button type="submit" class="btn btn--primary">Approve and mark item claimed</button>
+      </form>
+
+      <form method="post" action="/claims/<%= claim.id %>/reject" class="form">
+        <div class="field">
+          <label for="note">Reason for rejection</label>
+          <textarea id="note" name="note" class="textarea" rows="3" required
+                    minlength="5" maxlength="255"></textarea>
+          <p class="field-hint">Say why — vague rejections confuse honest claimants.</p>
+        </div>
+        <button type="submit" class="btn btn--danger">Reject claim</button>
+      </form>
+    </section>
+  <% } %>
+</main>
+
+<%- include('../partials/foot') %>

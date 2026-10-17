@@ -15,7 +15,7 @@
     <span class="pill pill--<%= report.kind %>"><%= report.kind === 'lost' ? 'Lost' : 'Found' %></span>
   </p>
 
-  <form method="post" action="/reports/<%= report.reference_no %>/edit" class="form">
+  <form method="post" action="/reports/<%= report.reference_no %>/edit" class="form" enctype="multipart/form-data">
     <!-- Kind cannot change on an existing report: shown read-only above; the server also ignores this field and uses the stored kind. -->
     <input type="hidden" name="kind" value="<%= report.kind %>">
 
@@ -93,6 +93,24 @@
       </div>
       <% if (errors.tag_ids) { %><p class="field-error" id="err-tags"><%= errors.tag_ids %></p><% } %>
     </fieldset>
+
+    <div class="field">
+      <label for="photo">Photo (optional)</label>
+      <% if (report.photo_url) { %>
+        <div class="photo-preview"><img src="<%= report.photo_url %>" referrerpolicy="no-referrer" alt="Current photo of <%= report.title %>"></div>
+        <label class="check"><input type="checkbox" name="remove_photo" value="1"> Remove the current photo</label>
+      <% } %>
+      <input id="photo" name="photo" class="input" type="file" accept="image/jpeg,image/png,image/gif,image/webp"
+             <%= errors.photo_url ? 'aria-invalid="true" aria-describedby="err-photo"' : 'aria-describedby="hint-photo"' %>>
+      <% if (errors.photo_url) { %><p class="field-error" id="err-photo"><%= errors.photo_url %></p><% } %>
+      <p class="field-hint" id="hint-photo">JPG, PNG, GIF or WebP, up to 5 MB. Choosing a file replaces the current photo.</p>
+    </div>
+
+    <div class="field">
+      <label for="photo_url">Or paste an image link (optional)</label>
+      <input id="photo_url" name="photo_url" class="input" type="url" maxlength="500"
+             value="<%= /^https?:/.test(values.photo_url || '') ? values.photo_url : '' %>" placeholder="https://example.com/photo.jpg">
+    </div>
 
     <div class="form-actions">
       <button type="submit" class="btn btn--primary">Save changes</button>

@@ -17,6 +17,13 @@
         <%= claim.status %></span></p>
     </header>
 
+    <% if (report.photo_url) { %>
+      <figure class="claim-card__photo">
+        <img src="<%= report.photo_url %>" alt="Photo of <%= report.title %>" loading="lazy" referrerpolicy="no-referrer"
+             onerror="this.closest('figure').style.display='none';">
+      </figure>
+    <% } %>
+
     <section class="claim-card__body">
       <h2>Proof of ownership</h2>
       <p><%= claim.proof_text %></p>
