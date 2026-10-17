@@ -138,7 +138,11 @@ async function signInSubmitHandler(req, res, next) {
         values: { student_no: req.body.student_no },
         errors: {
           student_no:
+<<<<<<< HEAD
             'Sign-in is limited to CSPC school email accounts. Contact the IT office if you believe this is a mistake.',
+=======
+            'Sign-in is limited to @cspc.edu.ph accounts. Contact the IT office if you believe this is a mistake.',
+>>>>>>> afca201e130bbfa7102caa4aea064bea79a78181
         },
         next: nextPath,
       });

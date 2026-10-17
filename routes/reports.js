@@ -266,7 +266,11 @@ router.post('/', requireIdentity, upload.parsePhoto, async (req, res, next) => {
       occurred_on: values.occurred_on,
       holding_location: values.holding_location || null,
       tag_ids: tagIds,
+<<<<<<< HEAD
       photo_url: upload.hasPhoto(req) ? await upload.savePhoto(req.file) : (values.photo_url || null),
+=======
+      photo_url: values.photo_url || null,
+>>>>>>> afca201e130bbfa7102caa4aea064bea79a78181
     });
 
     // 303 (not 302/307) guarantees the browser follows up with a GET, so

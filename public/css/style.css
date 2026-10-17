@@ -1550,9 +1550,13 @@ input, textarea { caret-color: var(--brand); }
   .hero--campus::after, .report-card::before, .custody::before, .missing::before, .match-card::before, .stat-card::before,
   .how__steps li::before, .flash[data-autodismiss]::after { display: none !important; }
   .img-pending > img { opacity: 1 !important; }
+<<<<<<< HEAD
 }
 /* ---------- Item photo on match cards and claim details ---------- */
 .match-card__photo { display: block; aspect-ratio: 16 / 10; margin: 0 0 var(--s-3); overflow: hidden; border: 1px solid var(--border); border-radius: 10px; background: var(--brand-050); }
 .match-card__photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .claim-card__photo { margin: 0 0 var(--s-4); max-width: 420px; aspect-ratio: 4 / 3; overflow: hidden; border: 1px solid var(--border); border-radius: 10px; background: var(--brand-050); }
 .claim-card__photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+=======
+}
+>>>>>>> afca201e130bbfa7102caa4aea064bea79a78181

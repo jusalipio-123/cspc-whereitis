@@ -83,7 +83,11 @@
         <% rows.forEach(function (r) { const href = '/reports/' + r.reference_no; %>
           <tr>
             <td class="registry__item">
+<<<<<<< HEAD
               <a class="registry__thumb" href="<%= href %>" tabindex="-1" aria-hidden="true"><img src="<%= r.photo_url || '/img/placeholder.svg' %>" alt="" loading="lazy" referrerpolicy="no-referrer"></a>
+=======
+              <a class="registry__thumb" href="<%= href %>" tabindex="-1" aria-hidden="true"><img src="<%= r.photo_url || '/img/placeholder.svg' %>" alt="" loading="lazy"></a>
+>>>>>>> afca201e130bbfa7102caa4aea064bea79a78181
               <div>
                 <a class="registry__title" href="<%= href %>"><%= r.title %></a>
                 <code class="registry__ref"><%= r.reference_no %></code>

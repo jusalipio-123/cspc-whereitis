@@ -13,7 +13,11 @@
 %>
 <article class="custody custody--<%= report.status %>">
   <a class="custody__photo" href="<%= _href %>" tabindex="-1" aria-hidden="true">
+<<<<<<< HEAD
     <img src="<%= report.photo_url ? report.photo_url : '/img/placeholder.svg' %>" alt="" loading="lazy" referrerpolicy="no-referrer">
+=======
+    <img src="<%= report.photo_url ? report.photo_url : '/img/placeholder.svg' %>" alt="" loading="lazy">
+>>>>>>> afca201e130bbfa7102caa4aea064bea79a78181
     <span class="custody__flag custody__flag--<%= report.status %>">
       <%= _active ? 'Awaiting owner' : report.status.charAt(0).toUpperCase() + report.status.slice(1) %>
     </span>

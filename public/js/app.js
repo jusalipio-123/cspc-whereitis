@@ -210,6 +210,7 @@ document.addEventListener('DOMContentLoaded', function () {
       img.addEventListener('error', function () { img.hidden = true; msg.hidden = false; });
       photoInput.addEventListener('input', function () { clearTimeout(timer); timer = setTimeout(showPreview, 400); });
       showPreview();
+<<<<<<< HEAD
 
       // Chosen file: check size/type up front and preview it locally (the server re-checks everything).
       const fileInput = reportForm.querySelector('[data-photo-file]');
@@ -230,6 +231,8 @@ document.addEventListener('DOMContentLoaded', function () {
           img.src = URL.createObjectURL(f);
         });
       }
+=======
+>>>>>>> afca201e130bbfa7102caa4aea064bea79a78181
     }
 
     // 6d. Validate with the browser first, then lock the button so a double click cannot post twice.
@@ -264,6 +267,7 @@ document.addEventListener('DOMContentLoaded', function () {
       });
       pin.addEventListener('input', function () { pin.value = pin.value.replace(/\D/g, '').slice(0, 4); });
     }
+<<<<<<< HEAD
     const pin2 = authForm.querySelector('#pin_confirm');
     if (pin2) { pin2.addEventListener('input', function () { pin2.value = pin2.value.replace(/\D/g, '').slice(0, 4); }); }
     const fullName = authForm.querySelector('#full_name');
@@ -279,6 +283,15 @@ document.addEventListener('DOMContentLoaded', function () {
       if (pin2) pin2.setCustomValidity('');
       if (!authForm.checkValidity()) { e.preventDefault(); authForm.reportValidity(); return; }
       if (btn) { btn.disabled = true; btn.textContent = pin2 ? 'Creating account\u2026' : 'Signing in\u2026'; }
+=======
+    const sn = authForm.querySelector('#student_no');
+    if (sn && pin) { (sn.value ? pin : sn).focus(); }
+
+    const btn = authForm.querySelector('[data-submit]');
+    authForm.addEventListener('submit', function (e) {
+      if (!authForm.checkValidity()) { e.preventDefault(); authForm.reportValidity(); return; }
+      if (btn) { btn.disabled = true; btn.textContent = 'Signing in\u2026'; }
+>>>>>>> afca201e130bbfa7102caa4aea064bea79a78181
     });
   }
 

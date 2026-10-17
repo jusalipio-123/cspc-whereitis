@@ -40,7 +40,11 @@
   <% } %>
 
   <div class="report-layout">
+<<<<<<< HEAD
     <form method="post" action="/reports" class="report-form" enctype="multipart/form-data" novalidate data-report-form>
+=======
+    <form method="post" action="/reports" class="report-form" novalidate data-report-form>
+>>>>>>> afca201e130bbfa7102caa4aea064bea79a78181
 
       <!-- 1 · Type -->
       <section class="form-section" aria-labelledby="sec-kind">
@@ -163,6 +167,7 @@
       <section class="form-section" aria-labelledby="sec-photo">
         <h2 id="sec-photo" class="form-section__title"><span class="form-section__num" aria-hidden="true">4</span>Photo <span class="optional">(optional)</span></h2>
         <div class="field">
+<<<<<<< HEAD
           <label for="photo">Upload a photo</label>
           <input id="photo" name="photo" class="input" type="file" accept="image/jpeg,image/png,image/gif,image/webp" data-photo-file
                  <%= _errors.photo_url ? 'aria-invalid="true" aria-describedby="err-photo"' : 'aria-describedby="hint-photo"' %>>
@@ -177,6 +182,18 @@
           <div class="photo-preview" data-photo-preview hidden>
             <img alt="Preview of the item photo" data-photo-img>
             <p class="field-hint" data-photo-msg hidden>We couldn't load that image. Check the file or link, or leave it blank.</p>
+=======
+          <label for="photo_url">Image link</label>
+          <input id="photo_url" name="photo_url" class="input" type="url" maxlength="500" inputmode="url" autocomplete="off"
+                 placeholder="https://example.com/photo.jpg"
+                 value="<%= values.photo_url || '' %>"
+                 <%= _errors.photo_url ? 'aria-invalid="true" aria-describedby="err-photo"' : 'aria-describedby="hint-photo"' %>>
+          <% if (_errors.photo_url) { %><p class="field-error" id="err-photo"><%= _errors.photo_url %></p><% } %>
+          <p class="field-hint" id="hint-photo">Paste a link to a clear photo. File upload is not available yet.</p>
+          <div class="photo-preview" data-photo-preview hidden>
+            <img alt="Preview of the item photo" data-photo-img>
+            <p class="field-hint" data-photo-msg hidden>We couldn't load that image. Check the link, or leave it blank.</p>
+>>>>>>> afca201e130bbfa7102caa4aea064bea79a78181
           </div>
         </div>
       </section>

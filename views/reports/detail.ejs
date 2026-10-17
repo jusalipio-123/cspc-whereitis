@@ -38,7 +38,11 @@
 
     <% if (report.photo_url) { %>
       <figure class="detail__photo">
+<<<<<<< HEAD
         <img src="<%= report.photo_url %>" alt="Photo of <%= report.title %>" fetchpriority="high" referrerpolicy="no-referrer"
+=======
+        <img src="<%= report.photo_url %>" alt="Photo of <%= report.title %>" fetchpriority="high"
+>>>>>>> afca201e130bbfa7102caa4aea064bea79a78181
              onerror="this.closest('figure').style.display='none';">
       </figure>
     <% } %>

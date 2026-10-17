@@ -51,7 +51,11 @@
         <div class="field">
           <label for="student_no">Student number</label>
           <input id="student_no" name="student_no" class="input input--lg" type="text" maxlength="20" required
+<<<<<<< HEAD
                  autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="Your student number"
+=======
+                 autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="e.g. 2023-00123"
+>>>>>>> afca201e130bbfa7102caa4aea064bea79a78181
                  value="<%= _values.student_no || '' %>"
                  <%= _errors.student_no ? 'aria-invalid="true" aria-describedby="auth-alert"' : '' %>>
         </div>
@@ -64,7 +68,11 @@
                    <%= _errors.pin ? 'aria-invalid="true" aria-describedby="auth-alert"' : 'aria-describedby="pin-hint"' %>>
             <button type="button" class="pin-toggle" data-toggle-pin aria-controls="pin" aria-pressed="false">Show</button>
           </div>
+<<<<<<< HEAD
           <p class="field-hint" id="pin-hint">The 4-digit PIN you chose when you created your account.</p>
+=======
+          <p class="field-hint" id="pin-hint">You set your PIN when you filed your first report.</p>
+>>>>>>> afca201e130bbfa7102caa4aea064bea79a78181
         </div>
 
         <label class="checkbox auth-remember">
@@ -75,9 +83,12 @@
         <button type="submit" class="btn btn--primary auth-submit" data-submit>Sign in</button>
       </form>
 
+<<<<<<< HEAD
       <p class="auth-help auth-create">
         New here? <a href="/register<%= _next ? '?next=' + encodeURIComponent(_next) : '' %>"><strong>Create an account</strong></a>
       </p>
+=======
+>>>>>>> afca201e130bbfa7102caa4aea064bea79a78181
       <p class="auth-help">
         Forgot your PIN or having trouble? <a href="/help">Visit Help</a> or ask the IT office.
       </p>
