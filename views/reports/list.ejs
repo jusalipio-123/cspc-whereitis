@@ -18,14 +18,7 @@
     const s = p.toString();
     return '/reports' + (s ? '?' + s : '');
   }
-<<<<<<< HEAD
   function daysAgo(n) { return isoDate(new Date(Date.now() - n * 864e5)); }
-=======
-  function fmtDate(d) {
-    return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  }
-  function daysAgo(n) { return new Date(Date.now() - n * 864e5).toISOString().slice(0, 10); }
->>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
   const _allTags = typeof allTags !== 'undefined' ? allTags : [];
 %>
 <%- include('../partials/head', { title: title }) %>

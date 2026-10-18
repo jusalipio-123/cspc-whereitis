@@ -198,17 +198,10 @@ router.get('/', async (req, res, next) => {
 // GET /new
 router.get('/new', async (req, res, next) => {
   try {
-<<<<<<< HEAD
     // Reporting needs an account: the uploader is the person who later
     // approves or rejects claims on the report.
     if (!req.identity) {
       return res.redirect(303, '/sign-in?next=' + encodeURIComponent('/reports/new'));
-=======
-    // Only signed-in students can submit, so sign in first and come straight
-    // back here (the chosen kind and prefilled fields are kept in the URL).
-    if (!req.identity) {
-      return res.redirect(303, '/sign-in?next=' + encodeURIComponent(req.originalUrl));
->>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
     }
 
     const [categories, locations, allTags] = await Promise.all([
@@ -248,11 +241,7 @@ router.post('/', requireIdentity, upload.parsePhoto, async (req, res, next) => {
     const validated = validateReportFields(req.body, allTags);
     const { values, errors, tagIds } = validated;
     let ok = validated.ok;
-<<<<<<< HEAD
     const photoErr = upload.checkPhoto(req) || upload.requirePhoto(req);
-=======
-    const photoErr = upload.checkPhoto(req);
->>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
     if (photoErr) { errors.photo_url = photoErr; ok = false; }
 
     if (!ok) {
@@ -277,15 +266,7 @@ router.post('/', requireIdentity, upload.parsePhoto, async (req, res, next) => {
       occurred_on: values.occurred_on,
       holding_location: values.holding_location || null,
       tag_ids: tagIds,
-<<<<<<< HEAD
       photo_url: await upload.savePhoto(req.file),
-=======
-<<<<<<< HEAD
-      photo_url: upload.hasPhoto(req) ? await upload.savePhoto(req.file) : (values.photo_url || null),
-=======
-      photo_url: values.photo_url || null,
->>>>>>> afca201e130bbfa7102caa4aea064bea79a78181
->>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
     });
 
     // 303 (not 302/307) guarantees the browser follows up with a GET, so

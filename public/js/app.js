@@ -210,10 +210,6 @@ document.addEventListener('DOMContentLoaded', function () {
       img.addEventListener('error', function () { img.hidden = true; msg.hidden = false; });
       photoInput.addEventListener('input', function () { clearTimeout(timer); timer = setTimeout(showPreview, 400); });
       showPreview();
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
 
       // Chosen file: check size/type up front and preview it locally (the server re-checks everything).
       const fileInput = reportForm.querySelector('[data-photo-file]');
@@ -234,11 +230,6 @@ document.addEventListener('DOMContentLoaded', function () {
           img.src = URL.createObjectURL(f);
         });
       }
-<<<<<<< HEAD
-=======
-=======
->>>>>>> afca201e130bbfa7102caa4aea064bea79a78181
->>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
     }
 
     // 6d. Validate with the browser first, then lock the button so a double click cannot post twice.
@@ -273,10 +264,6 @@ document.addEventListener('DOMContentLoaded', function () {
       });
       pin.addEventListener('input', function () { pin.value = pin.value.replace(/\D/g, '').slice(0, 4); });
     }
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
     const pin2 = authForm.querySelector('#pin_confirm');
     if (pin2) { pin2.addEventListener('input', function () { pin2.value = pin2.value.replace(/\D/g, '').slice(0, 4); }); }
     const fullName = authForm.querySelector('#full_name');
@@ -292,18 +279,6 @@ document.addEventListener('DOMContentLoaded', function () {
       if (pin2) pin2.setCustomValidity('');
       if (!authForm.checkValidity()) { e.preventDefault(); authForm.reportValidity(); return; }
       if (btn) { btn.disabled = true; btn.textContent = pin2 ? 'Creating account\u2026' : 'Signing in\u2026'; }
-<<<<<<< HEAD
-=======
-=======
-    const sn = authForm.querySelector('#student_no');
-    if (sn && pin) { (sn.value ? pin : sn).focus(); }
-
-    const btn = authForm.querySelector('[data-submit]');
-    authForm.addEventListener('submit', function (e) {
-      if (!authForm.checkValidity()) { e.preventDefault(); authForm.reportValidity(); return; }
-      if (btn) { btn.disabled = true; btn.textContent = 'Signing in\u2026'; }
->>>>>>> afca201e130bbfa7102caa4aea064bea79a78181
->>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
     });
   }
 
@@ -333,7 +308,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
   if (reduce || !('IntersectionObserver' in window)) { return; }
 
-<<<<<<< HEAD
   // Switching a status tab / sort / filter / page on the page you are already on is a refinement, not a new
   // page: no entrance effects (head.ejs marks <html class="nav-refine">), so nothing hides, pops or counts up
   // again. A prerendered page is only marked once it is shown, so wait for that before deciding.
@@ -341,8 +315,6 @@ document.addEventListener('DOMContentLoaded', function () {
   const refining = document.documentElement.classList.contains('nav-refine');
   if (refining) { return; }
 
-=======
->>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
   // Scroll reveal: only content that starts BELOW the fold is hidden, then eased in as it
   // scrolls into view (so nothing flickers on first paint, and no-JS users see everything).
   const revealSel = '.card-grid > li, .board > li, .missing-list > li, .cat-tiles li, ' +
@@ -382,12 +354,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }, { threshold: 0.4 });
     seen.observe(el);
   });
-<<<<<<< HEAD
   }
   if (document.prerendering) { document.addEventListener('prerenderingchange', visualPolish, { once: true }); }
   else { visualPolish(); }
-=======
->>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
 })();
 
 

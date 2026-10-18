@@ -11,15 +11,7 @@
 %>
 <article class="card report-card report-card--<%= report.kind %> report-card--<%= report.status %>">
   <a class="report-card__photo-wrap" href="<%= href %>" tabindex="-1" aria-hidden="true">
-<<<<<<< HEAD
     <img class="report-card__photo" src="<%= report.photo_url ? report.photo_url : '/img/placeholder.svg' %>" alt="" loading="lazy" referrerpolicy="no-referrer">
-=======
-<<<<<<< HEAD
-    <img class="report-card__photo" src="<%= report.photo_url ? report.photo_url : '/img/placeholder.svg' %>" alt="" loading="lazy" referrerpolicy="no-referrer">
-=======
-    <img class="report-card__photo" src="<%= report.photo_url ? report.photo_url : '/img/placeholder.svg' %>" alt="" loading="lazy">
->>>>>>> afca201e130bbfa7102caa4aea064bea79a78181
->>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
     <span class="report-card__kind report-card__kind--<%= report.kind %>"><%= report.kind === 'lost' ? 'Lost' : 'Found' %></span>
   </a>
 
@@ -50,11 +42,7 @@
       </span>
       <span class="report-card__meta-item">
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>
-<<<<<<< HEAD
         <%= fmtDate(report.occurred_on) %>
-=======
-        <%= new Date(report.occurred_on).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) %>
->>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
       </span>
     </p>
 

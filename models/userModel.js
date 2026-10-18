@@ -80,25 +80,6 @@ async function create(data) {
 async function emailExists(email) {
   const [rows] = await db.pool.query('SELECT 1 FROM users WHERE email = ? LIMIT 1', [email]);
   return rows.length > 0;
-<<<<<<< HEAD
-=======
-}
-
-// listAll: admin user-management screen.
-async function listAll() {
-  const [rows] = await db.pool.execute('SELECT * FROM users ORDER BY full_name ASC');
-  return rows;
-}
-
-// countByRole: admin dashboard — how many students/staff/admins exist.
-async function countByRole() {
-  const [rows] = await db.pool.execute('SELECT role, COUNT(*) AS total FROM users GROUP BY role');
-  const counts = { student: 0, staff: 0, admin: 0 };
-  rows.forEach((row) => {
-    counts[row.role] = row.total;
-  });
-  return counts;
->>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
 }
 
 module.exports = {
@@ -107,9 +88,4 @@ module.exports = {
   verifyPin,
   create,
   emailExists,
-<<<<<<< HEAD
-=======
-  listAll,
-  countByRole,
->>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
 };

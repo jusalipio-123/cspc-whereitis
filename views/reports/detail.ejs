@@ -15,7 +15,6 @@
   <%- include('../partials/flash') %>
 
   <article class="detail">
-<<<<<<< HEAD
     <div class="detail__top">
       <figure class="detail__photo">
         <img src="<%= report.photo_url || '/img/placeholder.svg' %>" alt="<%= report.photo_url ? 'Photo of ' + report.title : 'No photo provided' %>" fetchpriority="high" referrerpolicy="no-referrer"
@@ -103,90 +102,6 @@
           to message the <%= report.kind === 'found' ? 'finder' : 'owner' %>, bookmark items, and get notified when someone responds.</p>
       </aside>
     <% } %>
-=======
-    <header class="detail__head">
-      <p class="detail__ref">Reference: <code><%= report.reference_no %></code></p>
-      <h1><%= report.title %></h1>
-      <p class="detail__pills">
-        <span class="pill pill--<%= report.kind %>"><%= report.kind === 'lost' ? 'Lost' : 'Found' %></span>
-        <span class="pill pill--<%= report.status %>"><%= report.status %></span>
-        <% if (report.kind === 'found' && typeof report.days_held !== 'undefined') { %>
-          <span class="days-badge days-badge--<%= ageBucket(report.days_held) %>">
-            <%= report.days_held %> days held
-          </span>
-        <% } %>
-      </p>
-      <% if (report.tags && report.tags.length) { %>
-        <p class="report-card__tags">
-          <% report.tags.forEach(function (t) { %>
-            <a class="tag-chip tag-chip--sm" href="/reports?tag=<%= t.slug %>"><%= t.label %></a>
-          <% }); %>
-        </p>
-      <% } %>
-    </header>
-
-    <% if (report.photo_url) { %>
-      <figure class="detail__photo">
-<<<<<<< HEAD
-        <img src="<%= report.photo_url %>" alt="Photo of <%= report.title %>" fetchpriority="high" referrerpolicy="no-referrer"
-=======
-        <img src="<%= report.photo_url %>" alt="Photo of <%= report.title %>" fetchpriority="high"
->>>>>>> afca201e130bbfa7102caa4aea064bea79a78181
-             onerror="this.closest('figure').style.display='none';">
-      </figure>
-    <% } %>
-
-    <section class="detail__body">
-      <p><%= report.description %></p>
-      <dl class="detail__meta">
-        <dt>Category</dt><dd><%= report.category_name %></dd>
-        <dt>Location</dt><dd><%= report.location_name %></dd>
-        <dt>Date <%= report.kind === 'lost' ? 'lost' : 'found' %></dt>
-        <dd><%= report.occurred_on %></dd>
-        <% if (report.holding_location) { %>
-          <dt>Holding location</dt><dd><%= report.holding_location %></dd>
-        <% } %>
-        <% if (report.returned_to) { %>
-          <dt>Returned to</dt><dd><%= report.returned_to %></dd>
-        <% } %>
-      </dl>
-    </section>
-
-    <section class="detail__actions" aria-label="Actions">
-      <% if (report.kind === 'found' && report.status === 'open') { %>
-        <% if (!_identity) { %>
-          <p class="muted">
-            <a href="/sign-in?next=<%= encodeURIComponent('/reports/' + report.reference_no) %>">
-              Sign in
-            </a> to file a claim.
-          </p>
-        <% } %>
-        <a class="btn btn--primary" href="/claims/new?report=<%= report.reference_no %>">
-          This is mine &mdash; file a claim
-        </a>
-      <% } %>
-      <a class="btn btn--ghost" href="/reports/<%= report.reference_no %>/print">
-        Print receipt
-      </a>
-      <% if (_identity && _identity.userId === report.user_id) { %>
-        <% if (report.status === 'open') { %>
-          <a class="btn btn--ghost" href="/reports/<%= report.reference_no %>/edit">
-            Edit
-          </a>
-          <form method="post" action="/reports/<%= report.reference_no %>/withdraw" class="inline" data-confirm="Withdraw this report? This cannot be undone.">
-            <button class="btn btn--danger btn--sm" type="submit">Withdraw</button>
-          </form>
-        <% } %>
-      <% } %>
-      <% if (_identity) { %>
-        <form method="post" action="/reports/<%= report.reference_no %>/bookmark" class="inline">
-          <button class="btn btn--ghost btn--sm" type="submit">
-            <%= bookmarked ? 'Remove bookmark' : 'Bookmark' %>
-          </button>
-        </form>
-      <% } %>
-    </section>
->>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
 
     <% if (typeof possibleMatches !== 'undefined' && possibleMatches && possibleMatches.length) { %>
       <section class="matches" aria-labelledby="matches-h">

@@ -400,11 +400,7 @@ async function findForMatching(reportId, windowDays) {
 // overview: numbers for the All-reports dashboard. One query, reshaped.
 async function overview() {
   const [rows] = await pool.execute(
-<<<<<<< HEAD
     `SELECT kind, status, COUNT(*) AS total FROM reports WHERE moderation_status = 'approved' AND ${NOT_WITHDRAWN_BARE} GROUP BY kind, status`
-=======
-    'SELECT kind, status, COUNT(*) AS total FROM reports GROUP BY kind, status'
->>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
   );
   const out = {
     total: 0,
@@ -432,20 +428,12 @@ async function facets(kind) {
   const [cats] = await pool.execute(
     `SELECT c.slug, c.name, COUNT(*) AS n
        FROM reports r JOIN categories c ON c.id = r.category_id
-<<<<<<< HEAD
       WHERE r.kind = ? AND ${APPROVED} AND r.status IN ('open','matched')
-=======
-      WHERE r.kind = ? AND r.status IN ('open','matched')
->>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
       GROUP BY c.id, c.slug, c.name ORDER BY n DESC, c.name ASC`, [kind]);
   const [locs] = await pool.execute(
     `SELECT l.id, l.name, COUNT(*) AS n
        FROM reports r JOIN locations l ON l.id = r.location_id
-<<<<<<< HEAD
       WHERE r.kind = ? AND ${APPROVED} AND r.status IN ('open','matched')
-=======
-      WHERE r.kind = ? AND r.status IN ('open','matched')
->>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
       GROUP BY l.id, l.name ORDER BY n DESC, l.name ASC`, [kind]);
   return { categories: cats, locations: locs };
 }
@@ -454,11 +442,7 @@ async function facets(kind) {
 async function expiringSoon(minDays = 60, limit = 4) {
   const [rows] = await pool.execute(
     `${DETAIL_SELECT}
-<<<<<<< HEAD
      WHERE r.kind = 'found' AND r.status = 'open' AND ${APPROVED}
-=======
-     WHERE r.kind = 'found' AND r.status = 'open'
->>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
        AND DATEDIFF(NOW(), r.occurred_on) >= ?
      ORDER BY r.occurred_on ASC LIMIT ?`,
     [String(minDays), String(limit)]

@@ -381,11 +381,7 @@ main > .container > section:last-child { margin-bottom: 0; }
 .comment__meta { font-size: .85rem; color: var(--muted); margin: 0 0 var(--s-1); }
 .comment__body { margin: 0; }
 
-<<<<<<< HEAD
 .match-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-card); padding: var(--s-3); }
-=======
-.match-card { background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--brand); border-radius: var(--radius-card); padding: var(--s-3); }
->>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
 .match-card__ribbon { display: inline-block; color: var(--brand); font-weight: 700; font-size: .8rem; margin-bottom: var(--s-2); }
 .match-card__title { margin: 0 0 var(--s-1); font-size: 1rem; }
 .match-card__reasons { list-style: none; padding: 0; margin: var(--s-2) 0 0; }
@@ -436,30 +432,12 @@ main > .container > section:last-child { margin-bottom: 0; }
 .error-page h1 { color: var(--accent-red); }
 .ref-id { font-size: .9rem; word-break: break-all; }
 
-<<<<<<< HEAD
-=======
-/* ===== RECEIPT (print view) ===== */
-.receipt { max-width: 720px; margin: var(--s-5) auto; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-card); padding: var(--s-5); }
-.receipt__head { text-align: center; margin-bottom: var(--s-4); border-bottom: 2px solid var(--brand); padding-bottom: var(--s-3); }
-.receipt__ref { font-size: 1.05rem; }
-.receipt__meta { display: grid; grid-template-columns: auto 1fr; gap: var(--s-2) var(--s-3); }
-.receipt__meta dt { font-weight: 700; }
-.receipt__meta dd { margin: 0; }
-.receipt__qr { text-align: center; margin: var(--s-4) 0; }
-.receipt__qr-block { display: inline-block; padding: var(--s-3) var(--s-4); border: 2px dashed var(--ink); font-family: ui-monospace, monospace; font-weight: 700; letter-spacing: .1em; font-size: 1.1rem; }
-.receipt__note, .receipt__footer { text-align: center; color: var(--muted); font-size: .9rem; }
->>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
 .print-actions { text-align: center; margin: var(--s-4); }
 .print-body { background: var(--bg); }
 @media print {
   .site-header, .site-footer, .skip-link, .no-print, .flash, .detail__actions, .primary-nav, .nav-actions { display: none !important; }
   body { background: #fff; color: #000; display: block; min-height: 0; }
-<<<<<<< HEAD
     @page { margin: 1.5cm; }
-=======
-  .receipt { border: 1px solid #999; margin: 0; }
-  @page { margin: 1.5cm; }
->>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
 }
 
 /* ===== MY REPORTS / CLAIMS ===== */
@@ -667,7 +645,6 @@ fieldset, legend { font-family: inherit; }
 .toolbar__field .checkbox { text-transform: none; letter-spacing: 0; font-size: .9rem; color: var(--ink); font-weight: 600; }
 .toolbar__actions { display: flex; gap: .5rem; }
 .seg { display: inline-flex; padding: 3px; gap: 3px; background: var(--brand-050); border: 1px solid var(--border); border-radius: 9px; }
-<<<<<<< HEAD
 .seg a { position: relative; z-index: 0; padding: .35rem .9rem; border-radius: 6px; font-size: .85rem; font-weight: 600; color: var(--muted); text-decoration: none; }
 .seg a[aria-current="true"] { color: var(--ink); }
 /* the selected "pill" is a separate layer behind the label so it can glide without stretching the text */
@@ -675,16 +652,11 @@ fieldset, legend { font-family: inherit; }
   content: ""; position: absolute; inset: 0; z-index: -1; border-radius: 6px;
   background: var(--card); box-shadow: 0 1px 3px rgba(0,0,0,.15);
 }
-=======
-.seg a { padding: .35rem .9rem; border-radius: 6px; font-size: .85rem; font-weight: 600; color: var(--muted); text-decoration: none; }
-.seg a[aria-current="true"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
->>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
 .list-bar { display: flex; justify-content: space-between; align-items: center; gap: var(--s-3); flex-wrap: wrap; margin-bottom: var(--s-2); }
 .list-bar .result-count { margin: 0; }
 
 /* ---------- ALL: dashboard + registry ---------- */
 .status-tabs { display: flex; gap: .25rem; flex-wrap: wrap; border-bottom: 1px solid var(--border); margin-bottom: var(--s-3); }
-<<<<<<< HEAD
 .status-tabs a { position: relative; padding: .6rem 1rem; font-weight: 600; font-size: .92rem; color: var(--muted); text-decoration: none; border-bottom: 3px solid transparent; margin-bottom: -1px; }
 /* the active-tab bar is a separate element (not the tab's border) so it can slide between tabs on its own */
 .status-tabs a::after, .mod-tab::after {
@@ -695,12 +667,6 @@ fieldset, legend { font-family: inherit; }
 .status-tabs a:hover { color: var(--ink); }
 .status-tabs a[aria-current="true"] { color: var(--brand); }
 .status-tabs a[aria-current="true"]::after { transform: scaleX(1); }
-=======
-.status-tabs a { padding: .6rem 1rem; font-weight: 600; font-size: .92rem; color: var(--muted); text-decoration: none; border-bottom: 3px solid transparent; margin-bottom: -1px; }
-.status-tabs a span { display: inline-block; margin-left: .3rem; padding: 0 .45rem; border-radius: 999px; background: var(--brand-050); font-size: .75rem; }
-.status-tabs a:hover { color: var(--ink); }
-.status-tabs a[aria-current="true"] { color: var(--brand); border-bottom-color: var(--brand); }
->>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
 .registry-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; background: var(--card); }
 .registry { width: 100%; border-collapse: collapse; }
 .registry th { text-align: left; font-size: .75rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--brand-050); padding: .7rem 1rem; border-bottom: 1px solid var(--border); white-space: nowrap; }
@@ -873,7 +839,6 @@ p { text-wrap: pretty; }
 @media (prefers-reduced-motion: no-preference) {
   @view-transition { navigation: auto; }
   html { scroll-behavior: smooth; }
-<<<<<<< HEAD
   /* Page change: the old page fades out quickly, the new one fades in with a very small rise.
      No sideways sliding: it fought with the photo morph and felt jerky. Forward and back look the same. */
   /* Old and new use the SAME duration and easing, so their opacities always add up to 1: no dip to a blank
@@ -908,33 +873,6 @@ p { text-wrap: pretty; }
   @supports not (view-transition-name: none) {
     main:not(.auth-main) { animation: page-in .3s ease-out backwards; }
     html.nav-refine main:not(.auth-main) { animation: none; }
-=======
-  /* default (sideways page changes, e.g. Reports -> Help): quick fade out, soft rise in */
-  ::view-transition-old(root) { animation: vt-out .22s cubic-bezier(.4, 0, 1, 1) both; }
-  ::view-transition-new(root) { animation: vt-in .5s var(--ease) both; }
-  ::view-transition-group(site-header) { animation-duration: .3s; }
-  @keyframes vt-out { to { opacity: 0; transform: translateY(-6px); } }
-  @keyframes vt-in  { from { opacity: 0; transform: translateY(14px); } }
-
-  /* going deeper (Home -> Reports -> a report): content slides in from the right;
-     going back (link or browser Back): it slides in from the left. The direction is set in head.ejs. */
-  html:active-view-transition-type(forward)::view-transition-old(root) { animation-name: vt-out-left; }
-  html:active-view-transition-type(forward)::view-transition-new(root) { animation-name: vt-in-right; }
-  html:active-view-transition-type(back)::view-transition-old(root)    { animation-name: vt-out-right; }
-  html:active-view-transition-type(back)::view-transition-new(root)    { animation-name: vt-in-left; }
-  @keyframes vt-out-left  { to   { opacity: 0; transform: translateX(-28px); } }
-  @keyframes vt-in-right  { from { opacity: 0; transform: translateX(44px); } }
-  @keyframes vt-out-right { to   { opacity: 0; transform: translateX(28px); } }
-  @keyframes vt-in-left   { from { opacity: 0; transform: translateX(-44px); } }
-
-  /* shared element: the card photo grows into the report photo (and shrinks back on return) */
-  ::view-transition-group(report-photo) { animation-duration: .65s; animation-timing-function: var(--ease); }
-  ::view-transition-old(report-photo), ::view-transition-new(report-photo) { height: 100%; object-fit: cover; overflow: clip; }
-
-  @keyframes page-in { from { opacity: 0; transform: translateY(12px); } }
-  @supports not (view-transition-name: none) {
-    main:not(.auth-main) { animation: page-in .5s var(--ease) backwards; }
->>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
   }
 
   /* thin reading-progress line under the header (scroll-driven, Chrome/Edge/Safari) */
@@ -1030,11 +968,8 @@ p { text-wrap: pretty; }
   .counters--hero .stat-card:nth-child(2) { animation-delay: .78s; }
   .counters--hero .stat-card:nth-child(3) { animation-delay: .86s; }
   .counters--hero .stat-card:nth-child(4) { animation-delay: .94s; }
-<<<<<<< HEAD
   /* not when you are only refining the page you are already on */
   html.nav-refine :is(.hero__kicker, .hero__headline span, .hero__sub, .hero__actions, .hero__search, .counters--hero .stat-card) { animation: none; }
-=======
->>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
 
   /* ---------- Scroll reveal (classes added by app.js, only to content below the fold) ---------- */
   @keyframes reveal-up { from { opacity: 0; transform: translateY(26px); } }
@@ -1100,24 +1035,13 @@ p { text-wrap: pretty; }
   .empty-state__icon { animation: soft-float 3.4s ease-in-out infinite; }
 }
 
-<<<<<<< HEAD
 /* ---------- Lost / Found colour coding (red = lost, green = found) ----------
    Colour lives in the small badges and pills only. Cards keep a plain, neutral outline: no coloured
    strip on the top or side edge. */
-=======
-/* ---------- Lost / Found colour coding (red = lost, green = found) ---------- */
-.report-card--lost, .report-card--lost:hover, .report-card--lost:focus-within { border-top: 3px solid var(--accent-red); }
-.report-card--found, .report-card--found:hover, .report-card--found:focus-within { border-top: 3px solid var(--green); }
->>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
 .report-card__photo-wrap { position: relative; }
 .report-card__kind { position: absolute; left: .6rem; top: .6rem; z-index: 1; padding: .18rem .7rem; border-radius: 999px; font-size: .72rem; font-weight: 700; letter-spacing: .02em; box-shadow: 0 2px 8px rgba(0, 0, 0, .28); }
 .report-card__kind--lost { background: var(--accent-red); color: var(--on-brand); }
 .report-card__kind--found { background: var(--green); color: var(--on-brand); }
-<<<<<<< HEAD
-=======
-.missing, .missing:hover { border-left: 4px solid var(--accent-red); }
-.custody, .custody:hover { border-top: 3px solid var(--green); }
->>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
 .kind-badge--lost  { background: color-mix(in srgb, var(--accent-red) 10%, var(--card)); color: var(--accent-red); border-color: var(--accent-red); }
 .kind-badge--found { background: color-mix(in srgb, var(--green) 12%, var(--card)); color: var(--green); border-color: var(--green); }
 
@@ -1374,12 +1298,7 @@ input[type="checkbox"], input[type="radio"], input[type="range"], progress { acc
 
 /* ---------- surfaces: one soft shadow + rounder corners everywhere ---------- */
 .card, .detail__body, .comment, .match-card, .claim-row, .claim-actions, .staff-notes, .side, .toolbar, .form-section,
-<<<<<<< HEAD
 .table-wrap, .registry-wrap, .card, .detail__body, .comment, .match-card, .claim-row, .claim-actions, .side, .toolbar, .form-section, .table-wrap, .registry-wrap { box-shadow: var(--card-shadow); }
-=======
-.table-wrap, .registry-wrap, .receipt, .empty-state, .form-alert { border-radius: 12px; }
-.card, .detail__body, .comment, .match-card, .claim-row, .claim-actions, .side, .toolbar, .form-section, .table-wrap, .registry-wrap { box-shadow: var(--card-shadow); }
->>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
 .claim-row, .match-card, .comment { transition: transform .3s var(--ease), box-shadow .3s var(--ease), border-color .2s; }
 @media (hover: hover) {
   .claim-row:hover, .match-card:hover { transform: translateY(-3px); box-shadow: var(--lift); border-color: var(--brand); }
@@ -1396,10 +1315,6 @@ input[type="checkbox"], input[type="radio"], input[type="range"], progress { acc
 .input, .select, .textarea { border-radius: 10px; box-shadow: inset 0 1px 2px rgba(11, 47, 88, .05); }
 .input:hover, .select:hover, .textarea:hover { border-color: color-mix(in srgb, var(--brand) 45%, var(--border)); }
 .label, .field > label { font-weight: 600; letter-spacing: .005em; }
-<<<<<<< HEAD
-=======
-.form-section { border-top: 3px solid color-mix(in srgb, var(--brand) 70%, transparent); }
->>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
 .form-section__num {
   background: linear-gradient(145deg, color-mix(in srgb, var(--brand) 80%, #fff), var(--brand-600));
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 14%, transparent), inset 0 1px 0 rgba(255, 255, 255, .3);
@@ -1421,10 +1336,6 @@ input[type="checkbox"], input[type="radio"], input[type="range"], progress { acc
   background: color-mix(in srgb, var(--card) 82%, transparent);
   -webkit-backdrop-filter: blur(12px) saturate(150%); backdrop-filter: blur(12px) saturate(150%); box-shadow: var(--lift);
 }
-<<<<<<< HEAD
-=======
-.aside-card { border-left: 3px solid var(--accent); }
->>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
 
 /* ---------- report detail ---------- */
 .detail__ref {
@@ -1455,15 +1366,9 @@ input[type="checkbox"], input[type="radio"], input[type="range"], progress { acc
 .toolbar__field label { transition: color .2s; }
 .toolbar__field:focus-within label { color: var(--brand); }
 .seg { border-radius: 11px; }
-<<<<<<< HEAD
 .seg a { transition: color .25s; }
 .seg a:hover { color: var(--ink); }
 .status-tabs a { border-radius: 8px 8px 0 0; transition: color .2s, background-color .2s; }
-=======
-.seg a { transition: background-color .25s, color .25s, box-shadow .25s; }
-.seg a:hover { color: var(--ink); }
-.status-tabs a { border-radius: 8px 8px 0 0; transition: color .2s, background-color .2s, border-color .25s; }
->>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
 .status-tabs a:hover { background: var(--brand-050); }
 .status-tabs a[aria-current="true"] span { background: var(--brand); color: var(--on-brand); }
 .registry th, .table th { background: linear-gradient(180deg, var(--brand-050), color-mix(in srgb, var(--brand-050) 55%, var(--card))); }
@@ -1529,7 +1434,6 @@ input, textarea { caret-color: var(--brand); }
   ::view-transition-group(nav-indicator) { animation-duration: .55s; animation-timing-function: var(--ease); }
 
   /* the active filter tab / sort pill slides to the one you picked */
-<<<<<<< HEAD
   .status-tabs a[aria-current="true"]::after, .mod-tab[aria-current="page"]::after { view-transition-name: filter-tab; }
   .seg a[aria-current="true"]::before { view-transition-name: filter-seg; }
   ::view-transition-group(filter-tab), ::view-transition-group(filter-seg) { animation-duration: .38s; animation-timing-function: cubic-bezier(.32, .72, 0, 1); }
@@ -1540,14 +1444,6 @@ input, textarea { caret-color: var(--brand); }
   /* arriving from a page that had no such bar: fade it in with the page instead of popping */
   ::view-transition-new(filter-tab):only-child, ::view-transition-new(filter-seg):only-child { animation: vt-fade-in .26s linear both; }
 
-=======
-  .status-tabs a[aria-current="true"] { view-transition-name: filter-tab; }
-  .seg a[aria-current="true"]         { view-transition-name: filter-seg; }
-  ::view-transition-group(filter-tab), ::view-transition-group(filter-seg) { animation-duration: .45s; animation-timing-function: var(--ease); }
-
-  /* the item's name travels from its card to the report heading (set in head.ejs, alongside the photo morph) */
-  ::view-transition-group(report-title) { animation-duration: .65s; animation-timing-function: var(--ease); }
->>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
 }
 
 /* ---------- 4. "How long have we held it?" — the holding bar fills, and a nearly-expired one breathes ---------- */
@@ -1565,18 +1461,7 @@ input, textarea { caret-color: var(--brand); }
 .match-card[data-strength] { --m: var(--brand); }
 .match-card[data-strength="high"] { --m: var(--green); }
 .match-card[data-strength="low"]  { --m: var(--amber); }
-<<<<<<< HEAD
 /* (the coloured score strip that used to run along the top edge is gone; the score is shown in the ribbon) */
-=======
-.match-card[data-strength]::after {
-  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; pointer-events: none;
-  background: linear-gradient(90deg, var(--m) calc(var(--score, 0) * 100%), transparent 0), color-mix(in srgb, var(--border) 70%, transparent);
-}
-@media (prefers-reduced-motion: no-preference) {
-  @keyframes meter-in { from { clip-path: inset(0 100% 0 0); } }
-  .match-card[data-strength]::after { animation: meter-in 1.2s var(--ease) .3s backwards; }
-}
->>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
 @supports (animation-timeline: view()) {
   @media (prefers-reduced-motion: no-preference) {
     @keyframes tick-in { from { opacity: 0; transform: translateX(-10px); } }
@@ -1609,13 +1494,8 @@ input, textarea { caret-color: var(--brand); }
     animation: shimmer 1.5s linear infinite;
   }
   .img-pending > img { opacity: 0; }
-<<<<<<< HEAD
   @keyframes img-in { from { opacity: 0; } }
   img.img-in { animation: img-in .35s ease-out backwards; }
-=======
-  @keyframes img-in { from { opacity: 0; filter: blur(10px); } }
-  img.img-in { animation: img-in .8s var(--ease) backwards; }
->>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
 }
 
 /* ---------- 8. Hero: a touch of film grain (hides gradient banding), and the text eases away as you scroll ---------- */
@@ -1673,17 +1553,12 @@ input, textarea { caret-color: var(--brand); }
   .hero--campus::after, .report-card::before, .custody::before, .missing::before, .match-card::before, .stat-card::before,
   .how__steps li::before, .flash[data-autodismiss]::after { display: none !important; }
   .img-pending > img { opacity: 1 !important; }
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
 }
 /* ---------- Item photo on match cards and claim details ---------- */
 .match-card__photo { display: block; aspect-ratio: 16 / 10; margin: 0 0 var(--s-3); overflow: hidden; border: 1px solid var(--border); border-radius: 10px; background: var(--brand-050); }
 .match-card__photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .claim-card__photo { margin: 0 0 var(--s-4); max-width: 420px; aspect-ratio: 4 / 3; overflow: hidden; border: 1px solid var(--border); border-radius: 10px; background: var(--brand-050); }
 .claim-card__photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
-<<<<<<< HEAD
 
 /* =====================================================================
    GUEST REPORTING, REVIEW QUEUE, INBOX
@@ -2039,8 +1914,3 @@ input, textarea { caret-color: var(--brand); }
 .profile-chip:focus-visible .profile-chip__name { clip-path: inset(0 0 0 0 round 999px); opacity: 1; }
 @media (max-width: 520px) { .profile-chip, .profile-chip__icon { width: 40px; height: 40px; } .profile-chip__name { height: 40px; padding-right: 52px; } }
 @media (prefers-reduced-motion: reduce) { .profile-chip__name, .profile-chip__icon { transition: none; } }
-=======
-=======
-}
->>>>>>> afca201e130bbfa7102caa4aea064bea79a78181
->>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749

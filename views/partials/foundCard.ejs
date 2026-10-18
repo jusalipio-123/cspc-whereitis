@@ -3,11 +3,7 @@
   const _href = '/reports/' + report.reference_no;
   const _desc = (report.description || '');
   const _snip = _desc.slice(0, 100) + (_desc.length > 100 ? '…' : '');
-<<<<<<< HEAD
   const _date = fmtDate(report.occurred_on);
-=======
-  const _date = new Date(report.occurred_on).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
->>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
   const _held = typeof report.days_held !== 'undefined' ? Number(report.days_held) : null;
   const _LIMIT = 90;
   const _pct = _held === null ? 0 : Math.min(100, Math.round((_held / _LIMIT) * 100));
@@ -17,15 +13,7 @@
 %>
 <article class="custody custody--<%= report.status %>">
   <a class="custody__photo" href="<%= _href %>" tabindex="-1" aria-hidden="true">
-<<<<<<< HEAD
     <img src="<%= report.photo_url ? report.photo_url : '/img/placeholder.svg' %>" alt="" loading="lazy" referrerpolicy="no-referrer">
-=======
-<<<<<<< HEAD
-    <img src="<%= report.photo_url ? report.photo_url : '/img/placeholder.svg' %>" alt="" loading="lazy" referrerpolicy="no-referrer">
-=======
-    <img src="<%= report.photo_url ? report.photo_url : '/img/placeholder.svg' %>" alt="" loading="lazy">
->>>>>>> afca201e130bbfa7102caa4aea064bea79a78181
->>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
     <span class="custody__flag custody__flag--<%= report.status %>">
       <%= _active ? 'Awaiting owner' : report.status.charAt(0).toUpperCase() + report.status.slice(1) %>
     </span>
