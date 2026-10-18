@@ -1,0 +1,82 @@
+<!-- CSPC WhereITis — views/partials/boardCard.ejs
+     ONE card for both the Lost board and the Found board. Same layout for both;
+     only the data (labels, day counter) and the main action differ. -->
+<%
+  const _href = '/reports/' + report.reference_no;
+  const _isLost = report.kind === 'lost';
+  const _status = report.status;
+  const _open = _status === 'open';
+  const _resolved = _status === 'returned' || _status === 'archived';
+  const _desc = report.description || '';
+  const _held = typeof report.days_held !== 'undefined' && report.days_held !== null ? Number(report.days_held) : null;
+  const _me = (typeof identity !== 'undefined' && identity) ? identity.userId : null;
+  const _mine = _me !== null && report.user_id === _me;
+  const _canContact = _isLost && _open && !_mine && report.user_id !== null;
+  const _canClaim = !_isLost && _open;
+
+  const _FLAGS = _isLost
+    ? { open: 'Still missing', matched: 'Possible match', returned: 'Reunited', archived: 'Closed' }
+    : { open: 'Awaiting owner', matched: 'Matched', returned: 'Returned', archived: 'Archived' };
+  const _flag = _FLAGS[_status] || (String(_status).charAt(0).toUpperCase() + String(_status).slice(1));
+
+  // Found items are kept for 90 days; Lost items just count the days they have been missing.
+  const _LIMIT = 90;
+  const _pct = _held === null ? 0 : Math.min(100, Math.round((_held / _LIMIT) * 100));
+  const _left = _held === null ? null : Math.max(0, _LIMIT - _held);
+  const _tone = _held === null ? 'fresh' : (_held <= 14 ? 'fresh' : _held <= 60 ? 'warm' : _held <= 89 ? 'old' : 'stale');
+  const _dayTone = _held === null ? 'new' : (_held <= 7 ? 'new' : _held <= 30 ? 'mid' : 'long');
+  const _tags = (report.tags || []).slice(0, 3);
+%>
+<article class="custody custody--<%= _status %> custody--<%= _isLost ? 'lost' : 'found' %>">
+  <a class="custody__photo" href="<%= _href %>" tabindex="-1" aria-hidden="true">
+    <img src="<%= report.photo_url ? report.photo_url : '/img/placeholder.svg' %>" alt="" loading="lazy" referrerpolicy="no-referrer"
+         onerror="if(this.getAttribute('src')!=='/img/placeholder.svg'){this.onerror=null;this.src='/img/placeholder.svg';}">
+    <span class="custody__flag custody__flag--<%= _status %>"><%= _flag %></span>
+  </a>
+
+  <div class="custody__body">
+    <p class="custody__cat"><span><%= report.category_name %></span><code><%= report.reference_no %></code></p>
+    <h3 class="custody__title"><a href="<%= _href %>"><%= report.title %></a></h3>
+    <p class="custody__desc"><%= _desc.slice(0, 110) %><%= _desc.length > 110 ? '…' : '' %></p>
+
+    <dl class="custody__facts">
+      <div><dt><%= _isLost ? 'Last seen' : 'Found at' %></dt><dd><%= report.location_name %></dd></div>
+      <div><dt><%= _isLost ? 'Date lost' : 'Date found' %></dt><dd><%= fmtDate(report.occurred_on) %></dd></div>
+      <% if (!_isLost && report.holding_location) { %>
+        <div class="custody__hold"><dt>Held at</dt><dd><%= report.holding_location %></dd></div>
+      <% } %>
+    </dl>
+
+    <% if (_tags.length) { %>
+      <p class="report-card__tags"><% _tags.forEach(function (t) { %><a class="tag-chip tag-chip--sm" href="/reports?kind=<%= _isLost ? 'lost' : 'found' %>&amp;tag=<%= t.slug %>"><%= t.label %></a><% }); %></p>
+    <% } %>
+
+    <% if (_held !== null && !_resolved) { %>
+      <% if (_isLost) { %>
+        <p class="card-days card-days--<%= _dayTone %>"><%= _held %> day<%= _held === 1 ? '' : 's' %> missing</p>
+      <% } else { %>
+        <div class="retention retention--<%= _tone %>">
+          <div class="retention__label">
+            <span><%= _held %> day<%= _held === 1 ? '' : 's' %> held</span>
+            <span><%= _left %> left</span>
+          </div>
+          <div class="retention__bar" role="progressbar" aria-valuemin="0" aria-valuemax="<%= _LIMIT %>" aria-valuenow="<%= Math.min(_held, _LIMIT) %>" aria-label="Holding period used">
+            <span style="width: <%= _pct %>%"></span>
+          </div>
+        </div>
+      <% } %>
+    <% } %>
+  </div>
+
+  <div class="custody__actions">
+    <% if (_canContact) { %>
+      <form method="post" action="/messages/found" class="inline">
+        <input type="hidden" name="report_reference" value="<%= report.reference_no %>">
+        <button class="btn btn--lost btn--sm" type="submit">I found this</button>
+      </form>
+    <% } else if (_canClaim) { %>
+      <a class="btn btn--found btn--sm" href="/claims/new?report=<%= report.reference_no %>">This is mine</a>
+    <% } %>
+    <a class="btn btn--ghost btn--sm" href="<%= _href %>"><%= (_canContact || _canClaim) ? 'Details' : 'View details' %></a>
+  </div>
+</article>

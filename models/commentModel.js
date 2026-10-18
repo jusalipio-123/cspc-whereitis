@@ -6,7 +6,7 @@
 
 const { pool } = require('../db');
 
-// create: adds a comment from the report owner onto their own report.
+// create: adds a comment from any signed-in user onto a report.
 async function create(data) {
   const [result] = await pool.execute(
     'INSERT INTO report_comments (report_id, user_id, body) VALUES (?, ?, ?)',

@@ -80,6 +80,18 @@
               </form>
             <% } %>
           <% } %>
+          <% if (report.kind === 'lost' && report.status === 'open' && report.user_id && !(_identity && _identity.userId === report.user_id)) { %>
+            <% if (!_identity) { %>
+              <p class="muted">
+                <a href="/sign-in?next=<%= encodeURIComponent('/reports/' + report.reference_no) %>">Sign in</a> to contact the owner.
+              </p>
+            <% } else { %>
+              <form method="post" action="/messages/found" class="inline">
+                <input type="hidden" name="report_reference" value="<%= report.reference_no %>">
+                <button class="btn btn--primary" type="submit">I found this</button>
+              </form>
+            <% } %>
+          <% } %>
           <% if (report.user_id && _identity && _identity.userId !== report.user_id) { %>
             <a class="btn btn--ghost" href="/messages/new?report=<%= report.reference_no %>">Message the <%= report.kind === 'found' ? 'finder' : 'owner' %></a>
           <% } %>
@@ -123,19 +135,21 @@
         <ul class="comment-list">
           <% comments.forEach(function (c) { %>
             <li class="comment">
-              <p class="comment__meta"><strong><%= c.commenter_name %></strong> &middot; <%= fmtDateTime(c.created_at) %></p>
+              <p class="comment__meta"><strong><%= c.commenter_name %></strong><% if (report.user_id && c.user_id === report.user_id) { %> <span class="tag-chip tag-chip--sm">Owner</span><% } %> &middot; <%= fmtDateTime(c.created_at) %></p>
               <p class="comment__body"><%= c.body %></p>
             </li>
           <% }); %>
         </ul>
       <% } %>
-      <% if (_identity && _identity.userId === report.user_id) { %>
+      <% if (_identity) { %>
         <form method="post" action="/reports/<%= report.reference_no %>/comments" class="form">
-          <label for="body">Add a comment (owner only)</label>
+          <label for="body">Add a comment</label>
           <textarea id="body" name="body" class="textarea" rows="3" maxlength="500" required
                     data-charcount data-charcount-max="500"></textarea>
           <button class="btn btn--primary" type="submit">Post comment</button>
         </form>
+      <% } else { %>
+        <p class="muted"><a href="/sign-in">Sign in</a> to leave a comment.</p>
       <% } %>
     </section>
 

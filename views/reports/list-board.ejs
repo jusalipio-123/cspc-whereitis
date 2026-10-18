@@ -1,0 +1,110 @@
+<!-- CSPC WhereITis — views/reports/list-board.ejs
+     The shared layout for the Lost board AND the Found board, so the two pages look identical.
+     list-lost.ejs / list-found.ejs only pass the wording (cfg); the data and filters come from the
+     same route as before. -->
+<%
+  const _kind = cfg.mode;
+  const _activeTotal = facets.categories.reduce(function (a, c) { return a + Number(c.n); }, 0);
+  const _hasExpiring = (typeof expiring !== 'undefined') && expiring && expiring.length;
+%>
+<section class="board-hero board-hero--found">
+  <div>
+    <p class="page-head__eyebrow"><%= cfg.eyebrow %></p>
+    <h1><%= cfg.title %></h1>
+    <p><%- cfg.intro.replace('{n}', String(_activeTotal)) %></p>
+    <div class="board-hero__cta">
+      <a class="btn <%= cfg.primaryClass %>" href="<%= cfg.primaryHref %>"><%= cfg.primaryLabel %></a>
+      <a class="btn btn--ghost" href="<%= cfg.ghostHref %>"><%= cfg.ghostLabel %></a>
+    </div>
+  </div>
+  <ol class="mode-steps">
+    <% cfg.steps.forEach(function (s) { %><li><strong><%= s[0] %></strong><span><%= s[1] %></span></li><% }); %>
+  </ol>
+</section>
+
+<div class="board-layout">
+  <aside class="side" aria-label="Narrow the list">
+    <form method="get" action="/reports" class="side__search">
+      <input type="hidden" name="kind" value="<%= _kind %>">
+      <% if (scope === 'all') { %><input type="hidden" name="scope" value="all"><% } %>
+      <% if (sort !== 'newest') { %><input type="hidden" name="sort" value="<%= sort %>"><% } %>
+      <% if (filters.category) { %><input type="hidden" name="category" value="<%= filters.category %>"><% } %>
+      <% if (filters.location) { %><input type="hidden" name="location" value="<%= filters.location %>"><% } %>
+      <% if (filters.tag) { %><input type="hidden" name="tag" value="<%= filters.tag %>"><% } %>
+      <label class="visually-hidden" for="bd-q"><%= cfg.searchLabel %></label>
+      <input id="bd-q" type="search" name="q" class="input" placeholder="<%= cfg.searchPlaceholder %>" value="<%= filters.q || '' %>">
+      <label class="visually-hidden" for="bd-from"><%= cfg.whenLabel %> (date)</label>
+      <input id="bd-from" type="date" name="from" class="input" title="<%= cfg.whenLabel %> (date)" value="<%= filters.from || '' %>">
+      <button class="btn <%= cfg.primaryClass %> btn--sm" type="submit">Search</button>
+    </form>
+
+    <h2 class="side__h">Category</h2>
+    <ul class="facet">
+      <li><a href="<%= urlWith({ category: '' }) %>"<%- !filters.category ? ' aria-current="true"' : '' %>>All categories</a></li>
+      <% facets.categories.forEach(function (c) { %>
+        <li><a href="<%= urlWith({ category: c.slug }) %>"<%- filters.category === c.slug ? ' aria-current="true"' : '' %>><%= c.name %> <span><%= c.n %></span></a></li>
+      <% }); %>
+    </ul>
+
+    <h2 class="side__h"><%= cfg.placeLabel %></h2>
+    <ul class="facet">
+      <li><a href="<%= urlWith({ location: '' }) %>"<%- !filters.location ? ' aria-current="true"' : '' %>>Anywhere</a></li>
+      <% facets.locations.forEach(function (l) { %>
+        <li><a href="<%= urlWith({ location: String(l.id) }) %>"<%- String(filters.location) === String(l.id) ? ' aria-current="true"' : '' %>><%= l.name %> <span><%= l.n %></span></a></li>
+      <% }); %>
+    </ul>
+
+    <h2 class="side__h"><%= cfg.whenLabel %></h2>
+    <ul class="facet">
+      <li><a href="<%= urlWith({ from: '' }) %>"<%- !filters.from ? ' aria-current="true"' : '' %>>Any time</a></li>
+      <% [[7,'Past week'],[30,'Past 30 days'],[90,'Past 90 days']].forEach(function (w) { %>
+        <li><a href="<%= urlWith({ from: daysAgo(w[0]) }) %>"<%- filters.from === daysAgo(w[0]) ? ' aria-current="true"' : '' %>><%= w[1] %></a></li>
+      <% }); %>
+    </ul>
+
+    <p class="side__foot">
+      <a href="<%= urlWith({ scope: scope === 'all' ? '' : 'all' }) %>"><%= scope === 'all' ? 'Hide reunited / closed items' : 'Also show reunited / closed items' %></a><br>
+      <a href="/reports?kind=<%= _kind %>">Clear all filters</a>
+    </p>
+  </aside>
+
+  <section aria-label="<%= cfg.sectionLabel %>">
+    <% if (_hasExpiring) { %>
+      <section class="expiring" aria-labelledby="exp-h">
+        <div class="expiring__head">
+          <h2 id="exp-h">Unclaimed for 60+ days</h2>
+          <p>These are closest to the 90-day limit. If one is yours, claim it soon.</p>
+        </div>
+        <ul class="board board--cards">
+          <% expiring.forEach(function (r) { %><li><%- include('../partials/boardCard', { report: r }) %></li><% }); %>
+        </ul>
+      </section>
+    <% } %>
+
+    <div class="list-bar">
+      <p class="result-count"><strong><%= total %></strong> item<%= total === 1 ? '' : 's' %><%= scope === 'all' ? ' (including closed)' : cfg.countActive %></p>
+      <nav class="seg" aria-label="Sort">
+        <a href="<%= urlWith({ sort: '' }) %>"<%- sort === 'newest' ? ' aria-current="true"' : '' %>>Newest reports</a>
+        <a href="<%= urlWith({ sort: 'oldest' }) %>"<%- sort === 'oldest' ? ' aria-current="true"' : '' %>><%= cfg.oldestLabel %></a>
+        <a href="<%= urlWith({ sort: 'title' }) %>"<%- sort === 'title' ? ' aria-current="true"' : '' %>>Name A&ndash;Z</a>
+      </nav>
+    </div>
+
+    <% if (rows.length === 0) { %>
+      <div class="empty-state">
+        <%- icons.search %>
+        <h3><%= cfg.emptyTitle %></h3>
+        <p><%= cfg.emptyText %></p>
+        <div class="empty-state__actions">
+          <a class="btn btn--ghost" href="/reports?kind=<%= _kind %>">Clear filters</a>
+          <a class="btn <%= cfg.emptyClass %>" href="<%= cfg.emptyHref %>"><%= cfg.emptyLabel %></a>
+        </div>
+      </div>
+    <% } else { %>
+      <ul class="board board--cards">
+        <% rows.forEach(function (r) { %><li><%- include('../partials/boardCard', { report: r }) %></li><% }); %>
+      </ul>
+      <%- include('../partials/pagination', { page: page, totalPages: totalPages, baseUrl: urlWith({}) }) %>
+    <% } %>
+  </section>
+</div>

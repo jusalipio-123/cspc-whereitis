@@ -1,4 +1,15 @@
 <!-- CSPC WhereITis — views/messages/inbox.ejs -->
+<%
+  const initials = function (n) {
+    return String(n || '?').trim().split(/\s+/).slice(0, 2).map(function (s) { return s.charAt(0); }).join('').toUpperCase() || '?';
+  };
+  const when = function (d) {
+    if (!d) return '';
+    return isoDate(d) === todayISO()
+      ? fmtDateTime(d, { month: undefined, day: undefined, year: undefined })
+      : fmtDate(d, { year: undefined });
+  };
+%>
 <%- include('../partials/head', { title: title }) %>
 <%- include('../partials/nav') %>
 
@@ -19,15 +30,25 @@
       <a class="btn btn--primary" href="/reports">Browse reports</a>
     </div>
   <% } else { %>
-    <ul class="notif-list">
+    <ul class="convo-list">
       <% conversations.forEach(function (c) {
-           const other = c.owner_user_id === me ? c.starter_name : c.owner_name; %>
-        <li class="notif<%= Number(c.unread) ? ' notif--unread' : '' %>">
-          <div class="notif__main">
-            <a href="/messages/<%= c.id %>"><strong><%= other %></strong> &middot; <%= c.report_title %></a>
-            <span class="muted"><code><%= c.reference_no %></code> &middot; <%= (c.last_body || '').slice(0, 90) %></span>
-          </div>
-          <% if (Number(c.unread)) { %><span class="mod-count"><%= c.unread %> new</span><% } %>
+           const other = c.owner_user_id === me ? c.starter_name : c.owner_name;
+           const unread = Number(c.unread); %>
+        <li class="convo<%= unread ? ' convo--unread' : '' %>">
+          <a class="convo__link" href="/messages/<%= c.id %>">
+            <span class="avatar avatar--lg" aria-hidden="true"><%= initials(other) %></span>
+            <span class="convo__main">
+              <span class="convo__top">
+                <strong class="convo__name"><%= other %></strong>
+                <time class="convo__time"><%= when(c.last_message_at) %></time>
+              </span>
+              <span class="convo__about"><%= c.report_title %> &middot; <code><%= c.reference_no %></code></span>
+              <span class="convo__preview"><%= (c.last_body || '').slice(0, 110) %></span>
+            </span>
+            <img class="item-thumb convo__thumb" src="<%= c.report_photo || '/img/placeholder.svg' %>" alt="" loading="lazy" referrerpolicy="no-referrer"
+                 onerror="if(this.getAttribute('src')!=='/img/placeholder.svg'){this.onerror=null;this.src='/img/placeholder.svg';}">
+            <% if (unread) { %><span class="mod-count convo__badge" aria-label="<%= unread %> unread"><%= unread %></span><% } %>
+          </a>
         </li>
       <% }); %>
     </ul>

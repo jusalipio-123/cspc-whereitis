@@ -32,6 +32,7 @@ async function findExisting(reportId, starterId) {
 
 const CONV_SELECT = `
   SELECT c.*, r.reference_no, r.title AS report_title,
+         r.photo_url AS report_photo, r.kind AS report_kind, r.status AS report_status,
          ou.full_name AS owner_name, su.full_name AS starter_name
   FROM conversations c
   JOIN reports r ON r.id = c.report_id

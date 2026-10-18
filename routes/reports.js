@@ -7,6 +7,7 @@ const reportModel = require('../models/reportModel');
 const categoryModel = require('../models/categoryModel');
 const locationModel = require('../models/locationModel');
 const commentModel = require('../models/commentModel');
+const notificationModel = require('../models/notificationModel');
 const bookmarkModel = require('../models/bookmarkModel');
 const claimModel = require('../models/claimModel');
 const status = require('../lib/status');
@@ -471,7 +472,12 @@ router.post('/:reference/comments', requireIdentity, async (req, res, next) => {
   try {
     const report = await reportModel.findByReference(req.params.reference);
 
-    if (!report || report.user_id !== req.identity.userId) {
+    // Any signed-in user may comment on a report they can see. Withdrawn
+    // reports (owner-only) and reports not yet approved by staff stay
+    // hidden, so they also cannot be commented on by anyone else.
+    const isOwner = !!report && !!report.user_id && report.user_id === req.identity.userId;
+    const notPublic = !!report && !!report.moderation_status && report.moderation_status !== 'approved';
+    if (!report || !reportModel.canView(report, req.identity) || (notPublic && !isOwner)) {
       return res.status(404).render('errors/404', { title: 'Not found' });
     }
 
@@ -493,6 +499,19 @@ router.post('/:reference/comments', requireIdentity, async (req, res, next) => {
       user_id: req.identity.userId,
       body: bodyResult.value,
     });
+
+    // Tell the report's owner when somebody else comments. Never notify
+    // people about their own comments; create() never throws, so a failed
+    // notification cannot undo the comment.
+    if (!isOwner) {
+      await notificationModel.create({
+        user_id: report.user_id,
+        type: 'comment_added',
+        report_id: report.id,
+        body: 'New comment on ' + report.reference_no + ' (' + report.title + ')',
+        link: '/reports/' + report.reference_no + '#comments',
+      });
+    }
 
     res.redirect(303, '/reports/' + report.reference_no + '?flash=ok:Comment%20added#comments');
   } catch (err) {

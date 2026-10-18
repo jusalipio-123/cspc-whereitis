@@ -507,7 +507,7 @@ INSERT IGNORE INTO tags (slug, label, sort_order) VALUES
 CREATE TABLE IF NOT EXISTS notifications (
   id          INT AUTO_INCREMENT PRIMARY KEY,
   user_id     INT NOT NULL,
-  type        ENUM('claim_filed','claim_decided','status_changed','message_received') NOT NULL,
+  type        ENUM('claim_filed','claim_decided','status_changed','message_received','comment_added') NOT NULL,
   report_id   INT NULL,
   body        VARCHAR(255) NOT NULL,
   link        VARCHAR(200) NOT NULL,

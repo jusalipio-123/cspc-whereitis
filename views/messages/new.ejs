@@ -2,31 +2,67 @@
 <%
   const _errors = errors || {};
   const _values = values || {};
+  const other = report.reporter_name || 'the reporter';
+  const initials = function (n) {
+    return String(n || '?').trim().split(/\s+/).slice(0, 2).map(function (s) { return s.charAt(0); }).join('').toUpperCase() || '?';
+  };
 %>
 <%- include('../partials/head', { title: title }) %>
 <%- include('../partials/nav') %>
 
-<main id="main" class="container">
+<main id="main" class="container chat-page">
   <%- include('../partials/flash') %>
 
-  <h1>Send a message</h1>
-  <p>About <a href="/reports/<%= report.reference_no %>"><strong><%= report.title %></strong></a> (<code><%= report.reference_no %></code>), reported by <%= report.reporter_name %>.</p>
+  <section class="chat" aria-label="New conversation with <%= other %>">
+    <header class="chat__header">
+      <a class="chat__back" href="/reports/<%= report.reference_no %>" aria-label="Back to the report" title="Back to the report">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+      </a>
+      <span class="avatar avatar--lg" aria-hidden="true"><%= initials(other) %></span>
+      <div class="chat__who">
+        <strong class="chat__name"><%= other %></strong>
+        <a class="chat__about" href="/reports/<%= report.reference_no %>">
+          <%= report.title %> &middot; <code><%= report.reference_no %></code>
+        </a>
+      </div>
+    </header>
 
-  <form method="post" action="/messages" class="form message-form" novalidate>
-    <input type="hidden" name="report_reference" value="<%= report.reference_no %>">
-    <div class="field">
-      <label for="body">Your message</label>
-      <textarea id="body" name="body" class="textarea" rows="5" maxlength="1000" required
-                data-charcount data-charcount-max="1000"
-                <%= _errors.body ? 'aria-invalid="true" aria-describedby="err-body"' : 'aria-describedby="hint-body"' %>><%= _values.body || '' %></textarea>
-      <% if (_errors.body) { %><p class="field-error" id="err-body"><%= _errors.body %></p><% } %>
-      <p class="field-hint" id="hint-body">Keep personal details like phone numbers out of messages. To collect an item, the person who posted the report will verify ownership.</p>
-    </div>
-    <div class="form-actions">
-      <button type="submit" class="btn btn--primary">Send message</button>
-      <a class="btn btn--ghost" href="/reports/<%= report.reference_no %>">Cancel</a>
-    </div>
-  </form>
+    <ol class="chat__log" id="chat-log">
+      <li class="chat__intro">
+        <span class="avatar avatar--lg" aria-hidden="true"><%= initials(other) %></span>
+        <strong>New conversation with <%= other %></strong>
+        <span class="muted">About this <%= report.kind === 'lost' ? 'lost' : 'found' %> item</span>
+        <a class="chat__item-card" href="/reports/<%= report.reference_no %>">
+          <img src="<%= report.photo_url || '/img/placeholder.svg' %>" alt="Photo of <%= report.title %>" referrerpolicy="no-referrer"
+               onerror="if(this.getAttribute('src')!=='/img/placeholder.svg'){this.onerror=null;this.src='/img/placeholder.svg';}">
+          <span><strong><%= report.title %></strong><small><%= report.reference_no %></small></span>
+        </a>
+        <p class="chat__notice">Keep personal details like phone numbers out of messages. To collect an item, the person who posted the report will verify ownership.</p>
+      </li>
+      <li id="latest" class="chat__end" aria-hidden="true"></li>
+    </ol>
+
+    <form method="post" action="/messages" class="chat__composer" id="chat-form" novalidate>
+      <input type="hidden" name="report_reference" value="<%= report.reference_no %>">
+      <% if (_errors.body) { %><p class="chat__error" id="err-body" role="alert"><%= _errors.body %></p><% } %>
+      <div class="chat__reply">
+        <img class="item-thumb" src="<%= report.photo_url || '/img/placeholder.svg' %>" alt="" referrerpolicy="no-referrer"
+             onerror="if(this.getAttribute('src')!=='/img/placeholder.svg'){this.onerror=null;this.src='/img/placeholder.svg';}">
+        <span class="chat__reply-text"><small>Replying to this item</small><strong><%= report.title %></strong></span>
+      </div>
+      <div class="chat__row">
+        <label for="body" class="sr-only">Your message</label>
+        <textarea id="body" name="body" class="chat__input" rows="1" maxlength="1000" required autofocus
+                  placeholder="Write your first message..." data-chat-input data-max="1000"
+                  <%= _errors.body ? 'aria-invalid="true" aria-describedby="err-body"' : '' %>><%= _values.body || '' %></textarea>
+        <button type="submit" class="chat__send" aria-label="Send message" title="Send (Enter)" data-chat-send>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></svg>
+        </button>
+      </div>
+      <p class="chat__hint"><span data-chat-count hidden></span><span class="chat__keys">Enter to send &middot; Shift+Enter for a new line</span></p>
+    </form>
+  </section>
 </main>
 
+<script src="/js/chat.js" defer></script>
 <%- include('../partials/foot') %>

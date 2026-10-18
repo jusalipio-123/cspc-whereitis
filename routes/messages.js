@@ -31,6 +31,7 @@ async function messageableReport(reference, viewerId) {
   const report = await reportModel.findByReference(reference);
   // Withdrawn reports are visible to their uploader only.
   if (!report || !reportModel.canView(report, { userId: viewerId })) return { status: 404 };
+  if (!report.user_id) return { status: 422, error: 'This report was posted without an account, so it cannot receive messages. Please open the report for other ways to help.' };
   if (report.user_id === viewerId) return { status: 422, error: 'This is your own report.' };
   return { report };
 }
@@ -57,7 +58,12 @@ router.get('/new', async (req, res, next) => {
     const existing = await messageModel.findExisting(result.report.id, req.identity.userId);
     if (existing) return res.redirect(303, '/messages/' + existing);
 
-    res.render('messages/new', { title: 'Send a message', report: result.report, values: {}, errors: {} });
+    // "I found this" button on a lost report: start the chat with a ready-made message.
+    const r = result.report;
+    const prefill = (r.kind === 'lost' && String(req.query.intent || '') === 'found')
+      ? 'Hi! I think I found your lost item: ' + r.title + ' (' + r.reference_no + '). Can you describe it so I can confirm it\'s yours?'
+      : '';
+    res.render('messages/new', { title: 'Send a message', report: r, values: { body: prefill }, errors: {} });
   } catch (err) {
     next(err);
   }
@@ -97,6 +103,53 @@ router.post('/', async (req, res, next) => {
     });
 
     res.redirect(303, '/messages/' + convId + '?flash=ok:Message%20sent');
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /messages/found  ("I found this" button on a LOST report)
+// One tap: opens the conversation with the owner and sends the first message,
+// "I found this", which the chat shows as a reply to the owner's item photo.
+// If the finder already has a conversation about this report, it is simply
+// reopened (no duplicate "I found this" is sent).
+router.post('/found', async (req, res, next) => {
+  try {
+    const reference = String(req.body.report_reference || '');
+    const result = await messageableReport(reference, req.identity.userId);
+    if (result.status === 404) return res.status(404).render('errors/404', { title: 'Not found' });
+    if (result.error) {
+      return res.redirect(303, '/reports/' + encodeURIComponent(reference) + '?flash=err:' + encodeURIComponent(result.error));
+    }
+    const report = result.report;
+
+    if (report.kind !== 'lost' || report.status !== 'open') {
+      return res.redirect(303, '/reports/' + report.reference_no + '?flash=err:' +
+        encodeURIComponent('This item is no longer listed as missing.'));
+    }
+
+    const existing = await messageModel.findExisting(report.id, req.identity.userId);
+    if (existing) {
+      return res.redirect(303, '/messages/' + existing + '?flash=ok:' +
+        encodeURIComponent('You already contacted this owner. Continue the conversation here.') + '#latest');
+    }
+
+    if (await overLimit(req.identity.userId)) {
+      return res.redirect(303, '/reports/' + report.reference_no + '?flash=err:' +
+        encodeURIComponent('You have sent a lot of messages in the last hour. Please try again later.'));
+    }
+
+    const convId = await messageModel.findOrCreateConversation(report.id, report.user_id, req.identity.userId);
+    await messageModel.addMessage(convId, req.identity.userId, 'I found this');
+    await notificationModel.create({
+      user_id: report.user_id,
+      type: 'message_received',
+      report_id: report.id,
+      body: 'Someone says they found your lost item: ' + report.title + ' (' + report.reference_no + ')',
+      link: '/messages/' + convId,
+    });
+
+    res.redirect(303, '/messages/' + convId + '?flash=ok:' + encodeURIComponent('The owner has been told you found this.') + '#latest');
   } catch (err) {
     next(err);
   }
