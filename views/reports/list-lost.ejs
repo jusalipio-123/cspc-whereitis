@@ -87,7 +87,11 @@
             <div class="missing__main">
               <p class="missing__cat"><%= r.category_name %></p>
               <h3 class="missing__title"><a href="<%= href %>"><%= r.title %></a></h3>
+<<<<<<< HEAD
               <% if (r.status === 'matched') { %><p class="missing__alert">Possible match found — waiting for the owner to verify.</p><% } %>
+=======
+              <% if (r.status === 'matched') { %><p class="missing__alert">Possible match found — staff are verifying.</p><% } %>
+>>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
               <p class="missing__desc"><%= desc.slice(0, 170) %><%= desc.length > 170 ? '…' : '' %></p>
               <p class="missing__meta">
                 <span><strong>Last seen:</strong> <%= r.location_name %></span>

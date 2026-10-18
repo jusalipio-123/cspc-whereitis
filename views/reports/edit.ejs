@@ -95,6 +95,10 @@
     </fieldset>
 
     <div class="field">
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
       <label for="photo">Photo (optional)</label>
       <% if (report.photo_url) { %>
         <div class="photo-preview"><img src="<%= report.photo_url %>" referrerpolicy="no-referrer" alt="Current photo of <%= report.title %>"></div>
@@ -110,6 +114,16 @@
       <label for="photo_url">Or paste an image link (optional)</label>
       <input id="photo_url" name="photo_url" class="input" type="url" maxlength="500"
              value="<%= /^https?:/.test(values.photo_url || '') ? values.photo_url : '' %>" placeholder="https://example.com/photo.jpg">
+<<<<<<< HEAD
+=======
+=======
+      <label for="photo_url">Photo link (optional)</label>
+      <input id="photo_url" name="photo_url" class="input" type="url" maxlength="500"
+             value="<%= values.photo_url || '' %>" placeholder="https://example.com/photo.jpg"
+             <%= errors.photo_url ? 'aria-invalid="true" aria-describedby="err-photo"' : '' %>>
+      <% if (errors.photo_url) { %><p class="field-error" id="err-photo"><%= errors.photo_url %></p><% } %>
+>>>>>>> afca201e130bbfa7102caa4aea064bea79a78181
+>>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
     </div>
 
     <div class="form-actions">

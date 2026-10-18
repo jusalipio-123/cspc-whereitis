@@ -10,7 +10,12 @@
     tag_ids: 'tag-picker', photo_url: 'photo_url'
   };
   const _errorKeys = Object.keys(_fieldIds).filter(function (k) { return _errors[k]; });
+<<<<<<< HEAD
   const _today = todayISO();
+=======
+  const _now = new Date();
+  const _today = new Date(_now.getTime() - _now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+>>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
   const _descLen = (values.description || '').length;
 %>
 <%- include('../partials/head', { title: title }) %>
@@ -39,7 +44,15 @@
   <% } %>
 
   <div class="report-layout">
+<<<<<<< HEAD
     <form method="post" action="/reports" class="report-form" enctype="multipart/form-data" novalidate data-report-form>
+=======
+<<<<<<< HEAD
+    <form method="post" action="/reports" class="report-form" enctype="multipart/form-data" novalidate data-report-form>
+=======
+    <form method="post" action="/reports" class="report-form" novalidate data-report-form>
+>>>>>>> afca201e130bbfa7102caa4aea064bea79a78181
+>>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
 
       <!-- 1 · Type -->
       <section class="form-section" aria-labelledby="sec-kind">
@@ -49,7 +62,11 @@
             <input type="radio" id="kind-lost" name="kind" value="lost" <%= _kind === 'lost' ? 'checked' : '' %> required>
             <span class="kind-choice__body">
               <strong>I lost something</strong>
+<<<<<<< HEAD
               <small>Create a lost report so other users can look out for it.</small>
+=======
+              <small>Create a lost report so students and staff can look out for it.</small>
+>>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
             </span>
           </label>
           <label class="kind-choice__option">
@@ -67,7 +84,10 @@
       <section class="form-section" aria-labelledby="sec-item">
         <h2 id="sec-item" class="form-section__title"><span class="form-section__num" aria-hidden="true">2</span>Item information</h2>
 
+<<<<<<< HEAD
         <div class="field-row">
+=======
+>>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
         <div class="field">
           <label for="title">Item name <span class="req" aria-hidden="true">*</span></label>
           <input id="title" name="title" class="input" type="text" maxlength="120" required autocomplete="off"
@@ -90,8 +110,11 @@
           <% if (_errors.category_id) { %><p class="field-error" id="err-cat"><%= _errors.category_id %></p><% } %>
         </div>
 
+<<<<<<< HEAD
         </div>
 
+=======
+>>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
         <div class="field">
           <label for="description">Description <span class="req" aria-hidden="true">*</span></label>
           <textarea id="description" name="description" class="textarea" rows="5" maxlength="1000" required
@@ -163,6 +186,7 @@
 
       <!-- 4 · Photo -->
       <section class="form-section" aria-labelledby="sec-photo">
+<<<<<<< HEAD
         <h2 id="sec-photo" class="form-section__title"><span class="form-section__num" aria-hidden="true">4</span>Photo</h2>
         <div class="field">
           <label for="photo">Upload a photo of the item <span class="req" aria-hidden="true">*</span></label>
@@ -176,6 +200,37 @@
           <div class="photo-preview" data-photo-preview hidden>
             <img alt="Preview of the item photo" data-photo-img>
             <p class="field-hint" data-photo-msg hidden>We couldn't load that image. Choose a different file.</p>
+=======
+        <h2 id="sec-photo" class="form-section__title"><span class="form-section__num" aria-hidden="true">4</span>Photo <span class="optional">(optional)</span></h2>
+        <div class="field">
+<<<<<<< HEAD
+          <label for="photo">Upload a photo</label>
+          <input id="photo" name="photo" class="input" type="file" accept="image/jpeg,image/png,image/gif,image/webp" data-photo-file
+                 <%= _errors.photo_url ? 'aria-invalid="true" aria-describedby="err-photo"' : 'aria-describedby="hint-photo"' %>>
+          <% if (_errors.photo_url) { %><p class="field-error" id="err-photo"><%= _errors.photo_url %><%= _errors.photo_url.indexOf('http') === -1 ? ' Please choose the photo again.' : '' %></p><% } %>
+          <p class="field-hint" id="hint-photo">JPG, PNG, GIF or WebP, up to 5 MB. Or paste an image link below instead.</p>
+        </div>
+        <div class="field">
+          <label for="photo_url">Image link <span class="optional">(optional)</span></label>
+          <input id="photo_url" name="photo_url" class="input" type="url" maxlength="500" inputmode="url" autocomplete="off"
+                 placeholder="https://example.com/photo.jpg"
+                 value="<%= values.photo_url || '' %>">
+          <div class="photo-preview" data-photo-preview hidden>
+            <img alt="Preview of the item photo" data-photo-img>
+            <p class="field-hint" data-photo-msg hidden>We couldn't load that image. Check the file or link, or leave it blank.</p>
+=======
+          <label for="photo_url">Image link</label>
+          <input id="photo_url" name="photo_url" class="input" type="url" maxlength="500" inputmode="url" autocomplete="off"
+                 placeholder="https://example.com/photo.jpg"
+                 value="<%= values.photo_url || '' %>"
+                 <%= _errors.photo_url ? 'aria-invalid="true" aria-describedby="err-photo"' : 'aria-describedby="hint-photo"' %>>
+          <% if (_errors.photo_url) { %><p class="field-error" id="err-photo"><%= _errors.photo_url %></p><% } %>
+          <p class="field-hint" id="hint-photo">Paste a link to a clear photo. File upload is not available yet.</p>
+          <div class="photo-preview" data-photo-preview hidden>
+            <img alt="Preview of the item photo" data-photo-img>
+            <p class="field-hint" data-photo-msg hidden>We couldn't load that image. Check the link, or leave it blank.</p>
+>>>>>>> afca201e130bbfa7102caa4aea064bea79a78181
+>>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
           </div>
         </div>
       </section>
@@ -215,7 +270,11 @@
         <ul>
           <li>Keep the item safe, or hand it to the office you list.</li>
           <li>Leave out details that would let anyone claim it. Owners prove it with those.</li>
+<<<<<<< HEAD
           <li>You review every claim on your report and decide who gets the item.</li>
+=======
+          <li>Staff verify every claim before releasing the item.</li>
+>>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
         </ul>
       </div>
 

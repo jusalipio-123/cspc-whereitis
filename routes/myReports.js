@@ -140,7 +140,15 @@ async function signInSubmitHandler(req, res, next) {
         values: { student_no: req.body.student_no },
         errors: {
           student_no:
+<<<<<<< HEAD
             'Sign-in is limited to CSPC school email accounts. Contact the IT office if you believe this is a mistake.',
+=======
+<<<<<<< HEAD
+            'Sign-in is limited to CSPC school email accounts. Contact the IT office if you believe this is a mistake.',
+=======
+            'Sign-in is limited to @cspc.edu.ph accounts. Contact the IT office if you believe this is a mistake.',
+>>>>>>> afca201e130bbfa7102caa4aea064bea79a78181
+>>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
         },
         next: nextPath,
       });
@@ -167,6 +175,7 @@ async function signInSubmitHandler(req, res, next) {
 
 
 // ---------------------------------------------------------------------
+<<<<<<< HEAD
 // Create an account (self-service registration). Every account is an
 // ordinary user: there are no staff or admin roles.
 // ---------------------------------------------------------------------
@@ -175,6 +184,17 @@ const STUDENT_NO_RE = /^\d{7,10}$/;
 // Registration email: @cspc.edu.ph or @my.cspc.edu.ph (sign-in keeps the looser SCHOOL_EMAIL_RE so existing accounts still work).
 const REGISTER_EMAIL_RE = /^[^@\s]+@(my\.)?cspc\.edu\.ph$/i;
 // School emails: my.cspc.edu.ph or cspc.edu.ph.
+=======
+// Create an account (self-service registration). Always creates a STUDENT:
+// the role is never read from the form, so nobody can sign themselves up
+// as staff/admin.
+// ---------------------------------------------------------------------
+// Student numbers: digits only, 7 to 10 long.
+const STUDENT_NO_RE = /^\d{7,10}$/;
+// Registration email: must be @cspc.edu.ph (sign-in keeps the looser SCHOOL_EMAIL_RE so existing accounts still work).
+const REGISTER_EMAIL_RE = /^[^@\s]+@cspc\.edu\.ph$/i;
+// School emails: students use the my.cspc.edu.ph domain; staff/older accounts use cspc.edu.ph.
+>>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
 const SCHOOL_EMAIL_RE = /^[^@\s]+@(my\.)?cspc\.edu\.ph$/i;
 
 function renderRegister(res, status, values, errors, nextPath) {
@@ -220,7 +240,11 @@ async function registerSubmitHandler(req, res, next) {
     )(req.body.email);
     values.email = emailR.value.toLowerCase();
     if (!emailR.ok) errors.email = emailR.error;
+<<<<<<< HEAD
     else if (!REGISTER_EMAIL_RE.test(values.email)) errors.email = 'Please use your CSPC school email (e.g. name@my.cspc.edu.ph).';
+=======
+    else if (!REGISTER_EMAIL_RE.test(values.email)) errors.email = 'Please use your CSPC school email address.';
+>>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
 
     const contactR = validate.optional(validate.maxLen(20, 'Contact number'))(req.body.contact_no);
     values.contact_no = contactR.value;
@@ -253,6 +277,10 @@ async function registerSubmitHandler(req, res, next) {
         full_name: values.full_name,
         email: values.email,
         contact_no: values.contact_no || null,
+<<<<<<< HEAD
+=======
+        role: 'student',
+>>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
         pin,
       });
     } catch (err) {

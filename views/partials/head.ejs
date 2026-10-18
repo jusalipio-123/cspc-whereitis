@@ -16,6 +16,7 @@
   })();
   </script>
   <link rel="stylesheet" href="/css/style.css">
+<<<<<<< HEAD
   <!-- "Refining" detector: runs before first paint. When the page you are leaving is the SAME page (same path,
        e.g. /reports -> /reports?status=open: status tab, sort, filter, pagination), mark <html class="nav-refine">.
        The stylesheet then swaps the full page-change animation for a still, short cross-fade and app.js skips the
@@ -37,6 +38,8 @@
     if (document.prerendering) { document.addEventListener('prerenderingchange', mark, { once: true }); }
   })();
   </script>
+=======
+>>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
   <!-- Page-transition choreography. Progressive enhancement: browsers without cross-document view
        transitions never fire these events, so nothing happens. Must be a classic, non-deferred script
        in <head> so "pagereveal" can be caught before the first paint. -->
@@ -101,12 +104,71 @@
     });
   })();
   </script>
+<<<<<<< HEAD
+=======
+  <!-- Title morph (added next to the photo morph above): the item's name flies from its list card to the report
+       heading, and back. Same rules as above: progressive enhancement, classic script in <head>, never blocks navigation. -->
+  <script>
+  (function () {
+    if (!('onpagereveal' in window)) { return; }
+    var DETAIL = /^\/reports\/(?!new$)([\w-]+)\/?$/;
+    var CARD   = '.report-card, .custody, .missing, .registry tbody tr';
+    var TITLE  = '.report-card__title, .custody__title, .missing__title, .registry__title';
+
+    function refOf(path) { var m = DETAIL.exec(path); return m ? m[1] : null; }
+    function cardTitle(ref) {
+      var a = document.querySelector('a[href="/reports/' + ref + '"]');
+      var card = a && a.closest(CARD);
+      var t = card && card.querySelector(TITLE);
+      if (!t) { return null; }
+      var r = t.getBoundingClientRect();
+      return (r.bottom > 0 && r.top < window.innerHeight) ? t : null;
+    }
+    function detailTitle() { return document.querySelector('.detail__head h1'); }
+
+    // Name it only for this transition. Shrink-wrapped, so the snapshot is the text itself and not the whole row.
+    function share(el, settled) {
+      if (!el) { return; }
+      var d = el.style.display, w = el.style.width;
+      el.style.viewTransitionName = 'report-title';
+      el.style.width = 'fit-content';
+      if (getComputedStyle(el).display === 'inline') { el.style.display = 'inline-block'; }
+      var clear = function () { el.style.viewTransitionName = ''; el.style.width = w; el.style.display = d; };
+      Promise.resolve(settled).then(clear, clear);
+    }
+
+    window.addEventListener('pageswap', function (e) {
+      if (!e.viewTransition || !e.activation) { return; }
+      try {
+        var toRef = refOf(new URL(e.activation.entry.url).pathname), fromRef = refOf(location.pathname);
+        if (toRef && !fromRef)      { share(cardTitle(toRef), e.viewTransition.finished); }
+        else if (fromRef && !toRef) { share(detailTitle(),    e.viewTransition.finished); }
+      } catch (err) { /* never block navigation */ }
+    });
+
+    window.addEventListener('pagereveal', function (e) {
+      if (!e.viewTransition) { return; }
+      try {
+        var act = navigation.activation;
+        if (!act || !act.from) { return; }
+        var toRef = refOf(location.pathname), fromRef = refOf(new URL(act.from.url).pathname);
+        if (toRef && !fromRef)      { share(detailTitle(),      e.viewTransition.ready); }
+        else if (fromRef && !toRef) { share(cardTitle(fromRef), e.viewTransition.ready); }
+      } catch (err) { /* never block navigation */ }
+    });
+  })();
+  </script>
+>>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
   <!-- Speculation Rules: Chrome/Edge quietly load the page you are about to open (on hover), so it
        appears instantly. Only read-only public pages; nothing with a side effect or a login. -->
   <script type="speculationrules">
   {"prerender":[{"where":{"and":[
     {"href_matches":"/*"},
+<<<<<<< HEAD
     {"not":{"href_matches":[{"pathname":"/sign-in"},{"pathname":"/sign-out"},{"pathname":"/my-reports*"},
+=======
+    {"not":{"href_matches":[{"pathname":"/admin*"},{"pathname":"/sign-in"},{"pathname":"/sign-out"},{"pathname":"/my-reports*"},
+>>>>>>> 93c7506e4d5e5c24efaad28b38eb79c32b9ca749
       {"pathname":"/claims*"},{"pathname":"/reports/new"},{"pathname":"/reports/*/*"},{"pathname":"/health"}]}},
     {"not":{"selector_matches":"[download], [target=_blank], [rel~=nofollow]"}}
   ]},"eagerness":"moderate"}]}
