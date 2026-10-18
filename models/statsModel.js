@@ -11,7 +11,9 @@ async function monthlyCounts(monthsBack = 12) {
   const [rows] = await pool.execute(
     `SELECT DATE_FORMAT(created_at, '%Y-%m') AS ym, kind, COUNT(*) AS n
      FROM reports
-     WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? MONTH)
+     WHERE moderation_status = 'approved'
+       AND NOT (status = 'archived' AND COALESCE(archived_reason, '') = 'withdrawn by owner')
+       AND created_at >= DATE_SUB(NOW(), INTERVAL ? MONTH)
      GROUP BY ym, kind
      ORDER BY ym ASC`,
     [monthsBack]
@@ -24,7 +26,7 @@ async function categoryDistribution() {
   const [rows] = await pool.execute(
     `SELECT c.name, COUNT(r.id) AS n
      FROM categories c
-     LEFT JOIN reports r ON r.category_id = c.id
+     LEFT JOIN reports r ON r.category_id = c.id AND r.moderation_status = 'approved' AND NOT (r.status = 'archived' AND COALESCE(r.archived_reason, '') = 'withdrawn by owner')
      GROUP BY c.id
      ORDER BY n DESC`
   );
@@ -37,7 +39,7 @@ async function topLocations(limit = 10) {
   const [rows] = await pool.execute(
     `SELECT l.name, COUNT(r.id) AS n
      FROM locations l
-     LEFT JOIN reports r ON r.location_id = l.id
+     LEFT JOIN reports r ON r.location_id = l.id AND r.moderation_status = 'approved' AND NOT (r.status = 'archived' AND COALESCE(r.archived_reason, '') = 'withdrawn by owner')
      GROUP BY l.id
      ORDER BY n DESC
      LIMIT ?`,
@@ -51,7 +53,8 @@ async function returnedThisMonth() {
   const [rows] = await pool.execute(
     `SELECT COUNT(*) AS n
      FROM reports
-     WHERE status = 'returned'
+     WHERE status = 'returned' AND moderation_status = 'approved'
+       AND NOT (status = 'archived' AND COALESCE(archived_reason, '') = 'withdrawn by owner')
        AND YEAR(returned_at) = YEAR(NOW())
        AND MONTH(returned_at) = MONTH(NOW())`
   );
@@ -63,7 +66,8 @@ async function agingOver(days) {
   const [rows] = await pool.execute(
     `SELECT COUNT(*) AS n
      FROM reports
-     WHERE kind = 'found'
+     WHERE kind = 'found' AND moderation_status = 'approved'
+       AND NOT (status = 'archived' AND COALESCE(archived_reason, '') = 'withdrawn by owner')
        AND status IN ('open', 'matched', 'claimed')
        AND DATEDIFF(NOW(), occurred_on) > ?`,
     [days]

@@ -15,77 +15,93 @@
   <%- include('../partials/flash') %>
 
   <article class="detail">
-    <header class="detail__head">
-      <p class="detail__ref">Reference: <code><%= report.reference_no %></code></p>
-      <h1><%= report.title %></h1>
-      <p class="detail__pills">
-        <span class="pill pill--<%= report.kind %>"><%= report.kind === 'lost' ? 'Lost' : 'Found' %></span>
-        <span class="pill pill--<%= report.status %>"><%= report.status %></span>
-        <% if (report.kind === 'found' && typeof report.days_held !== 'undefined') { %>
-          <span class="days-badge days-badge--<%= ageBucket(report.days_held) %>">
-            <%- icons.clock %> <%= report.days_held %> days held
-          </span>
-        <% } %>
-      </p>
-      <% if (report.tags && report.tags.length) { %>
-        <p class="report-card__tags">
-          <% report.tags.forEach(function (t) { %>
-            <a class="tag-chip tag-chip--sm" href="/reports?tag=<%= t.slug %>"><%= t.label %></a>
-          <% }); %>
-        </p>
-      <% } %>
-    </header>
-
-    <section class="detail__body">
-      <p><%= report.description %></p>
-      <dl class="detail__meta">
-        <dt>Category</dt><dd><%= report.category_name %></dd>
-        <dt>Location</dt><dd><%= report.location_name %></dd>
-        <dt>Date <%= report.kind === 'lost' ? 'lost' : 'found' %></dt>
-        <dd><%= report.occurred_on %></dd>
-        <% if (report.holding_location) { %>
-          <dt>Holding location</dt><dd><%= report.holding_location %></dd>
-        <% } %>
-        <% if (report.returned_to) { %>
-          <dt>Returned to</dt><dd><%= report.returned_to %></dd>
-        <% } %>
-      </dl>
-    </section>
-
-    <section class="detail__actions" aria-label="Actions">
-      <% if (report.kind === 'found' && report.status === 'open') { %>
-        <% if (!_identity) { %>
-          <p class="muted">
-            <a href="/sign-in?next=<%= encodeURIComponent('/reports/' + report.reference_no) %>">
-              Sign in
-            </a> to file a claim.
+    <div class="detail__top">
+      <figure class="detail__photo">
+        <img src="<%= report.photo_url || '/img/placeholder.svg' %>" alt="<%= report.photo_url ? 'Photo of ' + report.title : 'No photo provided' %>" fetchpriority="high" referrerpolicy="no-referrer"
+             onerror="if(this.getAttribute('src')!=='/img/placeholder.svg'){this.onerror=null;this.src='/img/placeholder.svg';}">
+      </figure>
+      <div class="detail__info">
+        <header class="detail__head">
+          <p class="detail__ref">Reference: <code><%= report.reference_no %></code></p>
+          <h1><%= report.title %></h1>
+          <p class="detail__pills">
+            <span class="pill pill--<%= report.kind %>"><%= report.kind === 'lost' ? 'Lost' : 'Found' %></span>
+            <span class="pill pill--<%= report.status %>"><%= report.status %></span>
+            <% if (report.kind === 'found' && typeof report.days_held !== 'undefined') { %>
+              <span class="days-badge days-badge--<%= ageBucket(report.days_held) %>">
+                <%= report.days_held %> days held
+              </span>
+            <% } %>
           </p>
-        <% } %>
-        <a class="btn btn--primary" href="/claims/new?report=<%= report.reference_no %>">
-          This is mine &mdash; file a claim
-        </a>
-      <% } %>
-      <a class="btn btn--ghost" href="/reports/<%= report.reference_no %>/print">
-        <%- icons.print %> Print receipt
-      </a>
-      <% if (_identity && _identity.userId === report.user_id) { %>
-        <% if (report.status === 'open') { %>
-          <a class="btn btn--ghost" href="/reports/<%= report.reference_no %>/edit">
-            <%- icons.edit %> Edit
-          </a>
-          <form method="post" action="/reports/<%= report.reference_no %>/withdraw" class="inline" data-confirm="Withdraw this report? This cannot be undone.">
-            <button class="btn btn--danger btn--sm" type="submit">Withdraw</button>
-          </form>
-        <% } %>
-      <% } %>
-      <% if (_identity) { %>
-        <form method="post" action="/reports/<%= report.reference_no %>/bookmark" class="inline">
-          <button class="btn btn--ghost btn--sm" type="submit">
-            <%- icons.bookmark %> <%= bookmarked ? 'Remove bookmark' : 'Bookmark' %>
-          </button>
-        </form>
-      <% } %>
-    </section>
+          <% if (report.tags && report.tags.length) { %>
+            <p class="report-card__tags">
+              <% report.tags.forEach(function (t) { %>
+                <a class="tag-chip tag-chip--sm" href="/reports?tag=<%= t.slug %>"><%= t.label %></a>
+              <% }); %>
+            </p>
+          <% } %>
+        </header>
+        <section class="detail__body">
+          <p><%= report.description %></p>
+          <dl class="detail__meta">
+            <dt>Category</dt><dd><%= report.category_name %></dd>
+            <dt>Location</dt><dd><%= report.location_name %></dd>
+            <dt>Date <%= report.kind === 'lost' ? 'lost' : 'found' %></dt>
+            <dd><%= fmtDate(report.occurred_on, { month: 'long' }) %></dd>
+            <% if (report.holding_location) { %>
+              <dt>Holding location</dt><dd><%= report.holding_location %></dd>
+            <% } %>
+            <% if (report.returned_to) { %>
+              <dt>Returned to</dt><dd><%= report.returned_to %></dd>
+            <% } %>
+          </dl>
+        </section>
+
+        <section class="detail__actions" aria-label="Actions">
+          <% if (report.kind === 'found' && report.status === 'open' && !(_identity && _identity.userId === report.user_id)) { %>
+            <% if (!_identity) { %>
+              <p class="muted">
+                <a href="/sign-in?next=<%= encodeURIComponent('/reports/' + report.reference_no) %>">
+                  Sign in
+                </a> to file a claim.
+              </p>
+            <% } %>
+            <a class="btn btn--primary" href="/claims/new?report=<%= report.reference_no %>">
+              This is mine &mdash; file a claim
+            </a>
+          <% } %>
+          <% if (_identity && _identity.userId === report.user_id) { %>
+            <% if (report.status === 'open') { %>
+              <a class="btn btn--ghost" href="/reports/<%= report.reference_no %>/edit">
+                Edit
+              </a>
+              <form method="post" action="/reports/<%= report.reference_no %>/withdraw" class="inline" data-confirm="Withdraw this report? This cannot be undone.">
+                <button class="btn btn--danger btn--sm" type="submit">Withdraw</button>
+              </form>
+            <% } %>
+          <% } %>
+          <% if (report.user_id && _identity && _identity.userId !== report.user_id) { %>
+            <a class="btn btn--ghost" href="/messages/new?report=<%= report.reference_no %>">Message the <%= report.kind === 'found' ? 'finder' : 'owner' %></a>
+          <% } %>
+          <% if (_identity) { %>
+            <form method="post" action="/reports/<%= report.reference_no %>/bookmark" class="inline">
+              <button class="btn btn--ghost btn--sm" type="submit">
+                <%= bookmarked ? 'Remove bookmark' : 'Bookmark' %>
+              </button>
+            </form>
+          <% } %>
+        </section>
+      </div>
+    </div>
+
+    <% if (!_identity) { %>
+      <aside class="upgrade-hint" aria-label="Account benefits">
+        <p><strong>Have an account?</strong>
+          <a href="/sign-in?next=<%= encodeURIComponent('/reports/' + report.reference_no) %>">Sign in</a>
+          or <a href="/register?next=<%= encodeURIComponent('/reports/' + report.reference_no) %>">create one</a>
+          to message the <%= report.kind === 'found' ? 'finder' : 'owner' %>, bookmark items, and get notified when someone responds.</p>
+      </aside>
+    <% } %>
 
     <% if (typeof possibleMatches !== 'undefined' && possibleMatches && possibleMatches.length) { %>
       <section class="matches" aria-labelledby="matches-h">
@@ -107,7 +123,7 @@
         <ul class="comment-list">
           <% comments.forEach(function (c) { %>
             <li class="comment">
-              <p class="comment__meta"><strong><%= c.commenter_name %></strong> &middot; <%= c.created_at %></p>
+              <p class="comment__meta"><strong><%= c.commenter_name %></strong> &middot; <%= fmtDateTime(c.created_at) %></p>
               <p class="comment__body"><%= c.body %></p>
             </li>
           <% }); %>
@@ -123,37 +139,34 @@
       <% } %>
     </section>
 
-    <% if (typeof staffNotes !== 'undefined') { %>
-      <section class="staff-notes" id="staff-notes" aria-labelledby="staff-notes-h">
-        <h2 id="staff-notes-h">Staff notes (internal)</h2>
-        <p class="field-hint">These notes are visible only to staff and admins.
-        They never appear on the public report page or on the printed receipt.</p>
-
-        <% if (staffNotes.length === 0) { %>
-          <p class="muted">No notes yet.</p>
+    <% if (_identity && _identity.userId === report.user_id) { %>
+      <section class="owner-panel" id="claims" aria-labelledby="owner-claims-h">
+        <h2 id="owner-claims-h">Claims on this report (<%= claims.length %>)</h2>
+        <p class="field-hint">You posted this report, so you decide which claim, if any, is approved.</p>
+        <% if (claims.length === 0) { %>
+          <p class="muted">No claims yet.</p>
         <% } else { %>
-          <ul class="note-list">
-            <% staffNotes.forEach(function (n) { %>
-              <li class="note">
-                <p class="note__meta">
-                  <strong><%= n.author_name %></strong>
-                  &middot; <%= n.created_at %>
-                </p>
-                <p class="note__body"><%= n.body %></p>
+          <ul class="claim-list">
+            <% claims.forEach(function (c) { %>
+              <li class="claim-row">
+                <a href="/claims/<%= c.id %>"><%= c.status === 'pending' ? 'Review claim' : 'Claim' %> #<%= c.id %></a>
+                by <strong><%= c.claimant_name %></strong> &middot;
+                <span class="pill pill--<%= c.status === 'approved' ? 'returned' : c.status === 'rejected' ? 'archived' : 'open' %>"><%= c.status %></span>
+                <span class="muted">&middot; <%= fmtDateTime(c.created_at) %></span>
               </li>
             <% }); %>
           </ul>
         <% } %>
 
-        <form method="post"
-              action="/staff/reports/<%= report.reference_no %>/notes"
-              class="form">
-          <label for="note-body">Add an internal note</label>
-          <textarea id="note-body" name="body" class="textarea" rows="3"
-                    maxlength="500" required
-                    data-charcount data-charcount-max="500"></textarea>
-          <button class="btn btn--primary" type="submit">Add note</button>
-        </form>
+        <% if (report.status === 'claimed') { %>
+          <form method="post" action="/reports/<%= report.reference_no %>/returned" class="form"
+                data-confirm="Mark this item as handed over? This closes the report.">
+            <label for="returned_to">Handed over to</label>
+            <input id="returned_to" name="returned_to" class="input" type="text" minlength="2" maxlength="120" required
+                   placeholder="Name of the person who received the item">
+            <button class="btn btn--primary" type="submit">Mark as returned</button>
+          </form>
+        <% } %>
       </section>
     <% } %>
   </article>

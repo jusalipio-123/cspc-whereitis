@@ -9,13 +9,20 @@
 
   <article class="card claim-card">
     <header class="claim-card__head">
-      <p class="muted">Claim #<%= claim.id %> &middot; Filed <%= claim.created_at %></p>
+      <p class="muted">Claim #<%= claim.id %> &middot; Filed <%= fmtDateTime(claim.created_at) %></p>
       <p>Against: <a href="/reports/<%= report.reference_no %>"><%= report.title %></a>
          (<code><%= report.reference_no %></code>)</p>
-      <p>Claimant: <strong><%= claim.claimant_name %></strong></p>
+      <p>Claimant: <strong><%= isClaimant ? 'You' : claim.claimant_name %></strong></p>
       <p>Status: <span class="pill pill--<%= claim.status === 'approved' ? 'returned' : claim.status === 'rejected' ? 'archived' : 'open' %>">
         <%= claim.status %></span></p>
     </header>
+
+    <% if (report.photo_url) { %>
+      <figure class="claim-card__photo">
+        <img src="<%= report.photo_url %>" alt="Photo of <%= report.title %>" loading="lazy" referrerpolicy="no-referrer"
+             onerror="this.closest('figure').style.display='none';">
+      </figure>
+    <% } %>
 
     <section class="claim-card__body">
       <h2>Proof of ownership</h2>
@@ -29,14 +36,19 @@
       <section class="claim-card__decision">
         <h2>Decision</h2>
         <p><%= claim.decision_note %></p>
-        <p class="muted">Decided by <%= claim.decided_by_name || 'staff' %> at <%= claim.decided_at %></p>
+        <p class="muted">Decided <%= fmtDateTime(claim.decided_at) %></p>
       </section>
     <% } %>
   </article>
 
+  <% if (claim.status === 'pending' && !canDecide) { %>
+    <p class="muted">Waiting for the person who posted this report to review your claim. You will get a notification when they decide.</p>
+  <% } %>
+
   <% if (claim.status === 'pending' && canDecide) { %>
     <section class="claim-actions" aria-labelledby="decide-h">
-      <h2 id="decide-h">Staff decision</h2>
+      <h2 id="decide-h">Your decision</h2>
+      <p class="muted">You posted this report, so you decide who gets the item. Approving this claim rejects every other pending claim on it.</p>
 
       <form method="post" action="/claims/<%= claim.id %>/approve" class="form inline"
             data-confirm="Approve this claim? This rejects every other pending claim on the same report.">

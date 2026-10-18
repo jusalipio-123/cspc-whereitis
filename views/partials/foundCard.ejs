@@ -1,0 +1,56 @@
+<!-- CSPC WhereITis — views/partials/foundCard.ejs  ("In custody" inventory card) -->
+<%
+  const _href = '/reports/' + report.reference_no;
+  const _desc = (report.description || '');
+  const _snip = _desc.slice(0, 100) + (_desc.length > 100 ? '…' : '');
+  const _date = fmtDate(report.occurred_on);
+  const _held = typeof report.days_held !== 'undefined' ? Number(report.days_held) : null;
+  const _LIMIT = 90;
+  const _pct = _held === null ? 0 : Math.min(100, Math.round((_held / _LIMIT) * 100));
+  const _left = _held === null ? null : Math.max(0, _LIMIT - _held);
+  const _tone = _held === null ? 'fresh' : (_held <= 14 ? 'fresh' : _held <= 60 ? 'warm' : _held <= 89 ? 'old' : 'stale');
+  const _active = report.status === 'open';
+%>
+<article class="custody custody--<%= report.status %>">
+  <a class="custody__photo" href="<%= _href %>" tabindex="-1" aria-hidden="true">
+    <img src="<%= report.photo_url ? report.photo_url : '/img/placeholder.svg' %>" alt="" loading="lazy" referrerpolicy="no-referrer">
+    <span class="custody__flag custody__flag--<%= report.status %>">
+      <%= _active ? 'Awaiting owner' : report.status.charAt(0).toUpperCase() + report.status.slice(1) %>
+    </span>
+  </a>
+
+  <div class="custody__body">
+    <p class="custody__cat"><%= report.category_name %></p>
+    <h3 class="custody__title"><a href="<%= _href %>"><%= report.title %></a></h3>
+    <p class="custody__desc"><%= _snip %></p>
+
+    <dl class="custody__facts">
+      <div><dt>Found at</dt><dd><%= report.location_name %></dd></div>
+      <div><dt>Date found</dt><dd><%= _date %></dd></div>
+      <% if (report.holding_location) { %>
+        <div class="custody__hold"><dt>Now held at</dt><dd><%= report.holding_location %></dd></div>
+      <% } %>
+    </dl>
+
+    <% if (_held !== null && report.status !== 'returned' && report.status !== 'archived') { %>
+      <div class="retention retention--<%= _tone %>">
+        <div class="retention__label">
+          <span><%= _held %> day<%= _held === 1 ? '' : 's' %> held</span>
+          <span><%= _left %> left</span>
+        </div>
+        <div class="retention__bar" role="progressbar" aria-valuemin="0" aria-valuemax="<%= _LIMIT %>" aria-valuenow="<%= Math.min(_held, _LIMIT) %>" aria-label="Holding period used">
+          <span style="width: <%= _pct %>%"></span>
+        </div>
+      </div>
+    <% } %>
+  </div>
+
+  <div class="custody__foot">
+    <code><%= report.reference_no %></code>
+    <% if (_active) { %>
+      <a class="btn btn--sm btn--found" href="/claims/new?report=<%= report.reference_no %>">This is mine</a>
+    <% } else { %>
+      <a class="btn btn--sm btn--ghost" href="<%= _href %>">View details</a>
+    <% } %>
+  </div>
+</article>

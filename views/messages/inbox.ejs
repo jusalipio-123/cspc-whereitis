@@ -1,0 +1,37 @@
+<!-- CSPC WhereITis — views/messages/inbox.ejs -->
+<%- include('../partials/head', { title: title }) %>
+<%- include('../partials/nav') %>
+
+<main id="main" class="container">
+  <%- include('../partials/flash') %>
+
+  <h1>Inbox</h1>
+  <nav class="mod-tabs" aria-label="Inbox">
+    <a class="mod-tab" href="/notifications">Notifications<% if (unreadCount) { %> <span class="mod-count"><%= unreadCount %></span><% } %></a>
+    <a class="mod-tab" href="/messages" aria-current="page">Messages</a>
+    <a class="mod-tab mod-tab--end" href="/my-reports">&larr; My reports</a>
+  </nav>
+
+  <% if (conversations.length === 0) { %>
+    <div class="empty-state">
+      <h3>No messages yet</h3>
+      <p>To message someone, open a report and choose &ldquo;Message the finder&rdquo;.</p>
+      <a class="btn btn--primary" href="/reports">Browse reports</a>
+    </div>
+  <% } else { %>
+    <ul class="notif-list">
+      <% conversations.forEach(function (c) {
+           const other = c.owner_user_id === me ? c.starter_name : c.owner_name; %>
+        <li class="notif<%= Number(c.unread) ? ' notif--unread' : '' %>">
+          <div class="notif__main">
+            <a href="/messages/<%= c.id %>"><strong><%= other %></strong> &middot; <%= c.report_title %></a>
+            <span class="muted"><code><%= c.reference_no %></code> &middot; <%= (c.last_body || '').slice(0, 90) %></span>
+          </div>
+          <% if (Number(c.unread)) { %><span class="mod-count"><%= c.unread %> new</span><% } %>
+        </li>
+      <% }); %>
+    </ul>
+  <% } %>
+</main>
+
+<%- include('../partials/foot') %>

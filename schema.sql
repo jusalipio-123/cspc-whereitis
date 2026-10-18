@@ -21,6 +21,9 @@ USE whereitis;
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
+DROP TABLE IF EXISTS messages;
+DROP TABLE IF EXISTS conversations;
+DROP TABLE IF EXISTS notifications;
 DROP TABLE IF EXISTS bookmarks;
 DROP TABLE IF EXISTS report_status_history;
 DROP TABLE IF EXISTS report_comments;
@@ -106,7 +109,6 @@ CREATE TABLE users (
   student_no  VARCHAR(20)  NOT NULL,
   full_name   VARCHAR(120) NOT NULL,
   email       VARCHAR(160) NOT NULL,
-  role        ENUM('student','staff','admin') NOT NULL DEFAULT 'student',
   pin_salt    CHAR(32)     NOT NULL,     -- per-user random hex salt (16 random bytes, hex-encoded)
   pin_hash    CHAR(64)     NOT NULL,     -- hex SHA-256(salt || pin) — midterm-only, see note above
   contact_no  VARCHAR(20)  NULL,         -- optional; only collected because the student may want to be called
@@ -200,11 +202,37 @@ CREATE TABLE counter_sequence (
 -- who-filed-what. RESTRICT forces the operator to explicitly reassign
 -- or archive dependent rows first, which is the correct failure mode
 -- for an audit-trail-bearing table.
+--
+-- GUEST REPORTS (submitter_type / moderation_status / guest_contact_* /
+-- submitter_ip_hash):
+--   * user_id is NULL for a guest report, and chk_reports_submitter keeps
+--     the two shapes from mixing. Everything that used to assume an owner
+--     (JOIN users) now LEFT JOINs.
+--   * moderation_status is deliberately a SEPARATE column from `status`.
+--     `status` is the item's life cycle (open -> returned), driven by
+--     lib/status.js. Moderation is "may the public see this at all?" A
+--     guest reports are created 'approved' (public immediately)
+--     or 'rejected'. Registered reports are 'approved' on insert, so
+--     nothing changes for them. Every public query filters on 'approved'.
+--   * guest_contact_* are optional and staff-only. They exist so staff can
+--     phone or email the finder; no public query or view ever selects them.
+--   * submitter_ip_hash is an HMAC, not an IP. It is enough to say "these
+--     three reports came from the same connection" and to rate-limit, but
+--     it cannot be reversed to an address (RA 10173 data minimisation).
 -- ---------------------------------------------------------------------
 CREATE TABLE reports (
   id                INT AUTO_INCREMENT PRIMARY KEY,
   reference_no      VARCHAR(20)  NOT NULL,
-  user_id           INT          NOT NULL,
+  user_id           INT          NULL,       -- NULL only for guest reports; see chk_reports_submitter below
+  submitter_type    ENUM('registered','guest') NOT NULL DEFAULT 'registered',
+  moderation_status ENUM('approved','pending','rejected') NOT NULL DEFAULT 'approved',
+  moderated_by      INT          NULL,
+  moderated_at      DATETIME     NULL,
+  moderation_note   VARCHAR(255) NULL,
+  guest_contact_name  VARCHAR(120) NULL,   -- optional, staff-only: never rendered on a public page
+  guest_contact_email VARCHAR(160) NULL,   -- optional, staff-only
+  guest_contact_phone VARCHAR(20)  NULL,   -- optional, staff-only
+  submitter_ip_hash CHAR(64)     NULL,     -- HMAC of the guest's IP (never the raw IP); used only for rate limits and spam review
   kind              ENUM('lost','found') NOT NULL,
   category_id       INT          NOT NULL,
   location_id       INT          NOT NULL,
@@ -212,6 +240,7 @@ CREATE TABLE reports (
   description       VARCHAR(1000) NOT NULL,
   occurred_on       DATE         NOT NULL,
   holding_location  VARCHAR(160) NULL,     -- required when kind='found'; see CHECK below
+  photo_url         VARCHAR(500) NULL,     -- optional http(s) link to a photo of the item
   status            ENUM('open','matched','claimed','returned','archived') NOT NULL DEFAULT 'open',
   archived_reason   VARCHAR(255) NULL,
   returned_to       VARCHAR(120) NULL,
@@ -221,15 +250,25 @@ CREATE TABLE reports (
   UNIQUE KEY uniq_reports_reference_no (reference_no),
   CONSTRAINT chk_reports_holding_location
     CHECK (kind <> 'found' OR holding_location IS NOT NULL),
+  -- A report is EITHER registered (has an owner) OR a guest report (has none).
+  -- Enforced here as well as in routes/reports.js, same defence-in-depth idea
+  -- as chk_reports_holding_location above.
+  CONSTRAINT chk_reports_submitter
+    CHECK ((submitter_type = 'registered' AND user_id IS NOT NULL)
+        OR (submitter_type = 'guest'      AND user_id IS NULL)),
   CONSTRAINT fk_reports_user
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_reports_moderated_by
+    FOREIGN KEY (moderated_by) REFERENCES users(id) ON DELETE SET NULL,
   CONSTRAINT fk_reports_category
     FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE RESTRICT,
   CONSTRAINT fk_reports_location
     FOREIGN KEY (location_id) REFERENCES locations(id) ON DELETE RESTRICT,
   INDEX idx_reports_kind_status   (kind, status),
   INDEX idx_reports_category_date (category_id, occurred_on),
-  INDEX idx_reports_user          (user_id)
+  INDEX idx_reports_user          (user_id),
+  INDEX idx_reports_moderation    (moderation_status, submitter_type),
+  INDEX idx_reports_ip_created    (submitter_ip_hash, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------
@@ -339,7 +378,7 @@ CREATE TABLE bookmarks (
 
 -- =====================================================================
 -- schema.sql -- ADDITIONS (append to the END of the existing schema.sql)
--- Feature 2: tags (many-to-many).  Feature 3: staff-only report notes.
+-- Feature 2: tags (many-to-many).  
 -- Every statement is idempotent (IF NOT EXISTS / INSERT IGNORE), so this
 -- block can be run once against an existing database without a reset.
 -- =====================================================================
@@ -393,35 +432,9 @@ INSERT IGNORE INTO tags (slug, label, sort_order) VALUES
   ('clothing',    'Clothing',    4),
   ('accessories', 'Accessories', 5);
 
--- ---------------------------------------------------------------------
--- report_notes
---
--- WHY a separate table from report_comments: the AUDIENCE is different.
--- report_comments are written by the report owner and shown on the
--- public report page. report_notes are internal custodian/staff
--- communication ("owner called, coming Friday") and must NEVER appear on
--- the public detail page or the printed receipt. Keeping them in their
--- own table makes a leak structurally harder: the public queries never
--- touch this table at all.
---
--- ON DELETE CASCADE on report_id (a note is meaningless without its
--- report); ON DELETE RESTRICT on author_user_id (we must always be able
--- to say WHO wrote an internal note, same audit reasoning as
--- report_status_history.changed_by).
--- ---------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS report_notes (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  report_id INT NOT NULL,
-  author_user_id INT NOT NULL,
-  body VARCHAR(500) NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (report_id)      REFERENCES reports(id) ON DELETE CASCADE,
-  FOREIGN KEY (author_user_id) REFERENCES users(id)   ON DELETE RESTRICT,
-  INDEX idx_report_notes_report (report_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 -- =====================================================================
 -- schema.sql -- ADDITIONS (append to the END of the existing schema.sql)
--- Feature 2: tags (many-to-many).  Feature 3: staff-only report notes.
+-- Feature 2: tags (many-to-many).  
 -- Every statement is idempotent (IF NOT EXISTS / INSERT IGNORE), so this
 -- block can be run once against an existing database without a reset.
 -- =====================================================================
@@ -473,29 +486,80 @@ INSERT IGNORE INTO tags (slug, label, sort_order) VALUES
   ('clothing',    'Clothing',    4),
   ('accessories', 'Accessories', 5);
 
+
+-- =====================================================================
+-- schema.sql -- ADDITIONS: registered-user features
+-- (notifications, direct messages). Same content lives in
+-- add-guest-reports.sql for databases that already exist.
+-- =====================================================================
+
 -- ---------------------------------------------------------------------
--- report_notes
---
--- WHY a separate table from report_comments: the AUDIENCE is different.
--- report_comments are written by the report owner and shown on the
--- public report page. report_notes are internal custodian/staff
--- communication ("owner called, coming Friday") and must NEVER appear on
--- the public detail page or the printed receipt. Keeping them in their
--- own table makes a leak structurally harder: the public queries never
--- touch this table at all.
---
--- ON DELETE CASCADE on report_id (a note is meaningless without its
--- report); ON DELETE RESTRICT on author_user_id (we must always be able
--- to say WHO wrote an internal note, same audit reasoning as
--- report_status_history.changed_by).
+-- notifications
+-- In-app only (this system sends no email). One row per thing a
+-- registered user should hear about: someone filed a claim on their
+-- report, staff changed its status, a claim was decided, a new direct
+-- message arrived. `link` is a same-site path so the list can deep-link.
+-- CASCADE on user_id/report_id: a notification is a pointer with no audit
+-- value of its own (the audit trail is report_status_history).
+-- idx_notifications_user_unread serves the nav badge, which runs on
+-- every page for a signed-in user.
 -- ---------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS report_notes (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  report_id INT NOT NULL,
-  author_user_id INT NOT NULL,
-  body VARCHAR(500) NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (report_id)      REFERENCES reports(id) ON DELETE CASCADE,
-  FOREIGN KEY (author_user_id) REFERENCES users(id)   ON DELETE RESTRICT,
-  INDEX idx_report_notes_report (report_id)
+CREATE TABLE IF NOT EXISTS notifications (
+  id          INT AUTO_INCREMENT PRIMARY KEY,
+  user_id     INT NOT NULL,
+  type        ENUM('claim_filed','claim_decided','status_changed','message_received') NOT NULL,
+  report_id   INT NULL,
+  body        VARCHAR(255) NOT NULL,
+  link        VARCHAR(200) NOT NULL,
+  is_read     TINYINT(1) NOT NULL DEFAULT 0,
+  created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_notifications_user
+    FOREIGN KEY (user_id)   REFERENCES users(id)   ON DELETE CASCADE,
+  CONSTRAINT fk_notifications_report
+    FOREIGN KEY (report_id) REFERENCES reports(id) ON DELETE CASCADE,
+  INDEX idx_notifications_user_unread (user_id, is_read, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------
+-- conversations + messages (direct messaging between registered users)
+-- A conversation is always ABOUT one report: it is opened by someone
+-- looking at a report (starter) and talks to that report's owner. That
+-- keeps messaging purposeful (no open-ended DMs between students) and
+-- gives staff context if a thread is ever reported.
+-- UNIQUE (report_id, starter_user_id): one thread per person per report,
+-- so pressing "Message" twice reopens the thread instead of forking it.
+-- RESTRICT on the two user keys for the same traceability reason as
+-- reports.user_id. messages.read_at is NULL until the recipient opens
+-- the thread.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS conversations (
+  id               INT AUTO_INCREMENT PRIMARY KEY,
+  report_id        INT NOT NULL,
+  owner_user_id    INT NOT NULL,
+  starter_user_id  INT NOT NULL,
+  created_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  last_message_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_conversation (report_id, starter_user_id),
+  CONSTRAINT fk_conversations_report
+    FOREIGN KEY (report_id)       REFERENCES reports(id) ON DELETE CASCADE,
+  CONSTRAINT fk_conversations_owner
+    FOREIGN KEY (owner_user_id)   REFERENCES users(id)   ON DELETE RESTRICT,
+  CONSTRAINT fk_conversations_starter
+    FOREIGN KEY (starter_user_id) REFERENCES users(id)   ON DELETE RESTRICT,
+  INDEX idx_conversations_owner   (owner_user_id, last_message_at),
+  INDEX idx_conversations_starter (starter_user_id, last_message_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS messages (
+  id               INT AUTO_INCREMENT PRIMARY KEY,
+  conversation_id  INT NOT NULL,
+  sender_user_id   INT NOT NULL,
+  body             VARCHAR(1000) NOT NULL,
+  read_at          DATETIME NULL,
+  created_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_messages_conversation
+    FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
+  CONSTRAINT fk_messages_sender
+    FOREIGN KEY (sender_user_id)  REFERENCES users(id)         ON DELETE RESTRICT,
+  INDEX idx_messages_conversation (conversation_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

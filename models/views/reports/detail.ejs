@@ -1,0 +1,217 @@
+<!-- CSPC WhereITis — views/reports/detail.ejs -->
+<%
+  function ageBucket(d) {
+    if (d <= 14) return 'fresh';
+    if (d <= 60) return 'warm';
+    if (d <= 89) return 'old';
+    return 'stale';
+  }
+  const _identity = typeof identity !== 'undefined' ? identity : null;
+%>
+<%- include('../partials/head', { title: report.title + ' - ' + report.reference_no }) %>
+<%- include('../partials/nav') %>
+
+<main id="main" class="container">
+  <%- include('../partials/flash') %>
+
+  <article class="detail">
+    <% if (typeof viewerIsStaff !== 'undefined' && viewerIsStaff && report.submitter_type === 'guest') { %>
+      <section class="staff-source" aria-labelledby="staff-source-h">
+        <h2 id="staff-source-h">Guest report (staff only)</h2>
+        <dl class="detail__meta">
+          <dt>Source</dt><dd>Guest, no account</dd>
+          <dt>Review</dt>
+          <dd>
+            <%= report.moderation_status %>
+            <% if (report.moderated_at) { %> &middot; <%= new Date(report.moderated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) %><% } %>
+            <% if (report.moderation_note) { %> &middot; <%= report.moderation_note %><% } %>
+          </dd>
+          <dt>Contact</dt>
+          <dd>
+            <% if (report.guest_contact_name || report.guest_contact_email || report.guest_contact_phone) { %>
+              <%= [report.guest_contact_name, report.guest_contact_email, report.guest_contact_phone].filter(Boolean).join(' · ') %>
+            <% } else { %><span class="muted">None given</span><% } %>
+          </dd>
+        </dl>
+        <% if (report.moderation_status === 'pending') { %>
+          <div class="staff-source__actions">
+            <form method="post" action="/admin/moderation/<%= report.reference_no %>/approve" class="inline">
+              <input type="hidden" name="return_to" value="report">
+              <button class="btn btn--primary btn--sm" type="submit">Approve and publish</button>
+            </form>
+            <form method="post" action="/admin/moderation/<%= report.reference_no %>/reject" class="mod-form">
+              <input type="hidden" name="return_to" value="report">
+              <label class="visually-hidden" for="reject-note">Reason for rejecting</label>
+              <input id="reject-note" name="note" class="input" type="text" minlength="5" maxlength="255" required placeholder="Reason (min. 5 characters)">
+              <button class="btn btn--danger btn--sm" type="submit">Reject</button>
+            </form>
+          </div>
+        <% } %>
+      </section>
+    <% } %>
+    <div class="detail__top">
+      <figure class="detail__photo">
+        <img src="<%= report.photo_url || '/img/placeholder.svg' %>" alt="<%= report.photo_url ? 'Photo of ' + report.title : 'No photo provided' %>" fetchpriority="high" referrerpolicy="no-referrer"
+             onerror="if(this.getAttribute('src')!=='/img/placeholder.svg'){this.onerror=null;this.src='/img/placeholder.svg';}">
+      </figure>
+      <div class="detail__info">
+        <header class="detail__head">
+          <p class="detail__ref">Reference: <code><%= report.reference_no %></code></p>
+          <h1><%= report.title %></h1>
+          <p class="detail__pills">
+            <span class="pill pill--<%= report.kind %>"><%= report.kind === 'lost' ? 'Lost' : 'Found' %></span>
+            <span class="pill pill--<%= report.status %>"><%= report.status %></span>
+            <% if (report.submitter_type === 'guest') { %><span class="pill pill--guest">Guest report</span><% } %>
+            <% if (report.moderation_status !== 'approved') { %><span class="pill pill--matched">Not public: <%= report.moderation_status %></span><% } %>
+            <% if (report.kind === 'found' && typeof report.days_held !== 'undefined') { %>
+              <span class="days-badge days-badge--<%= ageBucket(report.days_held) %>">
+                <%= report.days_held %> days held
+              </span>
+            <% } %>
+          </p>
+          <% if (report.tags && report.tags.length) { %>
+            <p class="report-card__tags">
+              <% report.tags.forEach(function (t) { %>
+                <a class="tag-chip tag-chip--sm" href="/reports?tag=<%= t.slug %>"><%= t.label %></a>
+              <% }); %>
+            </p>
+          <% } %>
+        </header>
+        <section class="detail__body">
+          <p><%= report.description %></p>
+          <dl class="detail__meta">
+            <dt>Category</dt><dd><%= report.category_name %></dd>
+            <dt>Location</dt><dd><%= report.location_name %></dd>
+            <dt>Date <%= report.kind === 'lost' ? 'lost' : 'found' %></dt>
+            <dd><%= (function (d) { var x = new Date(d); return isNaN(x) ? String(d) : x.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }); })(report.occurred_on) %></dd>
+            <% if (report.holding_location) { %>
+              <dt>Holding location</dt><dd><%= report.holding_location %></dd>
+            <% } %>
+            <% if (report.returned_to) { %>
+              <dt>Returned to</dt><dd><%= report.returned_to %></dd>
+            <% } %>
+          </dl>
+        </section>
+
+        <section class="detail__actions" aria-label="Actions">
+          <% if (report.kind === 'found' && report.status === 'open' && report.moderation_status === 'approved') { %>
+            <% if (!_identity) { %>
+              <p class="muted">
+                <a href="/sign-in?next=<%= encodeURIComponent('/reports/' + report.reference_no) %>">
+                  Sign in
+                </a> to file a claim.
+              </p>
+            <% } %>
+            <a class="btn btn--primary" href="/claims/new?report=<%= report.reference_no %>">
+              This is mine &mdash; file a claim
+            </a>
+          <% } %>
+          <a class="btn btn--ghost" href="/reports/<%= report.reference_no %>/print">
+            Print receipt
+          </a>
+          <% if (_identity && _identity.userId === report.user_id) { %>
+            <% if (report.status === 'open') { %>
+              <a class="btn btn--ghost" href="/reports/<%= report.reference_no %>/edit">
+                Edit
+              </a>
+              <form method="post" action="/reports/<%= report.reference_no %>/withdraw" class="inline" data-confirm="Withdraw this report? This cannot be undone.">
+                <button class="btn btn--danger btn--sm" type="submit">Withdraw</button>
+              </form>
+            <% } %>
+          <% } %>
+          <% if (report.user_id && report.moderation_status === 'approved' && _identity && _identity.userId !== report.user_id) { %>
+            <a class="btn btn--ghost" href="/messages/new?report=<%= report.reference_no %>">Message the <%= report.kind === 'found' ? 'finder' : 'owner' %></a>
+          <% } %>
+          <% if (_identity && report.moderation_status === 'approved') { %>
+            <form method="post" action="/reports/<%= report.reference_no %>/bookmark" class="inline">
+              <button class="btn btn--ghost btn--sm" type="submit">
+                <%= bookmarked ? 'Remove bookmark' : 'Bookmark' %>
+              </button>
+            </form>
+          <% } %>
+        </section>
+      </div>
+    </div>
+
+    <% if (!_identity && report.moderation_status === 'approved') { %>
+      <aside class="upgrade-hint" aria-label="Account benefits">
+        <p><strong>Have an account?</strong>
+          <a href="/sign-in?next=<%= encodeURIComponent('/reports/' + report.reference_no) %>">Sign in</a>
+          or <a href="/register?next=<%= encodeURIComponent('/reports/' + report.reference_no) %>">create one</a>
+          to message <%= report.user_id ? 'the ' + (report.kind === 'found' ? 'finder' : 'owner') : 'other users' %>, bookmark items, and get notified when someone responds.</p>
+      </aside>
+    <% } %>
+
+    <% if (typeof possibleMatches !== 'undefined' && possibleMatches && possibleMatches.length) { %>
+      <section class="matches" aria-labelledby="matches-h">
+        <h2 id="matches-h">Possible matches</h2>
+        <p class="muted">The system found these reports that might describe the same item. Every score is explained &mdash; nothing is hidden.</p>
+        <ul class="card-grid">
+          <% possibleMatches.forEach(function (m) { %>
+            <li><%- include('../partials/matchCard', { match: m }) %></li>
+          <% }); %>
+        </ul>
+      </section>
+    <% } %>
+
+    <section class="comments" id="comments" aria-labelledby="comments-h">
+      <h2 id="comments-h">Comments</h2>
+      <% if (comments.length === 0) { %>
+        <p class="muted">No comments yet.</p>
+      <% } else { %>
+        <ul class="comment-list">
+          <% comments.forEach(function (c) { %>
+            <li class="comment">
+              <p class="comment__meta"><strong><%= c.commenter_name %></strong> &middot; <%= c.created_at %></p>
+              <p class="comment__body"><%= c.body %></p>
+            </li>
+          <% }); %>
+        </ul>
+      <% } %>
+      <% if (_identity && _identity.userId === report.user_id) { %>
+        <form method="post" action="/reports/<%= report.reference_no %>/comments" class="form">
+          <label for="body">Add a comment (owner only)</label>
+          <textarea id="body" name="body" class="textarea" rows="3" maxlength="500" required
+                    data-charcount data-charcount-max="500"></textarea>
+          <button class="btn btn--primary" type="submit">Post comment</button>
+        </form>
+      <% } %>
+    </section>
+
+    <% if (typeof staffNotes !== 'undefined') { %>
+      <section class="staff-notes" id="staff-notes" aria-labelledby="staff-notes-h">
+        <h2 id="staff-notes-h">Staff notes (internal)</h2>
+        <p class="field-hint">These notes are visible only to staff and admins.
+        They never appear on the public report page or on the printed receipt.</p>
+
+        <% if (staffNotes.length === 0) { %>
+          <p class="muted">No notes yet.</p>
+        <% } else { %>
+          <ul class="note-list">
+            <% staffNotes.forEach(function (n) { %>
+              <li class="note">
+                <p class="note__meta">
+                  <strong><%= n.author_name %></strong>
+                  &middot; <%= n.created_at %>
+                </p>
+                <p class="note__body"><%= n.body %></p>
+              </li>
+            <% }); %>
+          </ul>
+        <% } %>
+
+        <form method="post"
+              action="/staff/reports/<%= report.reference_no %>/notes"
+              class="form">
+          <label for="note-body">Add an internal note</label>
+          <textarea id="note-body" name="body" class="textarea" rows="3"
+                    maxlength="500" required
+                    data-charcount data-charcount-max="500"></textarea>
+          <button class="btn btn--primary" type="submit">Add note</button>
+        </form>
+      </section>
+    <% } %>
+  </article>
+</main>
+
+<%- include('../partials/foot') %>

@@ -25,6 +25,9 @@ USE whereitis;
 -- Reseeding: FK-safe reset (children first, then parents, with FK checks disabled)
 
 -- Reset demo data using DELETE (works with FKs on, unlike TRUNCATE)
+DELETE FROM messages;
+DELETE FROM conversations;
+DELETE FROM notifications;
 DELETE FROM report_status_history;
 DELETE FROM report_comments;
 DELETE FROM bookmarks;
@@ -36,6 +39,9 @@ DELETE FROM locations;
 DELETE FROM counter_sequence;
 
 -- Reset auto-increment counters so ids stay predictable for the seed data
+ALTER TABLE messages AUTO_INCREMENT = 1;
+ALTER TABLE conversations AUTO_INCREMENT = 1;
+ALTER TABLE notifications AUTO_INCREMENT = 1;
 ALTER TABLE report_status_history AUTO_INCREMENT = 1;
 ALTER TABLE report_comments AUTO_INCREMENT = 1;
 ALTER TABLE claims AUTO_INCREMENT = 1;
@@ -66,41 +72,41 @@ INSERT INTO locations (id, name, zone, is_public) VALUES
   (6, 'Administration Building',             'Admin',    1);
 
 -- ---------------------------------------------------------------------
--- users  (8 rows — 5 students, 2 staff, 1 admin)
+-- users  (8 rows — all ordinary users)
 -- pin_salt: 32 hex chars (16 random bytes). pin_hash: 64 hex chars,
 -- SHA-256(pin_salt || plaintext_pin). Demo PINs noted per row.
 -- ---------------------------------------------------------------------
-INSERT INTO users (id, student_no, full_name, email, role, pin_salt, pin_hash, contact_no, created_at) VALUES
+INSERT INTO users (id, student_no, full_name, email, pin_salt, pin_hash, contact_no, created_at) VALUES
   -- PIN: 1234
-  (1, '2021-00234', 'Angelica Mae Bautista',  'angelica.bautista@cspc.edu.ph',  'student',
+  (1, '2021-00234', 'Angelica Mae Bautista',  'angelica.bautista@cspc.edu.ph',
      '9cb2a72d8c1e393389e270994dea6259', '9edfae220b8087baa19b99f5b46dd59fe999a7ab227aaa25969378f2237ff123',
      '09171234501', DATE_SUB(NOW(), INTERVAL 200 DAY)),
   -- PIN: 5678
-  (2, '2020-01187', 'Jhon Carlo Reyes',       'jhoncarlo.reyes@cspc.edu.ph',    'student',
+  (2, '2020-01187', 'Jhon Carlo Reyes',       'jhoncarlo.reyes@cspc.edu.ph',
      '01a137106deb55dc39a4e063947fff1d', '2abc254286c61c5757458ed3bcecb4cf61fd31dc430e3d01744f4509ae3e9c12',
      NULL, DATE_SUB(NOW(), INTERVAL 380 DAY)),
   -- PIN: 9021
-  (3, '2022-00456', 'Maria Fe Villanueva',    'mariafe.villanueva@cspc.edu.ph', 'student',
+  (3, '2022-00456', 'Maria Fe Villanueva',    'mariafe.villanueva@cspc.edu.ph',
      '8bfff8dcf8c47b54a1d322f6bddf2b22', '74d16f839fd3f3e41cae3379028967c8ee1d2a4644b20df720c365c2155a271c',
      '09182345678', DATE_SUB(NOW(), INTERVAL 90 DAY)),
   -- PIN: 3344
-  (4, '2019-00789', 'Ronnel Dave Ortega',     'ronneldave.ortega@cspc.edu.ph',  'student',
+  (4, '2019-00789', 'Ronnel Dave Ortega',     'ronneldave.ortega@cspc.edu.ph',
      '9b475a13f1adc5c2d61134ae906ccf24', 'be99418f7a31479d4f6d6ad401ce8420ef9ec7636543f27184fb99cffa06c51b',
      NULL, DATE_SUB(NOW(), INTERVAL 640 DAY)),
   -- PIN: 7788
-  (5, '2021-00912', 'Katrina Joy Mercado',    'katrinajoy.mercado@cspc.edu.ph', 'student',
+  (5, '2021-00912', 'Katrina Joy Mercado',    'katrinajoy.mercado@cspc.edu.ph',
      '13aade31d52c4b5dee838e029894ef13', 'e677babb426e4112147b0554f5fa7f466dd413b2ff0fc374668e851fcc87dbf0',
      '09193456789', DATE_SUB(NOW(), INTERVAL 200 DAY)),
-  -- PIN: 4455 (staff)
-  (6, 'STF-00045', 'Ferdinand Lopez',         'ferdinand.lopez@cspc.edu.ph',    'staff',
+  -- PIN: 4455
+  (6, 'STF-00045', 'Ferdinand Lopez',         'ferdinand.lopez@cspc.edu.ph',
      'e77d91e4e2b472200dee45d47ae348f5', '54c6a7d071c6b82210fc7bc09f6e0eee069eb63f693be8b44f7fbeb8e4c63889',
      '09201112223', DATE_SUB(NOW(), INTERVAL 900 DAY)),
-  -- PIN: 6699 (staff)
-  (7, 'STF-00089', 'Luz Marie Gonzales',      'luzmarie.gonzales@cspc.edu.ph',  'staff',
+  -- PIN: 6699
+  (7, 'STF-00089', 'Luz Marie Gonzales',      'luzmarie.gonzales@cspc.edu.ph',
      '112c54dd171c5a0c57be97ceb78cfa57', '0393b7fc0777bffe159d96226668d51b396524d23eb56dbc21130f3d865a4b08',
      '09204445556', DATE_SUB(NOW(), INTERVAL 700 DAY)),
-  -- PIN: 1122 (admin)
-  (8, 'ADM-00012', 'Rey Anthony Salazar',     'reyanthony.salazar@cspc.edu.ph', 'admin',
+  -- PIN: 1122
+  (8, 'ADM-00012', 'Rey Anthony Salazar',     'reyanthony.salazar@cspc.edu.ph',
      '346490ec840319947bf2ae924dd7bd3d', 'c796cedc09f6647826a48d6f598ecc91bb159dc1398b58bbf074f5fffc49d543',
      '09217778889', DATE_SUB(NOW(), INTERVAL 1000 DAY));
 
@@ -203,7 +209,7 @@ VALUES
    'These are my earphones and charger, I left them plugged in at the third charging station in Computer Lab 3 after our 3pm class.',
    'The earphone cable has a small knot near the jack from a repair, and the charger brick has a faint scuff mark on one corner.',
    'approved', 6, DATE_SUB(NOW(), INTERVAL 55 DAY),
-   'Claimant accurately described the cable repair knot before seeing the item. Verified and released.',
+   'Claimant accurately described the cable repair knot before seeing the item. Verified and handed over.',
    DATE_SUB(NOW(), INTERVAL 74 DAY)),
 
   (3, 4, 5,
@@ -217,7 +223,7 @@ VALUES
    'This is my student ID, I noticed it missing right after the Main Gate bag inspection that same morning around 7am.',
    'My ID lace has a UAAP-branded lanyard with a small tear near the buckle, and my ID photo is from freshman year with shorter hair.',
    'approved', 7, DATE_SUB(NOW(), INTERVAL 41 DAY),
-   'Name and ID photo year matched student records on file; released to the claimant with signature.',
+   'Name and ID photo year matched; handed over to the claimant.',
    DATE_SUB(NOW(), INTERVAL 45 DAY)),
 
   (5, 8, 2,
@@ -228,7 +234,7 @@ VALUES
   (6, 10, 5,
    'I think this sling bag is mine, I was at the Admin building lobby that same week to process a document request.',
    'Not fully sure of the contents inside, but I recall it being grey canvas material with a front zipper pocket.',
-   'rejected', 7, DATE_SUB(NOW(), INTERVAL 9 DAY),
+   'rejected', 3, DATE_SUB(NOW(), INTERVAL 9 DAY),
    'Claimant could not describe the class cards or any content specifics inside the bag; proof insufficiently distinguishing.',
    DATE_SUB(NOW(), INTERVAL 12 DAY));
 
@@ -252,6 +258,21 @@ INSERT INTO bookmarks (user_id, report_id, created_at) VALUES
   (1, 9,  DATE_SUB(NOW(), INTERVAL 18 DAY)),
   (2, 11, DATE_SUB(NOW(), INTERVAL 10 DAY)),
   (3, 1,  DATE_SUB(NOW(), INTERVAL 70 DAY));
+
+-- ---------------------------------------------------------------------
+-- notifications + one direct-message thread  (demo of registered-user
+-- features: user 1 is asking user 2 about user 2's found report LF-2026-0002)
+-- ---------------------------------------------------------------------
+INSERT INTO conversations (id, report_id, owner_user_id, starter_user_id, created_at, last_message_at) VALUES
+  (1, 2, 2, 1, DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_SUB(NOW(), INTERVAL 20 HOUR));
+
+INSERT INTO messages (id, conversation_id, sender_user_id, body, read_at, created_at) VALUES
+  (1, 1, 1, 'Hi! I think this is my item. Is it still at the circulation desk?', DATE_SUB(NOW(), INTERVAL 22 HOUR), DATE_SUB(NOW(), INTERVAL 1 DAY)),
+  (2, 1, 2, 'Yes, it is still there. Please bring your school ID when you come.', NULL, DATE_SUB(NOW(), INTERVAL 20 HOUR));
+
+INSERT INTO notifications (id, user_id, type, report_id, body, link, is_read, created_at) VALUES
+  (1, 1, 'message_received', 2, 'New message about LF-2026-0002', '/messages/1', 0, DATE_SUB(NOW(), INTERVAL 20 HOUR)),
+  (2, 2, 'message_received', 2, 'New message about LF-2026-0002', '/messages/1', 1, DATE_SUB(NOW(), INTERVAL 1 DAY));
 
 -- ---------------------------------------------------------------------
 -- counter_sequence  (current year, matching highest LF number issued

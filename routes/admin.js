@@ -18,6 +18,7 @@
 //     /staff/reports/<reference>/... works under either mount.
 
 const express = require('express');
+const phTime = require('./../lib/time');
 const router = express.Router();
 const reportModel = require('../models/reportModel');
 const claimModel = require('../models/claimModel');
@@ -30,6 +31,7 @@ const { pool } = require('../db');
 const status = require('../lib/status');
 const validate = require('../middleware/validate');
 const { requireIdentity } = require('../middleware/identity');
+const notificationModel = require('../models/notificationModel');
 
 // ---------------------------------------------------------------------
 // Staff queue (pending claims + aging found items + note counts)
@@ -96,6 +98,15 @@ router.post(
         return res.status(404).render('errors/404', { title: 'Not found' });
       }
 
+      // A guest report must be approved before its item can move through the
+      // normal life cycle.
+      if (report.moderation_status !== 'approved') {
+        return res.status(422).render('errors/422', {
+          title: 'Not allowed',
+          message: 'Review this guest report first (approve or reject it) before changing its status.',
+        });
+      }
+
       if (!status.canTransition(report.status, toStatus)) {
         return res.status(422).render('errors/422', {
           title: 'Not allowed',
@@ -143,6 +154,14 @@ router.post(
           });
         }
       }
+
+      await notificationModel.create({
+        user_id: report.user_id,
+        type: 'status_changed',
+        report_id: report.id,
+        body: report.reference_no + ' is now ' + toStatus,
+        link: '/reports/' + report.reference_no,
+      });
 
       res.redirect(303, '/reports/' + report.reference_no + '?flash=ok:Status%20updated');
     } catch (err) {
@@ -210,6 +229,7 @@ async function dashboardHandler(req, res, next) {
       returnedThisMonth,
       agingOver60,
       statusCounts,
+      sourceBreakdown,
     ] = await Promise.all([
       statsModel.monthlyCounts(12),
       statsModel.categoryDistribution(),
@@ -217,6 +237,7 @@ async function dashboardHandler(req, res, next) {
       statsModel.returnedThisMonth(),
       statsModel.agingOver(60),
       reportModel.countByStatus(),
+      statsModel.sourceBreakdown(),
     ]);
 
     res.render('admin/dashboard', {
@@ -227,6 +248,7 @@ async function dashboardHandler(req, res, next) {
       returnedThisMonth,
       agingOver60,
       statusCounts,
+      sourceBreakdown,
     });
   } catch (err) {
     next(err);
@@ -275,16 +297,15 @@ router.get('/export.csv', requireIdentity, async (req, res, next) => {
         row.location,
         row.title,
         row.status,
-        row.occurred_on,
-        row.created_at,
+        phTime.isoDate(row.occurred_on),
+        phTime.isoDateTime(row.created_at),
       ]
         .map(escapeCsv)
         .join(',')
     );
     const csvString = [header].concat(lines).join('\n');
 
-    const now = new Date();
-    const yyyyMm = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+    const yyyyMm = phTime.todayISO().slice(0, 7);
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="whereitis-' + yyyyMm + '.csv"');

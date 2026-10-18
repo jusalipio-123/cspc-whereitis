@@ -17,8 +17,6 @@ http://localhost:3000
 | `screenshots/reports-list.png` | Reports list | Filter form filled in, a full page of result cards |
 | `screenshots/report-detail.png` | Report detail page | Status pills, possible matches section, comments |
 | `screenshots/my-reports.png` | My Reports page | Signed-in view with reports, claims, and bookmarks sections |
-| `screenshots/admin-dashboard.png` | Admin dashboard | Monthly counts table, category distribution, top locations |
-| `screenshots/print-receipt.png` | Print receipt | The print-only receipt view, ideally via the browser's print preview |
 
 ## Technology
 
@@ -59,9 +57,6 @@ mysql -u root -p whereitis < seed.sql
 | 2021-00003 | Jose Rizal Bautista | student | 3456 |
 | 2022-00004 | Andrea Lyn Villanueva | student | 4567 |
 | 2022-00005 | Miguel Antonio Reyes | student | 5678 |
-| 2020-00006 | Liza Marie Fernandez | staff | 6789 |
-| 2020-00007 | Ramon Emilio Cruz | staff | 7890 |
-| 2019-00008 | Patricia Anne Gonzales | admin | 8901 |
 
 These PINs are published here because this is a midterm demo. Week 11 replaces PINs with bcrypt-hashed passwords and real account provisioning.
 
@@ -78,6 +73,7 @@ These PINs are published here because this is a midterm demo. Week 11 replaces P
 | `DB_NAME` | Yes | `whereitis` | Database created by `schema.sql`. |
 | `PROCESS_SECRET` | Yes | `<64 random hex chars>` | HMAC key signing the `whereitis_id` cookie. Generate with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` and NEVER commit the real value. |
 | `MATCH_WINDOW_DAYS` | No | `30` | Day window the matching engine (FR-09) searches for candidates. |
+| `GUEST_REPORTS_PER_DAY` | No | `3` | Most guest reports one connection may send in 24 hours. |
 | `HOLDING_PERIOD_DAYS` | No | `90` | Default days before a found item may be archived as unclaimed (FR-15). |
 
 ## Database
@@ -107,7 +103,7 @@ counter_sequence — standalone, keyed by year, feeds reports.reference_no
 
 - `reports.kind`: `lost` | `found`
 - `reports.status`: `open` | `matched` | `claimed` | `returned` | `archived`
-- `users.role`: `student` | `staff` | `admin`
+- Every account is an ordinary user (there is no role column)
 - `claims.status`: `pending` | `approved` | `rejected`
 
 **Retention rule:** reports are kept for one academic year, then archived and purged of personal data; the reference number and item description are retained for statistical purposes only.
@@ -121,34 +117,33 @@ counter_sequence — standalone, keyed by year, feeds reports.reference_no
 | GET | `/` | Public | Home — hero, live counters, latest reports, quick search |
 | GET | `/health` | Public | JSON liveness/DB check |
 | GET | `/reports` | Public | List + filter reports |
-| GET | `/reports/new` | Identity required | Report-an-item form |
-| POST | `/reports` | Identity required | Create a report |
+| GET | `/reports/new` | Public | Guests get the simple found-item form; signed-in users get the full form (`?kind=lost` needs sign-in) |
+| POST | `/reports` | Identity required | Create a report (registered users; published immediately) |
+| GET | `/reports/guest/thanks` | Public | Confirmation page with the reference number |
 | GET | `/reports/:reference` | Public | Report detail page |
 | GET | `/reports/:reference/edit` | Owner only | Edit form (status must be `open`) |
 | POST | `/reports/:reference/edit` | Owner only | Update a report |
 | POST | `/reports/:reference/withdraw` | Owner only | Withdraw (soft-archive) a report |
-| GET | `/reports/:reference/print` | Public | Print-friendly receipt |
 | POST | `/reports/:reference/comments` | Owner only | Add a comment |
 | POST | `/reports/:reference/bookmark` | Identity required | Toggle a bookmark |
 | GET | `/claims/new` | Identity required | Claim form for a found report |
 | POST | `/claims` | Identity required | File a claim |
 | GET | `/claims/:id` | Identity required | Claim detail |
-| POST | `/claims/:id/approve` | Staff/admin (honour system) | Approve a claim |
-| POST | `/claims/:id/reject` | Staff/admin (honour system) | Reject a claim |
+| POST | `/claims/:id/approve` | Report owner only | Approve a claim on your own report |
+| POST | `/claims/:id/reject` | Report owner only | Reject a claim on your own report (reason required) |
+| POST | `/reports/:reference/returned` | Report owner only | Mark your report's item as handed over |
+| GET | `/notifications` | Identity required | In-app notifications |
+| POST | `/notifications/read-all` | Identity required | Mark all notifications read |
+| POST | `/notifications/:id/read` | Owner only | Mark one notification read |
+| GET | `/messages` | Identity required | Message inbox |
+| GET | `/messages/new?report=` | Identity required | Start a message about a report |
+| POST | `/messages` | Identity required | Send the first message (opens the thread) |
+| GET | `/messages/:id` | Participants only | Message thread |
+| POST | `/messages/:id` | Participants only | Reply in a thread |
 | GET | `/my-reports` | Identity required | My reports, claims, and bookmarks |
 | GET | `/my-reports/sign-in` | Public | Sign-in form |
 | POST | `/my-reports/sign-in` | Public | Verify PIN, set signed cookie |
 | POST | `/my-reports/sign-out` | Identity required | Clear the signed cookie |
-| GET | `/staff` | Staff/admin (honour system) | Staff queue — pending claims + aging items |
-| POST | `/staff/reports/:reference/status` | Staff/admin (honour system) | Change a report's status |
-| GET | `/admin` | Staff/admin (honour system) | Admin dashboard |
-| GET | `/admin/export.csv` | Staff/admin (honour system) | CSV export of the current month |
-| GET | `/admin/bulk` | Staff/admin (honour system) | Bulk status update form |
-| POST | `/admin/bulk` | Staff/admin (honour system) | Apply a bulk status update |
-| GET | `/admin/categories` | Staff/admin (honour system) | Manage categories |
-| POST | `/admin/categories` | Staff/admin (honour system) | Create a category |
-| GET | `/admin/locations` | Staff/admin (honour system) | Manage locations |
-| POST | `/admin/locations` | Staff/admin (honour system) | Create a location |
 | GET | `/about` | Public | About page |
 | GET | `/privacy` | Public | Privacy Notice |
 | GET | `/terms` | Public | Terms of Use |
@@ -156,6 +151,14 @@ counter_sequence — standalone, keyed by year, feeds reports.reference_no
 | GET | `/accessibility` | Public | Accessibility Statement |
 | GET | `/help` | Public | User guide |
 | GET | `*` | Public | 404 page |
+
+## Guest and registered reports
+
+Anyone can report a **found** item without an account. A guest report needs only an item name, category, description, where it was found, the date, and where the item is now; name, email and phone are optional and visible to staff only. Guest reports are created with `moderation_status = 'pending'` and stay invisible everywhere public (lists, counters, matching, detail page) until a staff member approves them at `/admin/moderation`. **Lost** reports still need an account, because the owner is the person who needs notifications and messages.
+
+Spam safeguards on `POST /reports/guest` (`lib/antispam.js`): hidden honeypot field, signed time token (rejects instant, forged and stale posts), per-source rate limit stored in the database (default 3 per 24 hours, keyed by an HMAC of the IP, never the raw IP), duplicate and link checks, and the staff approval step above, which is the control that actually stops abuse.
+
+Registered users keep everything they had (full form with photo and tags, edit while open, withdraw, claims, bookmarks, My Reports) and additionally get in-app notifications (claim filed on their report, status changed, their claim decided, new message) and direct messages with other registered users about a report. Existing databases: run `add-guest-reports.sql` once. Fresh installs get it from `schema.sql`.
 
 ## Identification Without Sessions — Midterm Approach
 
@@ -256,6 +259,10 @@ No automated test suite exists yet (Week 15 territory — see Known issues). Man
 
 ## Known issues
 
+- Guest reports are verified by staff approval, not by email: the system has no mail sender (see `/about`), so email verification is not implemented. Adding it needs a mailer and a token table; the approval queue would then be the fallback.
+- Notifications and messages are in-app only; nothing is emailed.
+- There are no staff or admin roles. The user who uploaded a report is the only one who can approve or reject claims on it (`POST /claims/:id/approve|reject`) and mark it returned (`POST /reports/:reference/returned`).
+
 - PIN-based identification is a documented midterm compromise (SHA-256, not bcrypt) — see "Identification Without Sessions" above.
 - No rate limiting on `/my-reports/sign-in` (Week 12 — `express-rate-limit`).
 - No CSRF tokens on any form (Week 12 — `csurf`).
@@ -295,7 +302,6 @@ No automated test suite exists yet (Week 15 territory — see Known issues). Man
 |---|---|---|
 | Real login + bcrypt passwords | 11 | Replaces the PIN + signed-cookie approach |
 | express-session | 11 | Replaces the whereitis_id cookie |
-| Role middleware requireRole() | 11 | Staff/admin routes are currently open on the honour system |
 | Rate limiting on /my-reports/sign-in | 12 | Currently unlimited |
 | CSRF tokens on every POST form | 12 | Currently none |
 | helmet() + Content-Security-Policy | 12 | Currently no CSP |
@@ -324,3 +330,7 @@ MIT — see [LICENSE](./LICENSE).
 - IT office
 - Data Protection Officer
 - Built with Node.js, Express, EJS, and MySQL
+
+## Time zone
+
+The whole app runs on Philippine Standard Time (UTC+08:00, `Asia/Manila`). The server, the MySQL connection and every date shown on screen use it, whatever time zone the computer or host is set to. The helpers live in `lib/time.js`.

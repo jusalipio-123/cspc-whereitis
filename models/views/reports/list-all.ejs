@@ -1,0 +1,105 @@
+<!-- All reports — REGISTRY / DASHBOARD: totals, status tabs, sortable table, any status -->
+<section class="board-hero board-hero--all">
+  <div>
+    <p class="page-head__eyebrow">Registry</p>
+    <h1>All Reports</h1>
+    <p>The complete record of every lost and found report, including closed ones. Looking for something specific? Use the <a href="/reports?kind=lost">Lost board</a> or the <a href="/reports?kind=found">Found claim centre</a>.</p>
+  </div>
+</section>
+
+<nav class="status-tabs" aria-label="Filter by status">
+  <a href="<%= urlWith({ status: '' }) %>"<%- !filters.status ? ' aria-current="true"' : '' %>>All <span><%= overview.total %></span></a>
+  <% ['open','matched','claimed','returned','archived'].forEach(function (s) { %>
+    <a href="<%= urlWith({ status: s }) %>"<%- filters.status === s ? ' aria-current="true"' : '' %>><%= s.charAt(0).toUpperCase() + s.slice(1) %> <span><%= overview.byStatus[s] || 0 %></span></a>
+  <% }); %>
+</nav>
+
+<form class="toolbar" method="get" action="/reports">
+  <% if (filters.status) { %><input type="hidden" name="status" value="<%= filters.status %>"><% } %>
+  <div class="toolbar__field toolbar__field--grow">
+    <label for="f-q">Search</label>
+    <input id="f-q" type="search" name="q" class="input" placeholder="Title, description or reference no." value="<%= filters.q || '' %>">
+  </div>
+  <div class="toolbar__field">
+    <label for="f-cat">Category</label>
+    <select id="f-cat" name="category" class="select"><option value="">Any</option>
+      <% categories.forEach(function (c) { %><option value="<%= c.slug %>" <%= filters.category === c.slug ? 'selected' : '' %>><%= c.name %></option><% }); %>
+    </select>
+  </div>
+  <div class="toolbar__field">
+    <label for="f-loc">Location</label>
+    <select id="f-loc" name="location" class="select"><option value="">Any</option>
+      <% locations.forEach(function (l) { %><option value="<%= l.id %>" <%= String(filters.location) === String(l.id) ? 'selected' : '' %>><%= l.name %></option><% }); %>
+    </select>
+  </div>
+  <div class="toolbar__field">
+    <label for="f-from">From</label>
+    <input id="f-from" type="date" name="from" class="input" value="<%= filters.from || '' %>">
+  </div>
+  <div class="toolbar__field">
+    <label for="f-to">To</label>
+    <input id="f-to" type="date" name="to" class="input" value="<%= filters.to || '' %>">
+  </div>
+  <div class="toolbar__field">
+    <label for="f-sort">Sort by</label>
+    <select id="f-sort" name="sort" class="select">
+      <option value="newest" <%= sort === 'newest' ? 'selected' : '' %>>Recently reported</option>
+      <option value="recent" <%= sort === 'recent' ? 'selected' : '' %>>Newest incident</option>
+      <option value="oldest" <%= sort === 'oldest' ? 'selected' : '' %>>Oldest incident</option>
+      <option value="title"  <%= sort === 'title'  ? 'selected' : '' %>>Title A–Z</option>
+    </select>
+  </div>
+  <div class="toolbar__actions">
+    <button class="btn btn--primary" type="submit">Apply</button>
+    <a class="btn btn--ghost" href="/reports">Reset</a>
+  </div>
+</form>
+
+<p class="result-count"><strong><%= total %></strong> report<%= total === 1 ? '' : 's' %> · page <%= page %> of <%= totalPages %></p>
+
+<% if (rows.length === 0) { %>
+  <div class="empty-state">
+    <%- icons.search %>
+    <h3>No reports match</h3>
+    <p>Try a different status tab, or reset the filters.</p>
+    <a class="btn btn--ghost" href="/reports">Reset filters</a>
+  </div>
+<% } else { %>
+  <div class="registry-wrap">
+    <table class="registry">
+      <thead>
+        <tr>
+          <th scope="col"><a class="sort-link" href="<%= urlWith({ sort: 'title' }) %>">Item</a></th>
+          <th scope="col">Type</th>
+          <th scope="col">Category</th>
+          <th scope="col">Location</th>
+          <th scope="col"><a class="sort-link" href="<%= urlWith({ sort: sort === 'oldest' ? 'recent' : 'oldest' }) %>">Date <%= sort === 'oldest' ? '↑' : sort === 'recent' ? '↓' : '' %></a></th>
+          <th scope="col">Age</th>
+          <th scope="col">Status</th>
+          <th scope="col"><span class="visually-hidden">Actions</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% rows.forEach(function (r) { const href = '/reports/' + r.reference_no; %>
+          <tr>
+            <td class="registry__item">
+              <a class="registry__thumb" href="<%= href %>" tabindex="-1" aria-hidden="true"><img src="<%= r.photo_url || '/img/placeholder.svg' %>" alt="" loading="lazy" referrerpolicy="no-referrer"></a>
+              <div>
+                <a class="registry__title" href="<%= href %>"><%= r.title %></a>
+                <code class="registry__ref"><%= r.reference_no %></code>
+              </div>
+            </td>
+            <td data-label="Type"><span class="kind-badge kind-badge--<%= r.kind %>"><%= r.kind === 'lost' ? 'Lost' : 'Found' %></span></td>
+            <td data-label="Category"><%= r.category_name %></td>
+            <td data-label="Location"><%= r.location_name %></td>
+            <td data-label="Date"><%= fmtDate(r.occurred_on) %></td>
+            <td data-label="Age"><%= r.days_held %> d</td>
+            <td data-label="Status"><span class="status-pill status-pill--<%= r.status %>"><%= r.status.charAt(0).toUpperCase() + r.status.slice(1) %></span></td>
+            <td class="registry__go"><a class="btn btn--ghost btn--sm" href="<%= href %>" aria-label="View <%= r.title %>">View</a></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+  <%- include('../partials/pagination', { page: page, totalPages: totalPages, baseUrl: urlWith({}) }) %>
+<% } %>

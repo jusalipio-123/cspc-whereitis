@@ -1,0 +1,92 @@
+<!-- CSPC WhereITis — views/myReports/signIn.ejs -->
+<%
+  const _errors = errors || {};
+  const _errorList = [_errors.student_no, _errors.pin].filter(Boolean);
+  const _values = values || {};
+  const _next = (typeof next !== 'undefined' && next) ? next : '';
+  const _reason = _next.indexOf('/reports/new') === 0 ? 'Sign in to submit your report.'
+                : _next.indexOf('/claims') === 0 ? 'Sign in to continue with your claim.'
+                : _next ? 'Sign in to continue.' : '';
+%>
+<%- include('../partials/head', { title: 'Sign in' }) %>
+<%- include('../partials/nav', { hideAuthActions: true }) %>
+
+<main id="main" class="auth-main">
+  <!-- Full-width background slideshow (pure CSS, decorative). Edit the .auth-slide rules in style.css to change photos. -->
+  <div class="auth-slides" aria-hidden="true">
+    <span class="auth-slide"></span>
+    <span class="auth-slide"></span>
+    <span class="auth-slide"></span>
+  </div>
+  <%- include('../partials/flash') %>
+
+  <div class="auth-card">
+    <!-- Brand panel -->
+    <aside class="auth-brand" aria-hidden="false">
+      <div class="auth-brand__top">
+        <img class="auth-brand__seal" src="/img/logo.png" alt="" width="56" height="56" onerror="this.style.display='none';">
+        <p class="auth-brand__name">CSPC WhereITis<span>Lost &amp; Found</span></p>
+      </div>
+      <div class="auth-brand__copy">
+        <h2>Welcome back</h2>
+        <p>Sign in to keep track of everything you've reported, follow your claims, and save items you're watching.</p>
+      </div>
+      <p class="auth-brand__foot">Camarines Sur Polytechnic Colleges</p>
+    </aside>
+
+    <!-- Form panel -->
+    <section class="auth-panel" aria-labelledby="auth-title">
+      <h1 id="auth-title">Sign in</h1>
+      <p class="auth-panel__sub muted"><%= _reason || 'Use your student number and 4-digit PIN.' %></p>
+
+      <% if (_errorList.length) { %>
+        <div class="form-alert auth-alert" role="alert" id="auth-alert">
+          <%= _errorList[0] %>
+        </div>
+      <% } %>
+
+      <form method="post" action="/sign-in" class="auth-form" novalidate data-auth-form>
+        <% if (_next) { %><input type="hidden" name="next" value="<%= _next %>"><% } %>
+
+        <div class="field">
+          <label for="student_no">Student number</label>
+          <input id="student_no" name="student_no" class="input input--lg" type="text" maxlength="20" required
+                 autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="Your student number"
+                 value="<%= _values.student_no || '' %>"
+                 <%= _errors.student_no ? 'aria-invalid="true" aria-describedby="auth-alert"' : '' %>>
+        </div>
+
+        <div class="field">
+          <label for="pin">4-digit PIN</label>
+          <div class="pin-wrap">
+            <input id="pin" name="pin" class="input input--lg" type="password" inputmode="numeric" pattern="\d{4}"
+                   maxlength="4" required autocomplete="current-password" placeholder="&bull;&bull;&bull;&bull;"
+                   <%= _errors.pin ? 'aria-invalid="true" aria-describedby="auth-alert"' : 'aria-describedby="pin-hint"' %>>
+            <button type="button" class="pin-toggle" data-toggle-pin aria-controls="pin" aria-pressed="false">Show</button>
+          </div>
+          <p class="field-hint" id="pin-hint">The 4-digit PIN you chose when you created your account.</p>
+        </div>
+
+        <label class="checkbox auth-remember">
+          <input type="checkbox" name="remember" data-remember-student-no>
+          Remember my student number on this device
+        </label>
+
+        <button type="submit" class="btn btn--primary auth-submit" data-submit>Sign in</button>
+      </form>
+
+      <p class="auth-help auth-create">
+        New here? <a href="/register<%= _next ? '?next=' + encodeURIComponent(_next) : '' %>"><strong>Create an account</strong></a>
+      </p>
+      <p class="auth-help">
+        Just found something? <a href="/reports/new"><strong>Report it as a guest</strong></a>, no account needed.
+      </p>
+      <p class="auth-help">
+        Forgot your PIN or having trouble? <a href="/help">Visit Help</a> or ask the IT office.
+      </p>
+      <p class="auth-back"><a href="/">&larr; Back to home</a></p>
+    </section>
+  </div>
+</main>
+
+<%- include('../partials/foot') %>

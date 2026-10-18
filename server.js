@@ -7,6 +7,8 @@
 // or requiring a live database connection.
 // -----------------------------------------------------------------------
 
+// All dates in this app are Philippine Standard Time (UTC+08:00).
+process.env.TZ = 'Asia/Manila';
 require('dotenv').config();
 
 const app = require('./app');

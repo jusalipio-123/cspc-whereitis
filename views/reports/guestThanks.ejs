@@ -1,0 +1,35 @@
+<!-- CSPC WhereITis — views/reports/guestThanks.ejs -->
+<%- include('../partials/head', { title: title }) %>
+<%- include('../partials/nav') %>
+
+<main id="main" class="container">
+  <section class="thanks">
+    <p class="page-head__eyebrow">Report received</p>
+    <h1>Thank you for reporting this item</h1>
+
+    <% if (ref) { %>
+      <p>Your reference number is <code class="thanks__ref"><%= ref %></code>. Please write it down; it is how staff will identify your report.</p>
+    <% } %>
+    <% if (kind === 'lost') { %>
+      <p>Your report is now live under <a href="/reports?kind=lost">Lost items</a><% if (ref) { %> (<a href="/reports/<%= ref %>">view it</a>)<% } %>. If someone finds it, staff will reach you through the contact details you left, so check the Found items list now and then too.</p>
+    <% } else { %>
+      <p>Your report is now live under <a href="/reports?kind=found">Found items</a><% if (ref) { %> (<a href="/reports/<%= ref %>">view it</a>)<% } %>. Please keep the item somewhere safe, or leave it with the office you named, until its owner comes for it.</p>
+    <% } %>
+
+    <div class="card upgrade-card thanks__upgrade">
+      <h2>Create an account to do more</h2>
+      <p>A guest report can't be edited or tracked afterwards. With a free account you can follow your reports, get notified when someone responds, message other users, and edit or withdraw what you posted.</p>
+      <p class="upgrade-card__actions">
+        <a class="btn btn--primary" href="/register?next=<%= encodeURIComponent('/my-reports') %>">Create an account</a>
+        <a class="btn btn--ghost" href="/sign-in?next=<%= encodeURIComponent('/my-reports') %>">Sign in</a>
+      </p>
+    </div>
+
+    <p class="thanks__links">
+      <a class="btn btn--ghost" href="/reports/new?kind=<%= kind %>">Report another item</a>
+      <a class="btn btn--ghost" href="/">Back to home</a>
+    </p>
+  </section>
+</main>
+
+<%- include('../partials/foot') %>

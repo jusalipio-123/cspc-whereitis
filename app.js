@@ -6,6 +6,8 @@
 // suite (Week 15) without binding a port.
 // -----------------------------------------------------------------------
 
+// All dates in this app are Philippine Standard Time (UTC+08:00).
+process.env.TZ = 'Asia/Manila';
 const express = require('express');
 const path = require('path');
 const crypto = require('crypto');
@@ -19,6 +21,12 @@ const app = express();
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.locals.icons = require('./views/partials/icons.js');
+// Date helpers for every view (Philippine Standard Time).
+const phTime = require('./lib/time');
+app.locals.fmtDate = phTime.fmtDate;
+app.locals.fmtDateTime = phTime.fmtDateTime;
+app.locals.todayISO = phTime.todayISO;
+app.locals.isoDate = phTime.isoDate;
 // ---------------------------------------------------------------------
 // Body parsing + static assets
 // ---------------------------------------------------------------------
@@ -46,6 +54,7 @@ function safeRequire(modPath, label) {
 const logger = safeRequire('./middleware/logger', 'middleware/logger');
 const flash = safeRequire('./middleware/flash', 'middleware/flash');
 const identity = safeRequire('./middleware/identity', 'middleware/identity');
+const unread = safeRequire('./middleware/unread', 'middleware/unread');
 
 if (logger) app.use(logger);
 if (flash) app.use(flash);
@@ -57,6 +66,8 @@ if (flash) app.use(flash);
 //      if (identity) app.use(identity);
 //    AFTER:
 if (identity) app.use(identity.optionalIdentity);
+// Unread-notification count for the nav badge (signed-in users only).
+if (unread) app.use(unread);
 
 // 2) Expose req.identity to every view via res.locals, and compute the
 //    current path for the nav's sign-out "return here" hidden field.
@@ -108,11 +119,16 @@ try {
   console.warn('[app.js] Warning: routes/myReports not available yet (' + err.message + ')');
 }
 
-// admin.js exposes BOTH /admin/* and /staff/* — mount at root once.
+// Registered-user features: notifications and direct messages.
 try {
-  app.use('/', require('./routes/admin'));
+  app.use('/notifications', require('./routes/notifications'));
 } catch (err) {
-  console.warn('[app.js] Warning: routes/admin not available yet (' + err.message + ')');
+  console.warn('[app.js] Warning: routes/notifications not available yet (' + err.message + ')');
+}
+try {
+  app.use('/messages', require('./routes/messages'));
+} catch (err) {
+  console.warn('[app.js] Warning: routes/messages not available yet (' + err.message + ')');
 }
 
 try {

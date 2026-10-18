@@ -1,0 +1,92 @@
+<!-- CSPC WhereITis — views/pages/help.ejs -->
+<%- include('../partials/head', { title: 'User guide' }) %>
+<%- include('../partials/nav') %>
+
+<main id="main" class="container">
+  <%- include('../partials/flash') %>
+
+  <h1>User guide</h1>
+  <p class="lead">Tasks, not screens. Each section below is written for a
+  first-time user.</p>
+
+  <h2>How to report a lost item</h2>
+  <ol>
+    <li>Click <strong>Report an item</strong> in the top-right of any page.</li>
+    <li>Choose <strong>I lost something</strong>.</li>
+    <li>Give the item a short title — for example "Black leather wallet".</li>
+    <li>Pick a category and the location where you last had it.</li>
+    <li>Enter the date you lost it. It cannot be in the future.</li>
+    <li>Describe it in at least 20 characters. Mention colour, brand, marks.</li>
+    <li>Submit. You will get a reference number like <code>LF-2026-0007</code>.</li>
+  </ol>
+  <p><strong>Expected result:</strong> your report is public and staff can match it
+  against found items.</p>
+
+  <h2>How to report a found item</h2>
+  <ol>
+    <li>Click <strong>Report an item</strong> and choose <strong>I found
+    something</strong>.</li>
+    <li>Fill in the same fields as above.</li>
+    <li>In the <strong>Holding location</strong> box, say where the item is being
+    kept. Example: "CCS Dean's office, 2nd floor."</li>
+    <li>Submit. Note down the reference number.</li>
+  </ol>
+  <p><strong>Expected result:</strong> the item appears under Found reports, and
+  its owner can file a claim.</p>
+
+  <h2>How to search for an item</h2>
+  <ol>
+    <li>Use the search box on the home page or click <strong>Reports</strong> in
+    the nav.</li>
+    <li>Type a keyword — part of a name, brand, or colour works.</li>
+    <li>Optional: narrow by kind (lost / found), category, location, status, or
+    date range.</li>
+    <li>Press Enter or click <strong>Apply filters</strong>.</li>
+  </ol>
+
+  <h2>How to file a claim</h2>
+  <ol>
+    <li>Open the found report you believe is yours.</li>
+    <li>Click <strong>This is mine — file a claim</strong>.</li>
+    <li>Sign in with your student number and 4-digit PIN if you have not yet.</li>
+    <li>Write at least 30 characters of proof — where and when you lost it, and
+    how you would recognise it.</li>
+    <li>List at least 30 characters of distinguishing features.</li>
+    <li>Submit. You will see a claim confirmation page.</li>
+  </ol>
+
+  <h2>How to check the status of your reports</h2>
+  <ol>
+    <li>Click <strong>My Reports</strong> in the nav.</li>
+    <li>Sign in with your student number and PIN.</li>
+    <li>You will see your reports, your claims, and your bookmarks.</li>
+    <li>Each row shows the current status — open, matched, claimed, returned, or
+    archived.</li>
+  </ol>
+
+  <h2>What happens after a claim is approved</h2>
+  <ol>
+    <li>Staff approve your claim. Every other pending claim on the same report is
+    automatically rejected.</li>
+    <li>The report status changes to <strong>claimed</strong>.</li>
+    <li>The office holding the item contacts you at the email on your account.</li>
+    <li>Bring your student ID when you collect. The custodian records who
+    collected it and when.</li>
+    <li>The report status changes to <strong>returned</strong>.</li>
+  </ol>
+
+  <h2>What to do when something goes wrong</h2>
+  <ul>
+    <li><strong>I forgot my PIN.</strong> Contact the IT office in person with
+    your student ID. This is a demo constraint; Week 11 replaces PINs with real
+    passwords.</li>
+    <li><strong>I filed a report by mistake.</strong> Open it and click Withdraw
+    while its status is still <em>open</em>.</li>
+    <li><strong>The system shows an error page.</strong> Note the reference ID on
+    the page and email it to the IT office. Do not screenshot; the ID is enough.</li>
+    <li><strong>My claim was rejected but I think it is really mine.</strong>
+    Contact Student Affairs. Bring whatever evidence you have.</li>
+  </ul>
+</main>
+
+<%- include('../partials/foot') %>

@@ -19,6 +19,32 @@
     <div class="counter"><strong><%= agingOver60 %></strong> <span>Aging over 60 days</span></div>
   </section>
 
+  <section aria-labelledby="source-h">
+    <h2 id="source-h">Reports by source</h2>
+    <p class="muted">Guest reports are reviewed by staff before they are public.
+      <% if (sourceBreakdown.guest.pending > 0) { %>
+        <a href="/admin/moderation"><strong><%= sourceBreakdown.guest.pending %> waiting for review</strong></a>.
+      <% } else { %>
+        <a href="/admin/moderation">Open the review queue</a>.
+      <% } %>
+    </p>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>Source</th><th>Approved</th><th>Pending review</th><th>Rejected</th><th>Total</th></tr></thead>
+        <tbody>
+          <% [['registered', 'Registered users'], ['guest', 'Guests']].forEach(function (s) {
+               const c = sourceBreakdown[s[0]]; %>
+            <tr>
+              <td><span class="pill pill--<%= s[0] === 'guest' ? 'guest' : 'found' %>"><%= s[1] %></span></td>
+              <td><%= c.approved %></td><td><%= c.pending %></td><td><%= c.rejected %></td>
+              <td><%= c.approved + c.pending + c.rejected %></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
   <section aria-labelledby="monthly-h">
     <h2 id="monthly-h">Monthly counts (last 12 months)</h2>
     <div class="table-wrap">
@@ -64,6 +90,7 @@
   <p>
     <a class="btn btn--primary" href="/admin/export.csv">Export current month CSV</a>
     <a class="btn btn--ghost" href="/admin/bulk">Bulk status update</a>
+    <a class="btn btn--ghost" href="/admin/moderation">Guest report review<% if (sourceBreakdown.guest.pending > 0) { %> (<%= sourceBreakdown.guest.pending %>)<% } %></a>
   </p>
 </main>
 

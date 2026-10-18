@@ -2,7 +2,7 @@
 // CSPC WhereITis - Lost & Found Management System
 // -----------------------------------------------------------------------
 // Staff-only internal notes. These are NOT public comments: they must
-// never be loaded by the public report page, the print receipt, or any
+// never be loaded by the public report page or any
 // guest-facing route. Every query uses ? placeholders.
 // -----------------------------------------------------------------------
    // Staff-only internal notes. These are never shown on the public report

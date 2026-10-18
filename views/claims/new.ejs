@@ -1,50 +1,103 @@
-<!-- CSPC WhereITis — views/claims/new.ejs -->
+<!-- CSPC WhereITis — views/claims/new.ejs
+     File a claim. Uses the same layout as the report form (.report-page): intro banner, one form card with
+     numbered sections and an action bar, and a side panel showing the item being claimed. -->
+<%
+  const _errors = errors || {};
+  const _values = values || {};
+  const _fieldIds = { proof_text: 'proof_text', distinguishing_features: 'distinguishing_features' };
+  const _errorKeys = Object.keys(_fieldIds).filter(function (k) { return _errors[k]; });
+%>
 <%- include('../partials/head', { title: 'File a claim' }) %>
 <%- include('../partials/nav') %>
 
-<main id="main" class="container">
+<main id="main" class="container report-page">
   <%- include('../partials/flash') %>
 
-  <h1>File a claim</h1>
-  <p class="muted">You are claiming this item belongs to you. Please be specific — vague
-  claims are almost always rejected.</p>
-
-  <article class="card claim-summary">
-    <p class="muted">Claiming: <strong><%= report.title %></strong></p>
-    <p class="muted">Reference: <code><%= report.reference_no %></code></p>
-    <p class="muted">Currently held at: <strong><%= report.holding_location %></strong></p>
-  </article>
-
-  <form method="post" action="/claims" class="form">
-    <input type="hidden" name="report_reference" value="<%= report.reference_no %>">
-
-    <div class="field">
-      <label for="proof_text">Proof of ownership <span aria-hidden="true">*</span></label>
-      <textarea id="proof_text" name="proof_text" class="textarea" rows="6" required
-                maxlength="1000"
-                data-charcount data-charcount-min="30" data-charcount-max="1000"
-                <%= errors.proof_text ? 'aria-invalid="true" aria-describedby="err-proof"' : '' %>><%= values.proof_text || '' %></textarea>
-      <% if (errors.proof_text) { %><p class="field-error" id="err-proof"><%= errors.proof_text %></p><% } %>
-      <p class="field-hint">Tell us where you lost it, when, and how you would recognise it.
-      Minimum 30 characters.</p>
+  <section class="board-hero board-hero--all">
+    <div>
+      <p class="page-head__eyebrow">Claim an item</p>
+      <h1>File a claim</h1>
+      <p>You are saying this item belongs to you. Be specific: vague claims are almost always rejected, and the person who posted the report reviews every claim before the item is released.</p>
     </div>
+  </section>
 
-    <div class="field">
-      <label for="distinguishing_features">Distinguishing features <span aria-hidden="true">*</span></label>
-      <textarea id="distinguishing_features" name="distinguishing_features" class="textarea"
-                rows="4" required maxlength="500"
-                data-charcount data-charcount-min="30" data-charcount-max="500"
-                <%= errors.distinguishing_features ? 'aria-invalid="true" aria-describedby="err-feat"' : '' %>><%= values.distinguishing_features || '' %></textarea>
-      <% if (errors.distinguishing_features) { %><p class="field-error" id="err-feat"><%= errors.distinguishing_features %></p><% } %>
-      <p class="field-hint">At least 30 characters. Describe marks, stickers,
-      scratches, contents — anything only the true owner would know.</p>
+  <% if (_errorKeys.length) { %>
+    <div class="form-alert" role="alert" tabindex="-1" id="form-alert">
+      <strong>We couldn't submit your claim. Please fix <%= _errorKeys.length === 1 ? 'this' : 'these ' + _errorKeys.length + ' items' %>:</strong>
+      <ul>
+        <% _errorKeys.forEach(function (k) { %>
+          <li><a href="#<%= _fieldIds[k] %>"><%= _errors[k] %></a></li>
+        <% }); %>
+      </ul>
     </div>
+  <% } %>
 
-    <div class="form-actions">
-      <button type="submit" class="btn btn--primary">File claim</button>
-      <a href="/reports/<%= report.reference_no %>" class="btn btn--ghost">Cancel</a>
-    </div>
-  </form>
+  <div class="report-layout">
+    <form method="post" action="/claims" class="report-form">
+      <input type="hidden" name="report_reference" value="<%= report.reference_no %>">
+
+      <!-- 1 · Proof of ownership -->
+      <section class="form-section" aria-labelledby="sec-proof">
+        <h2 id="sec-proof" class="form-section__title"><span class="form-section__num" aria-hidden="true">1</span>Proof of ownership</h2>
+        <div class="field">
+          <label for="proof_text">How can you prove it is yours? <span class="req" aria-hidden="true">*</span></label>
+          <textarea id="proof_text" name="proof_text" class="textarea" rows="6" required
+                    maxlength="1000"
+                    placeholder="Where and when you lost it, and how you would recognise it."
+                    data-charcount data-charcount-min="30" data-charcount-max="1000"
+                    <%- _errors.proof_text ? 'aria-invalid="true" aria-describedby="err-proof hint-proof"' : 'aria-describedby="hint-proof"' %>><%= _values.proof_text || '' %></textarea>
+          <% if (_errors.proof_text) { %><p class="field-error" id="err-proof"><%= _errors.proof_text %></p><% } %>
+          <p class="field-hint" id="hint-proof">Tell us where you lost it, when, and how you would recognise it. Minimum 30 characters.</p>
+        </div>
+      </section>
+
+      <!-- 2 · Distinguishing features -->
+      <section class="form-section" aria-labelledby="sec-features">
+        <h2 id="sec-features" class="form-section__title"><span class="form-section__num" aria-hidden="true">2</span>Distinguishing features</h2>
+        <div class="field">
+          <label for="distinguishing_features">What would only the true owner know? <span class="req" aria-hidden="true">*</span></label>
+          <textarea id="distinguishing_features" name="distinguishing_features" class="textarea"
+                    rows="4" required maxlength="500"
+                    placeholder="Marks, stickers, scratches, contents, serial or ID details."
+                    data-charcount data-charcount-min="30" data-charcount-max="500"
+                    <%- _errors.distinguishing_features ? 'aria-invalid="true" aria-describedby="err-feat hint-feat"' : 'aria-describedby="hint-feat"' %>><%= _values.distinguishing_features || '' %></textarea>
+          <% if (_errors.distinguishing_features) { %><p class="field-error" id="err-feat"><%= _errors.distinguishing_features %></p><% } %>
+          <p class="field-hint" id="hint-feat">Describe marks, stickers, scratches or contents: anything only the true owner would know. Minimum 30 characters.</p>
+        </div>
+      </section>
+
+      <div class="form-actions form-actions--bar">
+        <button type="submit" class="btn btn--primary">File claim</button>
+        <a href="/reports/<%= report.reference_no %>" class="btn btn--ghost">Cancel</a>
+        <p class="form-actions__note"><span class="req" aria-hidden="true">*</span> Required</p>
+      </div>
+    </form>
+
+    <aside class="report-aside" aria-label="Item being claimed">
+      <div class="card aside-card claim-item">
+        <h2>Item you are claiming</h2>
+        <% if (report.photo_url) { %>
+          <figure class="claim-item__photo"><img src="<%= report.photo_url %>" alt="Photo of <%= report.title %>" referrerpolicy="no-referrer"></figure>
+        <% } %>
+        <p class="claim-item__title"><strong><%= report.title %></strong></p>
+        <dl class="claim-item__meta">
+          <dt>Reference</dt><dd><code><%= report.reference_no %></code></dd>
+          <% if (report.holding_location) { %><dt>Held at</dt><dd><%= report.holding_location %></dd><% } %>
+          <% if (report.category_name) { %><dt>Category</dt><dd><%= report.category_name %></dd><% } %>
+        </dl>
+        <p class="claim-item__link"><a href="/reports/<%= report.reference_no %>">View full report</a></p>
+      </div>
+
+      <div class="card aside-card">
+        <h2>Tips for a strong claim</h2>
+        <ul>
+          <li>Mention details that are not visible in the photo.</li>
+          <li>Say where and roughly when you lost it.</li>
+          <li>The person who posted the report decides whether to approve your claim.</li>
+        </ul>
+      </div>
+    </aside>
+  </div>
 </main>
 
 <%- include('../partials/foot') %>

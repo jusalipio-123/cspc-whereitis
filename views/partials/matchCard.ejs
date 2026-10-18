@@ -2,8 +2,8 @@
 <%
   // The score and every reason are ALWAYS shown. The scorer in
   // lib/matching.js is deterministic and explainable — never an
-  // opaque number a student or staff member has to just trust.
-  const matchOccurredOnDisplay = match.report.occurred_on ? new Date(match.report.occurred_on).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }) : '';
+  // opaque number a user has to just trust.
+  const matchOccurredOnDisplay = match.report.occurred_on ? fmtDate(match.report.occurred_on) : '';
 %>
 <article class="card match-card">
   <div class="match-card__ribbon">Possible match &middot; Score <%= match.score %></div>
@@ -12,6 +12,13 @@
     <span class="pill pill--<%= match.report.kind %>"><%= match.report.kind === 'lost' ? 'Lost' : 'Found' %></span>
     <span class="pill pill--<%= match.report.status %>"><%= match.report.status.charAt(0).toUpperCase() + match.report.status.slice(1) %></span>
   </div>
+
+  <% if (match.report.photo_url) { %>
+    <a class="match-card__photo" href="/reports/<%= match.report.reference_no %>" tabindex="-1" aria-hidden="true">
+      <img src="<%= match.report.photo_url %>" alt="" loading="lazy" referrerpolicy="no-referrer"
+           onerror="this.closest('a').style.display='none';">
+    </a>
+  <% } %>
 
   <h4 class="match-card__title">
     <a href="/reports/<%= match.report.reference_no %>"><%= match.report.title %></a>

@@ -7,7 +7,7 @@
 //   - optionalIdentity: parses the whereitis_id cookie (if any), sets
 //     req.identity to { userId, studentNo } or null, and ALWAYS calls
 //     next(). Safe to mount globally on every request (Deliverable E) —
-//     it never redirects, so guest browsing is never interrupted.
+//     it never redirects, so anonymous browsing is never interrupted.
 //   - requireIdentity: a route guard. Since optionalIdentity now runs
 //     globally before any route handler, requireIdentity no longer needs
 //     to re-parse the cookie itself — it just checks whatever
@@ -94,10 +94,27 @@ function optionalIdentity(req, res, next) {
 // 303 so the following request is a safe GET (Post/Redirect/Get still
 // applies even to this redirect-to-sign-in case).
 function requireIdentity(req, res, next) {
-  if (!req.identity) {
-    return res.redirect(303, '/my-reports/sign-in');
+  if (req.identity) return next();
+
+  // Send them to sign-in with ?next= so they land back where they were.
+  // GET: the page they asked for. POST (e.g. a form submitted after the
+  // 30-minute cookie expired): the same-site page the form was on, taken
+  // from the Referer header, or the home page if there is none.
+  let target = '/';
+  if (req.method === 'GET') {
+    target = req.originalUrl;
+  } else {
+    try {
+      const ref = req.headers.referer;
+      if (ref) {
+        const u = new URL(ref);
+        if (u.host === req.headers.host) target = u.pathname + u.search;
+      }
+    } catch (err) {
+      target = '/';
+    }
   }
-  next();
+  return res.redirect(303, '/sign-in?next=' + encodeURIComponent(target));
 }
 
 module.exports = optionalIdentity;

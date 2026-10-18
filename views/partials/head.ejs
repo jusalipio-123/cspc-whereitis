@@ -6,7 +6,111 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title><%= title %> | CSPC WhereITis</title>
   <meta name="description" content="<%= typeof description !== 'undefined' ? description : 'Lost & Found at Camarines Sur Polytechnic Colleges' %>">
+  <!-- Theme: runs before first paint so there is no light/dark flash. Saved choice wins, otherwise the device setting. -->
+  <script>
+  (function () {
+    var t = null;
+    try { t = localStorage.getItem('whereitis_theme'); } catch (e) {}
+    if (t !== 'light' && t !== 'dark') { t = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; }
+    document.documentElement.setAttribute('data-theme', t);
+  })();
+  </script>
   <link rel="stylesheet" href="/css/style.css">
+  <!-- "Refining" detector: runs before first paint. When the page you are leaving is the SAME page (same path,
+       e.g. /reports -> /reports?status=open: status tab, sort, filter, pagination), mark <html class="nav-refine">.
+       The stylesheet then swaps the full page-change animation for a still, short cross-fade and app.js skips the
+       entrance effects (scroll reveal, count-up), so the header, tabs and toolbar do not move on every click.
+       Prerendered pages are marked at the moment they are shown. -->
+  <script>
+  (function () {
+    var root = document.documentElement;
+    function mark() {
+      var from = '';
+      try { var a = window.navigation && navigation.activation; if (a && a.from) { from = a.from.url; } } catch (e) {}
+      if (!from) { from = document.referrer; }
+      try {
+        var u = new URL(from, location.href);
+        if (u.origin === location.origin && u.pathname === location.pathname) { root.classList.add('nav-refine'); }
+      } catch (e) {}
+    }
+    mark();
+    if (document.prerendering) { document.addEventListener('prerenderingchange', mark, { once: true }); }
+  })();
+  </script>
+  <!-- Page-transition choreography. Progressive enhancement: browsers without cross-document view
+       transitions never fire these events, so nothing happens. Must be a classic, non-deferred script
+       in <head> so "pagereveal" can be caught before the first paint. -->
+  <script>
+  (function () {
+    if (!('onpagereveal' in window)) { return; }
+    var DETAIL = /^\/reports\/(?!new$)([\w-]+)\/?$/;               // /reports/LF-2026-0001
+    var CARD   = '.report-card, .custody, .missing, .registry tbody tr';
+    var PHOTO  = '.report-card__photo-wrap, .custody__photo, .registry__thumb';
+
+    function refOf(path) { var m = DETAIL.exec(path); return m ? m[1] : null; }
+    function depth(path) { return path.split('/').filter(Boolean).length; }
+
+    // Photo of the list card that links to this report (only if it is on screen and is a real photo).
+    function cardPhoto(ref) {
+      var a = document.querySelector('a[href="/reports/' + ref + '"]');
+      var card = a && a.closest(CARD);
+      var photo = card && card.querySelector(PHOTO);
+      var img = photo && photo.querySelector('img');
+      if (!img || /placeholder\.svg/.test(img.getAttribute('src') || '')) { return null; }
+      var r = photo.getBoundingClientRect();
+      return (r.bottom > 0 && r.top < window.innerHeight) ? photo : null;
+    }
+    function detailPhoto() { return document.querySelector('.detail__photo'); }
+
+    // Give the shared element its name just for this transition, then take it away again.
+    function share(el, settled) {
+      if (!el) { return; }
+      el.style.viewTransitionName = 'report-photo';
+      var clear = function () { el.style.viewTransitionName = ''; };
+      Promise.resolve(settled).then(clear, clear);
+    }
+
+    // Leaving this page.
+    window.addEventListener('pageswap', function (e) {
+      if (!e.viewTransition || !e.activation) { return; }
+      try {
+        var toRef = refOf(new URL(e.activation.entry.url).pathname), fromRef = refOf(location.pathname);
+        if (toRef && !fromRef)      { share(cardPhoto(toRef), e.viewTransition.finished); }   // list -> detail
+        else if (fromRef && !toRef) { share(detailPhoto(),    e.viewTransition.finished); }   // detail -> list
+      } catch (err) { /* never block navigation */ }
+    });
+
+    // Arriving on this page.
+    window.addEventListener('pagereveal', function (e) {
+      if (!e.viewTransition) { return; }
+      try {
+        var act = navigation.activation;
+        if (!act || !act.from) { return; }
+        var fromPath = new URL(act.from.url).pathname, toPath = location.pathname;
+
+        // direction: browser back/forward, otherwise deeper = forward, shallower = back
+        var dir = 'lateral';
+        if (act.navigationType === 'traverse') { dir = act.entry.index < act.from.index ? 'back' : 'forward'; }
+        else { var d = depth(toPath) - depth(fromPath); dir = d > 0 ? 'forward' : d < 0 ? 'back' : 'lateral'; }
+        e.viewTransition.types.add(dir);
+
+        var toRef = refOf(toPath), fromRef = refOf(fromPath);
+        if (toRef && !fromRef)      { share(detailPhoto(),      e.viewTransition.ready); }
+        else if (fromRef && !toRef) { share(cardPhoto(fromRef), e.viewTransition.ready); }
+      } catch (err) { /* never block navigation */ }
+    });
+  })();
+  </script>
+  <!-- Speculation Rules: Chrome/Edge quietly load the page you are about to open (on hover), so it
+       appears instantly. Only read-only public pages; nothing with a side effect or a login. -->
+  <script type="speculationrules">
+  {"prerender":[{"where":{"and":[
+    {"href_matches":"/*"},
+    {"not":{"href_matches":[{"pathname":"/sign-in"},{"pathname":"/sign-out"},{"pathname":"/my-reports*"},
+      {"pathname":"/claims*"},{"pathname":"/reports/new"},{"pathname":"/reports/*/*"},{"pathname":"/health"}]}},
+    {"not":{"selector_matches":"[download], [target=_blank], [rel~=nofollow]"}}
+  ]},"eagerness":"moderate"}]}
+  </script>
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to main content</a>

@@ -36,6 +36,15 @@ const pool = mysql.createPool({
   // Return JS Date objects (not strings) for DATE/DATETIME/TIMESTAMP
   // columns — every model in this project expects real Date objects.
   dateStrings: false,
+  // Philippine Standard Time (UTC+08:00): how JS Dates are read from and
+  // written to MySQL.
+  timezone: '+08:00',
+});
+
+// ...and make MySQL's own clock (NOW(), CURDATE(), TIMESTAMP columns) use
+// the same time zone on every pooled connection.
+pool.on('connection', (conn) => {
+  conn.query("SET time_zone = '+08:00'");
 });
 
 // -------------------------------------------------------------------

@@ -17,7 +17,7 @@ const { pool } = db;
 // findByStudentNo: looks up a user by the natural key typed at /my-reports/sign-in.
 async function findByStudentNo(studentNo) {
   const [rows] = await db.pool.query(
-    'SELECT id, student_no, full_name, email, role FROM users WHERE student_no = ?',
+    'SELECT id, student_no, full_name, email FROM users WHERE student_no = ?',
     [studentNo]
   );
   return rows[0] || null;
@@ -25,7 +25,7 @@ async function findByStudentNo(studentNo) {
 
 async function findById(id) {
   const [rows] = await db.pool.query(
-    'SELECT id, student_no, full_name, email, role FROM users WHERE id = ?',
+    'SELECT id, student_no, full_name, email FROM users WHERE id = ?',
     [id]
   );
   return rows[0] || null;
@@ -38,7 +38,7 @@ async function findById(id) {
 // would let an attacker enumerate valid student numbers one guess at a time.
 async function verifyPin(studentNo, pin) {
   const [rows] = await db.pool.query(
-    'SELECT id, student_no, full_name, email, pin_salt, pin_hash, role FROM users WHERE student_no = ?',
+    'SELECT id, student_no, full_name, email, pin_salt, pin_hash FROM users WHERE student_no = ?',
     [studentNo]
   );
   const user = rows[0];
@@ -51,24 +51,22 @@ async function verifyPin(studentNo, pin) {
     id: user.id,
     student_no: user.student_no,
     full_name: user.full_name,
-    email: user.email,          // ← ADD THIS
-    role: user.role
+    email: user.email,
   };
 }
 
-// create: seeds/admin-creates a new demo account — generates a random salt and derives pin_hash from it.
+// create: registers a new account — generates a random salt and derives pin_hash from it.
 async function create(data) {
   const pinSalt = crypto.randomBytes(16).toString('hex');
   const pinHash = crypto.createHash('sha256').update(pinSalt + data.pin).digest('hex');
 
   const [result] = await pool.execute(
-    `INSERT INTO users (student_no, full_name, email, role, pin_salt, pin_hash, contact_no)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO users (student_no, full_name, email, pin_salt, pin_hash, contact_no)
+     VALUES (?, ?, ?, ?, ?, ?)`,
     [
       data.student_no,
       data.full_name,
       data.email,
-      data.role || 'student',
       pinSalt,
       pinHash,
       data.contact_no || null,
@@ -77,20 +75,11 @@ async function create(data) {
   return findById(result.insertId);
 }
 
-// listAll: admin user-management screen.
-async function listAll() {
-  const [rows] = await db.pool.execute('SELECT * FROM users ORDER BY full_name ASC');
-  return rows;
-}
-
-// countByRole: admin dashboard — how many students/staff/admins exist.
-async function countByRole() {
-  const [rows] = await db.pool.execute('SELECT role, COUNT(*) AS total FROM users GROUP BY role');
-  const counts = { student: 0, staff: 0, admin: 0 };
-  rows.forEach((row) => {
-    counts[row.role] = row.total;
-  });
-  return counts;
+// emailExists / studentNoExists: friendly pre-checks for the register form.
+// The UNIQUE keys in schema.sql remain the real guarantee (see register route).
+async function emailExists(email) {
+  const [rows] = await db.pool.query('SELECT 1 FROM users WHERE email = ? LIMIT 1', [email]);
+  return rows.length > 0;
 }
 
 module.exports = {
@@ -98,6 +87,5 @@ module.exports = {
   findById,
   verifyPin,
   create,
-  listAll,
-  countByRole,
+  emailExists,
 };

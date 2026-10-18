@@ -1,0 +1,50 @@
+<!-- CSPC WhereITis — views/claims/new.ejs -->
+<%- include('../partials/head', { title: 'File a claim' }) %>
+<%- include('../partials/nav') %>
+
+<main id="main" class="container">
+  <%- include('../partials/flash') %>
+
+  <h1>File a claim</h1>
+  <p class="muted">You are claiming this item belongs to you. Please be specific — vague
+  claims are almost always rejected.</p>
+
+  <article class="card claim-summary">
+    <p class="muted">Claiming: <strong><%= report.title %></strong></p>
+    <p class="muted">Reference: <code><%= report.reference_no %></code></p>
+    <p class="muted">Currently held at: <strong><%= report.holding_location %></strong></p>
+  </article>
+
+  <form method="post" action="/claims" class="form">
+    <input type="hidden" name="report_reference" value="<%= report.reference_no %>">
+
+    <div class="field">
+      <label for="proof_text">Proof of ownership <span aria-hidden="true">*</span></label>
+      <textarea id="proof_text" name="proof_text" class="textarea" rows="6" required
+                maxlength="1000"
+                data-charcount data-charcount-min="30" data-charcount-max="1000"
+                <%= errors.proof_text ? 'aria-invalid="true" aria-describedby="err-proof"' : '' %>><%= values.proof_text || '' %></textarea>
+      <% if (errors.proof_text) { %><p class="field-error" id="err-proof"><%= errors.proof_text %></p><% } %>
+      <p class="field-hint">Tell us where you lost it, when, and how you would recognise it.
+      Minimum 30 characters.</p>
+    </div>
+
+    <div class="field">
+      <label for="distinguishing_features">Distinguishing features <span aria-hidden="true">*</span></label>
+      <textarea id="distinguishing_features" name="distinguishing_features" class="textarea"
+                rows="4" required maxlength="500"
+                data-charcount data-charcount-min="30" data-charcount-max="500"
+                <%= errors.distinguishing_features ? 'aria-invalid="true" aria-describedby="err-feat"' : '' %>><%= values.distinguishing_features || '' %></textarea>
+      <% if (errors.distinguishing_features) { %><p class="field-error" id="err-feat"><%= errors.distinguishing_features %></p><% } %>
+      <p class="field-hint">At least 30 characters. Describe marks, stickers,
+      scratches, contents — anything only the true owner would know.</p>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn--primary">File claim</button>
+      <a href="/reports/<%= report.reference_no %>" class="btn btn--ghost">Cancel</a>
+    </div>
+  </form>
+</main>
+
+<%- include('../partials/foot') %>

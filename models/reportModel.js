@@ -15,15 +15,39 @@ const tagModel = require('./tagModel');
 const DETAIL_SELECT = `
   SELECT
     r.*,
-    u.full_name  AS reporter_name,
+    u.full_name AS reporter_name,
     c.name       AS category_name,
     c.slug       AS category_slug,
-    l.name       AS location_name
+    l.name       AS location_name,
+    DATEDIFF(NOW(), r.occurred_on) AS days_held
   FROM reports r
-  JOIN users u      ON u.id = r.user_id
+  LEFT JOIN users u ON u.id = r.user_id
   JOIN categories c ON c.id = r.category_id
   JOIN locations l  ON l.id = r.location_id
 `;
+
+// Legacy visibility filter. Every report is public now (there is no review
+// step), so this is always true; it is a fixed fragment, never user input.
+// A report the uploader withdrew is archived with this exact reason (see
+// withdraw() below). Only the uploader may see such a report; every public
+// query below hides it through APPROVED / the fragments that follow.
+const WITHDRAWN_REASON = 'withdrawn by owner';
+const NOT_WITHDRAWN = `NOT (r.status = 'archived' AND COALESCE(r.archived_reason, '') = '${WITHDRAWN_REASON}')`;
+// Same condition for queries that read `reports` without the "r" alias.
+const NOT_WITHDRAWN_BARE = `NOT (status = 'archived' AND COALESCE(archived_reason, '') = '${WITHDRAWN_REASON}')`;
+const APPROVED = `r.moderation_status = 'approved' AND ${NOT_WITHDRAWN}`;
+
+// isWithdrawn: true when the uploader withdrew this report.
+function isWithdrawn(report) {
+  return !!report && report.status === 'archived' && report.archived_reason === WITHDRAWN_REASON;
+}
+
+// canView: withdrawn reports are visible to their uploader only.
+function canView(report, identity) {
+  if (!report) return false;
+  if (!isWithdrawn(report)) return true;
+  return !!identity && !!report.user_id && report.user_id === identity.userId;
+}
 
 // Fixed fragment, only appended when a tag filter is active.
 const TAG_JOIN = `
@@ -51,9 +75,11 @@ async function attachTagsToOne(row) {
   return row;
 }
 
-// create: generates the reference number first (lib/refs.js runs its own
-// SELECT ... FOR UPDATE transaction), inserts the report, then stores its
-// tags. The route validates everything BEFORE calling create().
+// create: REGISTERED report. Generates the reference number first
+// (lib/refs.js runs its own SELECT ... FOR UPDATE transaction), inserts
+// the report, then stores its tags. The route validates everything BEFORE
+// calling create(). submitter_type / moderation_status take their column
+// defaults ('registered' / 'approved'), so this path is unchanged.
 async function create(data) {
   const referenceNo = await nextReference(data.kind);
   const [result] = await pool.query(
@@ -94,16 +120,19 @@ async function findById(id) {
 async function list(filters = {}) {
   const {
     kind, category_id, location_id, status, from, to, q, tag_slug,
+    sort = 'newest', active_only = false,
     page = 1, perPage = 12,
   } = filters;
 
-  const where = [];
+  const where = [APPROVED];
   const params = [];
 
   if (kind) { where.push('r.kind = ?'); params.push(kind); }
   if (category_id) { where.push('r.category_id = ?'); params.push(category_id); }
   if (location_id) { where.push('r.location_id = ?'); params.push(location_id); }
   if (status) { where.push('r.status = ?'); params.push(status); }
+  // Lost / Found boards only show items that are still unresolved unless asked otherwise.
+  else if (active_only) { where.push("r.status IN ('open','matched')"); }
   if (from) { where.push('r.occurred_on >= ?'); params.push(from); }
   if (to) { where.push('r.occurred_on <= ?'); params.push(to); }
   if (tag_slug) { where.push('tg.slug = ?'); params.push(tag_slug); }
@@ -115,6 +144,15 @@ async function list(filters = {}) {
 
   const whereClause = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
   const tagJoin = tag_slug ? TAG_JOIN : '';
+
+  // ORDER BY comes from a fixed allow-list; the user value is never interpolated.
+  const ORDERS = {
+    newest: 'r.created_at DESC',   // most recently reported
+    oldest: 'r.occurred_on ASC',   // missing / held the longest
+    recent: 'r.occurred_on DESC',  // happened most recently
+    title:  'r.title ASC',
+  };
+  const orderBy = ORDERS[sort] || ORDERS.newest;
 
   const [countRows] = await pool.execute(
     `SELECT COUNT(*) AS total FROM reports r ${tagJoin} ${whereClause}`,
@@ -130,7 +168,7 @@ async function list(filters = {}) {
   // They are sent as strings because mysql2's execute() sends JS numbers
   // as DOUBLE, which MySQL 8.0.22+ rejects for LIMIT/OFFSET placeholders.
   const [rows] = await pool.execute(
-    `${DETAIL_SELECT} ${tagJoin} ${whereClause} ORDER BY r.created_at DESC LIMIT ? OFFSET ?`,
+    `${DETAIL_SELECT} ${tagJoin} ${whereClause} ORDER BY ${orderBy} LIMIT ? OFFSET ?`,
     [...params, String(safePerPage), String(offset)]
   );
   await attachTags(rows);
@@ -209,21 +247,21 @@ async function setStatus(id, newStatus, changedBy, note = null) {
 async function withdraw(id, userId) {
   const [result] = await pool.execute(
     `UPDATE reports
-     SET status = 'archived', archived_reason = 'withdrawn by owner'
+     SET status = 'archived', archived_reason = ?
      WHERE id = ? AND user_id = ? AND status = 'open'`,
-    [id, userId]
+    [WITHDRAWN_REASON, id, userId]
   );
   if (result.affectedRows > 0) {
     await pool.execute(
       `INSERT INTO report_status_history (report_id, from_status, to_status, changed_by, note)
-       VALUES (?, 'open', 'archived', ?, 'withdrawn by owner')`,
-      [id, userId]
+       VALUES (?, 'open', 'archived', ?, ?)`,
+      [id, userId, WITHDRAWN_REASON]
     );
   }
   return result.affectedRows;
 }
 
-// markReturned: staff action (FR-13). The legality check goes through
+// markReturned: owner action (FR-13). The legality check goes through
 // lib/status.canTransition so TRANSITIONS stays the single source of truth.
 async function markReturned(id, returnedTo, changedBy) {
   const [beforeRows] = await pool.execute('SELECT status FROM reports WHERE id = ?', [id]);
@@ -245,14 +283,14 @@ async function markReturned(id, returnedTo, changedBy) {
   if (result.affectedRows > 0) {
     await pool.execute(
       `INSERT INTO report_status_history (report_id, from_status, to_status, changed_by, note)
-       VALUES (?, ?, 'returned', ?, 'Marked returned by staff')`,
+       VALUES (?, ?, 'returned', ?, 'Marked returned by owner')`,
       [id, fromStatus, changedBy]
     );
   }
   return result.affectedRows;
 }
 
-// archive: staff action (FR-15), same canTransition rule as markReturned.
+// archive: owner action (FR-15), same canTransition rule as markReturned.
 async function archive(id, reason, changedBy) {
   const [beforeRows] = await pool.execute('SELECT status FROM reports WHERE id = ?', [id]);
   if (beforeRows.length === 0) return 0;
@@ -291,7 +329,7 @@ async function findByUser(userId) {
 async function latestN(n) {
   const safeN = Math.min(Math.max(Number(n) || 6, 1), 50);
   const [rows] = await pool.execute(
-    `${DETAIL_SELECT} ORDER BY r.created_at DESC LIMIT ?`,
+    `${DETAIL_SELECT} WHERE ${APPROVED} ORDER BY r.created_at DESC LIMIT ?`,
     [String(safeN)]
   );
   return attachTags(rows);
@@ -307,7 +345,7 @@ async function latestReturned(limit = 4) {
      FROM reports r
      LEFT JOIN categories c ON c.id = r.category_id
      LEFT JOIN locations  l ON l.id = r.location_id
-     WHERE r.status = 'returned' AND r.returned_at IS NOT NULL
+     WHERE r.status = 'returned' AND r.returned_at IS NOT NULL AND ${APPROVED}
      ORDER BY r.returned_at DESC
      LIMIT ?`,
     [String(safeLimit)]
@@ -318,7 +356,7 @@ async function latestReturned(limit = 4) {
 // countByStatus: one row per status, reshaped into a plain object.
 async function countByStatus() {
   const [rows] = await pool.execute(
-    'SELECT status, COUNT(*) AS total FROM reports GROUP BY status'
+    `SELECT status, COUNT(*) AS total FROM reports WHERE moderation_status = 'approved' AND ${NOT_WITHDRAWN_BARE} GROUP BY status`
   );
   const counts = { open: 0, matched: 0, claimed: 0, returned: 0, archived: 0 };
   rows.forEach((row) => {
@@ -331,7 +369,7 @@ async function countByStatus() {
 async function itemsAgingOver(days) {
   const [rows] = await pool.execute(
     `${DETAIL_SELECT}
-     WHERE r.kind = 'found'
+     WHERE r.kind = 'found' AND ${APPROVED}
        AND r.status IN ('open', 'matched', 'claimed')
        AND DATEDIFF(NOW(), r.occurred_on) > ?
      ORDER BY r.occurred_on ASC`,
@@ -349,7 +387,7 @@ async function findForMatching(reportId, windowDays) {
 
   const [rows] = await pool.execute(
     `${DETAIL_SELECT}
-     WHERE r.kind = ?
+     WHERE r.kind = ? AND ${APPROVED}
        AND r.category_id = ?
        AND r.id <> ?
        AND r.status != 'archived'
@@ -357,6 +395,59 @@ async function findForMatching(reportId, windowDays) {
     [oppositeKind, report.category_id, report.id, report.occurred_on, windowDays]
   );
   return rows;
+}
+
+// overview: numbers for the All-reports dashboard. One query, reshaped.
+async function overview() {
+  const [rows] = await pool.execute(
+    `SELECT kind, status, COUNT(*) AS total FROM reports WHERE moderation_status = 'approved' AND ${NOT_WITHDRAWN_BARE} GROUP BY kind, status`
+  );
+  const out = {
+    total: 0,
+    byStatus: { open: 0, matched: 0, claimed: 0, returned: 0, archived: 0 },
+    lost: { total: 0, active: 0 },
+    found: { total: 0, active: 0, returned: 0 },
+  };
+  rows.forEach((r) => {
+    const n = Number(r.total);
+    out.total += n;
+    out.byStatus[r.status] = (out.byStatus[r.status] || 0) + n;
+    if (out[r.kind]) {
+      out[r.kind].total += n;
+      if (r.status === 'open' || r.status === 'matched') out[r.kind].active += n;
+      if (r.kind === 'found' && r.status === 'returned') out.found.returned += n;
+    }
+  });
+  out.returnRate = out.found.total ? Math.round((out.found.returned / out.found.total) * 100) : 0;
+  return out;
+}
+
+// facets: category + location counts for the Lost / Found sidebars
+// (unresolved items of one kind only).
+async function facets(kind) {
+  const [cats] = await pool.execute(
+    `SELECT c.slug, c.name, COUNT(*) AS n
+       FROM reports r JOIN categories c ON c.id = r.category_id
+      WHERE r.kind = ? AND ${APPROVED} AND r.status IN ('open','matched')
+      GROUP BY c.id, c.slug, c.name ORDER BY n DESC, c.name ASC`, [kind]);
+  const [locs] = await pool.execute(
+    `SELECT l.id, l.name, COUNT(*) AS n
+       FROM reports r JOIN locations l ON l.id = r.location_id
+      WHERE r.kind = ? AND ${APPROVED} AND r.status IN ('open','matched')
+      GROUP BY l.id, l.name ORDER BY n DESC, l.name ASC`, [kind]);
+  return { categories: cats, locations: locs };
+}
+
+// expiringSoon: found items nearing the end of the holding period.
+async function expiringSoon(minDays = 60, limit = 4) {
+  const [rows] = await pool.execute(
+    `${DETAIL_SELECT}
+     WHERE r.kind = 'found' AND r.status = 'open' AND ${APPROVED}
+       AND DATEDIFF(NOW(), r.occurred_on) >= ?
+     ORDER BY r.occurred_on ASC LIMIT ?`,
+    [String(minDays), String(limit)]
+  );
+  return attachTags(rows);
 }
 
 module.exports = {
@@ -367,6 +458,9 @@ module.exports = {
   updateWhileOpen,
   setStatus,
   withdraw,
+  isWithdrawn,
+  canView,
+  WITHDRAWN_REASON,
   markReturned,
   archive,
   findByUser,
@@ -375,4 +469,7 @@ module.exports = {
   countByStatus,
   itemsAgingOver,
   findForMatching,
+  overview,
+  facets,
+  expiringSoon,
 };

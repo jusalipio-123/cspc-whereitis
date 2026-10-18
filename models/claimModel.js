@@ -54,7 +54,7 @@ async function findByReportAndUser(reportId, userId) {
   return rows[0] || null;
 }
 
-// listByReport: every claim ever filed on one report, newest first — shown to the report owner and staff.
+// listByReport: every claim ever filed on one report, newest first — shown to the report owner.
 async function listByReport(reportId) {
   const [rows] = await pool.execute(
     `${DETAIL_SELECT} WHERE cl.report_id = ? ORDER BY cl.created_at DESC`,
@@ -63,10 +63,13 @@ async function listByReport(reportId) {
   return rows;
 }
 
-// listPending: the staff review queue — every claim awaiting a decision.
-async function listPending() {
+// listForOwner: claims other people filed on reports this user uploaded,
+// pending ones first. This is the owner's review queue.
+async function listForOwner(ownerUserId) {
   const [rows] = await pool.execute(
-    `${DETAIL_SELECT} WHERE cl.status = 'pending' ORDER BY cl.created_at ASC`
+    `${DETAIL_SELECT} WHERE r.user_id = ?
+     ORDER BY (cl.status = 'pending') DESC, cl.created_at DESC`,
+    [ownerUserId]
   );
   return rows;
 }
@@ -74,7 +77,9 @@ async function listPending() {
 // listByUser: powers "My Reports" — claims a given identity has filed on other people's found reports.
 async function listByUser(userId) {
   const [rows] = await pool.execute(
-    `${DETAIL_SELECT} WHERE cl.claimant_user_id = ? ORDER BY cl.created_at DESC`,
+    `${DETAIL_SELECT} WHERE cl.claimant_user_id = ?
+       AND NOT (r.status = 'archived' AND COALESCE(r.archived_reason, '') = 'withdrawn by owner')
+     ORDER BY cl.created_at DESC`,
     [userId]
   );
   return rows;
@@ -179,7 +184,7 @@ module.exports = {
   findById,
   findByReportAndUser,
   listByReport,
-  listPending,
+  listForOwner,
   listByUser,
   approve,
   reject,

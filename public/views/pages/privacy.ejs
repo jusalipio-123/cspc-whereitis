@@ -1,0 +1,77 @@
+<!-- CSPC WhereITis — views/pages/privacy.ejs -->
+<%- include('../partials/head', { title: 'Privacy Notice' }) %>
+<%- include('../partials/nav') %>
+
+<main id="main" class="container">
+  <%- include('../partials/flash') %>
+
+  <h1>Privacy Notice</h1>
+  <p class="lead">This notice explains what WhereITis collects, why, and what
+  rights you have under the Data Privacy Act of 2012 (RA 10173). It is written to
+  be read — not skimmed past.</p>
+
+  <h2>What we collect, field by field</h2>
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Field</th><th>Where it is asked</th><th>Why we need it</th></tr></thead>
+      <tbody>
+        <tr><td>Student number</td><td>Sign-in, claims</td><td>To link a report or claim to its owner without sessions.</td></tr>
+        <tr><td>Full name</td><td>Sign-in</td><td>To identify you to staff when you collect an item.</td></tr>
+        <tr><td>Email</td><td>Sign-in</td><td>Used by the office to reach you about a claim. Not shown publicly.</td></tr>
+        <tr><td>Contact number</td><td>Optional, sign-in</td><td>Only if you prefer a call over an email.</td></tr>
+        <tr><td>Item category</td><td>Report form</td><td>To match lost and found reports of the same kind.</td></tr>
+        <tr><td>Item description</td><td>Report form</td><td>To help staff and other students identify the item.</td></tr>
+        <tr><td>Date lost or found</td><td>Report form</td><td>To score candidate matches and to compute the holding period.</td></tr>
+        <tr><td>Location</td><td>Report form</td><td>To narrow matches and to route the item to the right office.</td></tr>
+        <tr><td>Holding location</td><td>Found report form</td><td>So an owner knows where to collect the item.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>The three RA 10173 principles we apply</h2>
+  <ol>
+    <li><strong>Transparency</strong> — you know what is collected, why, and where
+    it goes. That is what this page is for.</li>
+    <li><strong>Legitimate purpose</strong> — every field above is read by at least
+    one screen or report in the system. Nothing is collected "just in case".</li>
+    <li><strong>Proportionality</strong> — we do not collect gender, civil status,
+    religion, birthday, marital status, or any government ID number. None of those
+    fields is read by any screen, so none is collected.</li>
+  </ol>
+
+  <h2>How long we keep data</h2>
+  <p>Reports are kept for one academic year, then archived and purged of personal
+  data. The reference number and item description are retained for statistical
+  purposes only. This is the retention rule implemented in the schema and in the
+  custodian office's archive workflow.</p>
+
+  <h2>Your rights under RA 10173</h2>
+  <ul>
+    <li><strong>Informed</strong> — read this page.</li>
+    <li><strong>Access</strong> — sign in to <a href="/my-reports">My Reports</a>
+    to see every report, claim, and bookmark tied to your student number.</li>
+    <li><strong>Object</strong> — you may withdraw a report at any time while its
+    status is <em>open</em> using the Withdraw button on the report page.</li>
+    <li><strong>Erasure / blocking</strong> — email the Data Protection Officer at
+    <a href="mailto:dpo@cspc.edu.ph">dpo@cspc.edu.ph</a>. The DPO will coordinate
+    with the Student Affairs office.</li>
+    <li><strong>Rectify</strong> — edit an open report from your My Reports page,
+    or email the DPO to correct anything else.</li>
+    <li><strong>Portability</strong> — email the DPO for a copy of your reports in
+    a machine-readable format.</li>
+    <li><strong>Damages</strong> — the RA 10173 complaints procedure applies.</li>
+  </ul>
+
+  <h2>Breach notification</h2>
+  <p>If a personal-data breach occurs, the Data Protection Officer will notify the
+  National Privacy Commission and every affected data subject within 72 hours of
+  discovering the breach. The DPO makes that call; individual staff members must
+  escalate any suspected breach immediately.</p>
+
+  <h2>About this page</h2>
+  <p>The first draft of this notice was written with AI assistance and then reviewed
+  and edited by the project team. Every AI use is logged in the README's
+  "AI-assisted development log".</p>
+</main>
+
+<%- include('../partials/foot') %>

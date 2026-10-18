@@ -30,7 +30,7 @@ router.get('/', async (req, res, next) => {
       reportModel.list({ kind: 'found', status: 'open', page: 1, perPage: 1 }),
       statsModel.returnedThisMonth(),
       statsModel.agingOver(60),
-      reportModel.latestN(6),
+      reportModel.latestN(10),
       reportModel.latestReturned(4),
       categoryModel.list(),
     ]);

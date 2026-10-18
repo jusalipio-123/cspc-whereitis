@@ -1,0 +1,39 @@
+<!-- CSPC WhereITis — views/messages/thread.ejs -->
+<%
+  const _errors = errors || {};
+  const _values = values || {};
+  const other = conv.owner_user_id === me ? conv.starter_name : conv.owner_name;
+%>
+<%- include('../partials/head', { title: title }) %>
+<%- include('../partials/nav') %>
+
+<main id="main" class="container">
+  <%- include('../partials/flash') %>
+
+  <p><a href="/messages">&larr; All messages</a></p>
+  <h1>Messages with <%= other %></h1>
+  <p class="muted">About <a href="/reports/<%= conv.reference_no %>"><%= conv.report_title %></a> (<code><%= conv.reference_no %></code>)</p>
+
+  <ul class="thread">
+    <% messages.forEach(function (m) { %>
+      <li class="bubble<%= m.sender_user_id === me ? ' bubble--me' : '' %>">
+        <p class="bubble__meta"><strong><%= m.sender_user_id === me ? 'You' : m.sender_name %></strong> &middot; <%= new Date(m.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) %></p>
+        <p class="bubble__body"><%= m.body %></p>
+      </li>
+    <% }); %>
+  </ul>
+  <span id="latest"></span>
+
+  <form method="post" action="/messages/<%= conv.id %>" class="form message-form" novalidate>
+    <div class="field">
+      <label for="body">Reply</label>
+      <textarea id="body" name="body" class="textarea" rows="3" maxlength="1000" required
+                data-charcount data-charcount-max="1000"
+                <%= _errors.body ? 'aria-invalid="true" aria-describedby="err-body"' : '' %>><%= _values.body || '' %></textarea>
+      <% if (_errors.body) { %><p class="field-error" id="err-body"><%= _errors.body %></p><% } %>
+    </div>
+    <button type="submit" class="btn btn--primary">Send reply</button>
+  </form>
+</main>
+
+<%- include('../partials/foot') %>

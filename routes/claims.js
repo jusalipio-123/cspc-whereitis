@@ -10,6 +10,7 @@ const claimModel = require('../models/claimModel');
 const reportModel = require('../models/reportModel');
 const validate = require('../middleware/validate');
 const { requireIdentity } = require('../middleware/identity');
+const notificationModel = require('../models/notificationModel');
 
 // Shared validation for the claim form — used by both the pre-check and
 // the actual POST /, so the rules can never drift apart.
@@ -65,8 +66,15 @@ router.get('/new', async (req, res, next) => {
   try {
     const report = await reportModel.findByReference(req.query.report);
 
-    if (!report) {
+    if (!report || report.moderation_status !== 'approved' || !reportModel.canView(report, req.identity)) {
       return res.status(404).render('errors/404', { title: 'Not found' });
+    }
+
+    if (req.identity && report.user_id && report.user_id === req.identity.userId) {
+      return res.status(403).render('errors/404', {
+        title: 'Cannot file claim',
+        flash: { type: 'err', message: 'You posted this report, so you cannot claim it. Claims are for other people who think the item is theirs.' },
+      });
     }
 
     if (report.kind !== 'found') {
@@ -111,7 +119,7 @@ router.post('/', requireIdentity, async (req, res, next) => {
       ? await reportModel.findByReference(values.report_reference)
       : null;
 
-    if (!report) {
+    if (!report || report.moderation_status !== 'approved' || !reportModel.canView(report, req.identity)) {
       return res.status(404).render('errors/404', { title: 'Not found' });
     }
 
@@ -121,6 +129,13 @@ router.post('/', requireIdentity, async (req, res, next) => {
         report,
         values,
         errors,
+      });
+    }
+
+    if (req.identity && report.user_id && report.user_id === req.identity.userId) {
+      return res.status(403).render('errors/404', {
+        title: 'Cannot file claim',
+        flash: { type: 'err', message: 'You posted this report, so you cannot claim it. Claims are for other people who think the item is theirs.' },
       });
     }
 
@@ -162,6 +177,15 @@ router.post('/', requireIdentity, async (req, res, next) => {
       throw err;
     }
 
+    // Tell the report's owner: they are the one who decides this claim.
+    await notificationModel.create({
+      user_id: report.user_id,
+      type: 'claim_filed',
+      report_id: report.id,
+      body: 'Someone filed a claim on ' + report.reference_no + ' (' + report.title + ')',
+      link: '/reports/' + report.reference_no,
+    });
+
     // 303 so a page refresh re-fetches the claim detail page with a GET
     // instead of resubmitting this claim a second time.
     res.redirect(303, `/claims/${claim.id}?flash=ok:Claim%20filed`);
@@ -170,77 +194,107 @@ router.post('/', requireIdentity, async (req, res, next) => {
   }
 });
 
+// loadOwnedClaim: shared guard for the claim pages.
+// Only two people may open a claim: the claimant who filed it, and the user
+// who uploaded the report it is against (the "owner"). Anyone else gets the
+// same 404 as a missing claim, so the claim's existence is never confirmed.
+// Returns { claim, report, isOwner, isClaimant } or null (response already sent).
+async function loadClaimForViewer(req, res) {
+  const claim = await claimModel.findById(req.params.id);
+  const report = claim ? await reportModel.findById(claim.report_id) : null;
+  const userId = req.identity.userId;
+
+  const isClaimant = !!claim && claim.claimant_user_id === userId;
+  const isOwner = !!report && !!report.user_id && report.user_id === userId;
+
+  if (!claim || !report || (!isClaimant && !isOwner)) {
+    res.status(404).render('errors/404', { title: 'Not found' });
+    return null;
+  }
+  return { claim, report, isOwner, isClaimant };
+}
+
 // GET /:id
 router.get('/:id', requireIdentity, async (req, res, next) => {
   try {
-    const claim = await claimModel.findById(req.params.id);
-
-    if (!claim) {
-      return res.status(404).render('errors/404', { title: 'Not found' });
-    }
-
-    // Without express-session/role middleware (Week 11), there is no
-    // real way to distinguish "staff" from "student" at the request
-    // level beyond the seeded users.role column. This route therefore
-    // allows ANY signed-in identity to view a claim's detail page
-    // (not just the claimant) rather than blocking non-owners outright
-    // — true authorization (requireRole('staff','admin') restricting
-    // who can even open this page) is Week 11's job. The approve/reject
-    // actions below are similarly left on the honour system for now.
-    const report = await reportModel.findById(claim.report_id);
+    const ctx = await loadClaimForViewer(req, res);
+    if (!ctx) return;
+    const { claim, report, isOwner, isClaimant } = ctx;
 
     res.render('claims/detail', {
       title: `Claim on ${claim.reference_no}`,
       claim,
       report,
-      canDecide: false,
+      isOwner,
+      isClaimant,
+      // Only the report's uploader decides, and only while the claim is open.
+      canDecide: isOwner && claim.status === 'pending',
     });
   } catch (err) {
     next(err);
   }
 });
 
-// POST /:id/approve
+// POST /:id/approve  (report owner only)
 router.post('/:id/approve', requireIdentity, async (req, res, next) => {
   try {
-    const claim = await claimModel.findById(req.params.id);
-    if (!claim) {
-      return res.status(404).render('errors/404', { title: 'Not found' });
+    const ctx = await loadClaimForViewer(req, res);
+    if (!ctx) return;
+    const { claim, report, isOwner } = ctx;
+
+    // The claimant can see the page but must not be able to approve their own claim.
+    if (!isOwner) {
+      return res.status(403).render('errors/404', {
+        title: 'Not allowed',
+        flash: { type: 'err', message: 'Only the person who posted this report can approve or reject claims on it.' },
+      });
     }
 
-    // Only staff/admin should be able to approve a claim. Without
-    // sessions there is no requireRole() yet (Week 11), so this is left
-    // on the honour system — the staff queue view simply doesn't link
-    // this action for students, but the route itself does not enforce
-    // it server-side at this midterm stage.
+    if (['returned', 'archived'].includes(report.status)) {
+      return res.redirect(303, `/claims/${claim.id}?flash=err:${encodeURIComponent('This report is already closed.')}`);
+    }
+
     const noteResult = validate.optional(validate.maxLen(255, 'Decision note'))(req.body.note);
     const note = noteResult.value || null;
 
     try {
       // claimModel.approve runs in one transaction: it approves this
       // claim, auto-rejects every other pending claim on the same
-      // report, and sets the report's status to 'claimed' — all
-      // atomically (FR-06).
-      await claimModel.approve(req.params.id, req.identity.userId, note);
+      // report, and sets the report's status to 'claimed' (FR-06).
+      await claimModel.approve(claim.id, req.identity.userId, note);
     } catch (err) {
       if (err.message === 'This claim was already decided.') {
-        return res.redirect(303, `/claims/${req.params.id}?flash=err:${encodeURIComponent(err.message)}`);
+        return res.redirect(303, `/claims/${claim.id}?flash=err:${encodeURIComponent(err.message)}`);
       }
       throw err;
     }
 
-    res.redirect(303, `/claims/${req.params.id}?flash=ok:Claim%20approved`);
+    await notificationModel.create({
+      user_id: claim.claimant_user_id,
+      type: 'claim_decided',
+      report_id: claim.report_id,
+      body: 'Your claim on ' + claim.reference_no + ' was approved',
+      link: '/claims/' + claim.id,
+    });
+
+    res.redirect(303, `/claims/${claim.id}?flash=ok:Claim%20approved`);
   } catch (err) {
     next(err);
   }
 });
 
-// POST /:id/reject
+// POST /:id/reject  (report owner only)
 router.post('/:id/reject', requireIdentity, async (req, res, next) => {
   try {
-    const claim = await claimModel.findById(req.params.id);
-    if (!claim) {
-      return res.status(404).render('errors/404', { title: 'Not found' });
+    const ctx = await loadClaimForViewer(req, res);
+    if (!ctx) return;
+    const { claim, isOwner } = ctx;
+
+    if (!isOwner) {
+      return res.status(403).render('errors/404', {
+        title: 'Not allowed',
+        flash: { type: 'err', message: 'Only the person who posted this report can approve or reject claims on it.' },
+      });
     }
 
     const noteResult = validate.compose(
@@ -250,19 +304,27 @@ router.post('/:id/reject', requireIdentity, async (req, res, next) => {
     )(req.body.note);
 
     if (!noteResult.ok) {
-      return res.redirect(303, `/claims/${req.params.id}?flash=err:${encodeURIComponent(noteResult.error)}`);
+      return res.redirect(303, `/claims/${claim.id}?flash=err:${encodeURIComponent(noteResult.error)}`);
     }
 
     try {
-      await claimModel.reject(req.params.id, req.identity.userId, noteResult.value);
+      await claimModel.reject(claim.id, req.identity.userId, noteResult.value);
     } catch (err) {
       if (err.message === 'This claim was already decided.') {
-        return res.redirect(303, `/claims/${req.params.id}?flash=err:${encodeURIComponent(err.message)}`);
+        return res.redirect(303, `/claims/${claim.id}?flash=err:${encodeURIComponent(err.message)}`);
       }
       throw err;
     }
 
-    res.redirect(303, `/claims/${req.params.id}?flash=ok:Claim%20rejected`);
+    await notificationModel.create({
+      user_id: claim.claimant_user_id,
+      type: 'claim_decided',
+      report_id: claim.report_id,
+      body: 'Your claim on ' + claim.reference_no + ' was not approved',
+      link: '/claims/' + claim.id,
+    });
+
+    res.redirect(303, `/claims/${claim.id}?flash=ok:Claim%20rejected`);
   } catch (err) {
     next(err);
   }

@@ -35,6 +35,7 @@ async function listByUser(userId) {
      FROM bookmarks b
      JOIN reports r ON r.id = b.report_id
      WHERE b.user_id = ?
+       AND (r.user_id = b.user_id OR NOT (r.status = 'archived' AND COALESCE(r.archived_reason, '') = 'withdrawn by owner'))
      ORDER BY b.created_at DESC`,
     [userId]
   );

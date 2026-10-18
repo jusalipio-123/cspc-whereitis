@@ -12,12 +12,10 @@
 
   <h2>Who uses it</h2>
   <ul>
-    <li><strong>Students</strong> — report lost items, report found items, file
-        claims, track their own reports.</li>
-    <li><strong>Staff and the custodian office</strong> — verify claims, mark items
-        returned, archive unclaimed items after the holding period.</li>
-    <li><strong>Admin</strong> — see monthly counts, export reports, manage the
-        category and location lists.</li>
+    <li><strong>Users</strong> — everyone has the same kind of account. Report lost
+        or found items, file claims on other people's found items, and track your
+        own reports. The person who posts a report approves or rejects claims on it,
+        and marks the item returned once it is handed over.</li>
   </ul>
 
   <h2>How matching works</h2>
@@ -32,7 +30,6 @@
   <p>This is a CCIT 106 midterm project, built inside Weeks 1–8. The following are
   deliberately out of scope and will be added in later weeks:</p>
   <ul>
-    <li>Real image file upload (we accept a photo URL only, this term)</li>
     <li>Email or SMS notifications</li>
     <li>Two-factor authentication</li>
     <li>Native mobile app</li>
@@ -53,8 +50,7 @@
       <tbody>
         <tr><td>Real login + bcrypt passwords</td><td>11</td><td>Replaces the PIN + signed-cookie approach</td></tr>
         <tr><td>express-session</td><td>11</td><td>Replaces the whereitis_id cookie</td></tr>
-        <tr><td>Role middleware requireRole()</td><td>11</td><td>Staff/admin routes are currently open on the honour system</td></tr>
-        <tr><td>Rate limiting on /my-reports/sign-in</td><td>12</td><td>Currently unlimited</td></tr>
+                <tr><td>Rate limiting on /my-reports/sign-in</td><td>12</td><td>Currently unlimited</td></tr>
         <tr><td>CSRF tokens on every POST form</td><td>12</td><td>Currently none</td></tr>
         <tr><td>helmet() + Content-Security-Policy</td><td>12</td><td>Currently no CSP</td></tr>
         <tr><td>Server-side HTML escaping audit</td><td>12</td><td>We escape, but there is no automated check yet</td></tr>

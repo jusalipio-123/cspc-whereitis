@@ -6,4 +6,5 @@ npm-debug.log*
 Thumbs.db
 coverage
 .vscode/
-.idea/
+.idea/public/uploads/*
+!public/uploads/.gitkeep

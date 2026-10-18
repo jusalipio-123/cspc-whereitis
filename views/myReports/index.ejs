@@ -8,6 +8,12 @@
   <h1>My Reports</h1>
   <p class="muted">Signed in as <strong><%= identity.studentNo %></strong>.</p>
 
+  <p class="my-links">
+    <a class="btn btn--ghost btn--sm" href="/notifications">Notifications<% if (typeof unreadCount !== 'undefined' && unreadCount > 0) { %> (<%= unreadCount %> new)<% } %></a>
+    <a class="btn btn--ghost btn--sm" href="/messages">Messages</a>
+    <a class="btn btn--primary btn--sm" href="/reports/new">Report an item</a>
+  </p>
+
   <form method="post" action="/my-reports/sign-out" class="inline"
         data-confirm="Sign out of My Reports?">
     <button type="submit" class="btn btn--ghost btn--sm">Sign out of My Reports</button>
@@ -30,6 +36,26 @@
     <% } %>
   </section>
 
+  <section class="my-section" aria-labelledby="incoming-h">
+    <h2 id="incoming-h">Claims on my reports (<%= incomingClaims.length %>)</h2>
+    <% if (incomingClaims.length === 0) { %>
+      <div class="empty-state">
+        <p>Nobody has claimed one of your items yet. You will get a notification when they do.</p>
+      </div>
+    <% } else { %>
+      <ul class="claim-list">
+        <% incomingClaims.forEach(function (c) { %>
+          <li class="claim-row">
+            <a href="/claims/<%= c.id %>"><%= c.status === 'pending' ? 'Review claim' : 'Claim' %> #<%= c.id %></a> &mdash;
+            <strong><%= c.report_title %></strong> by <%= c.claimant_name %> &middot;
+            <span class="pill pill--<%= c.status === 'approved' ? 'returned' : c.status === 'rejected' ? 'archived' : 'open' %>"><%= c.status %></span>
+            <p class="muted">Filed <%= fmtDateTime(c.created_at) %></p>
+          </li>
+        <% }); %>
+      </ul>
+    <% } %>
+  </section>
+
   <section class="my-section" aria-labelledby="my-claims-h">
     <h2 id="my-claims-h">My claims (<%= claims.length %>)</h2>
     <% if (claims.length === 0) { %>
@@ -43,7 +69,7 @@
             <a href="/claims/<%= c.id %>">Claim #<%= c.id %></a> —
             <strong><%= c.report_title %></strong> &middot;
             <span class="pill pill--<%= c.status === 'approved' ? 'returned' : c.status === 'rejected' ? 'archived' : 'open' %>"><%= c.status %></span>
-            <p class="muted">Filed <%= c.created_at %></p>
+            <p class="muted">Filed <%= fmtDateTime(c.created_at) %></p>
           </li>
         <% }); %>
       </ul>

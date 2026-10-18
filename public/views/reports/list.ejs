@@ -1,0 +1,35 @@
+<!-- CSPC WhereITis — views/reports/list.ejs
+     Dispatcher. /reports, /reports?kind=lost and /reports?kind=found are three
+     different pages with different purposes, data and actions:
+       list-all.ejs   -> registry / dashboard   (everything, any status)
+       list-lost.ejs  -> missing-items board    (help owners; "I found this")
+       list-found.ejs -> claim centre           (items in custody; "This is mine") -->
+<%
+  // Rebuild a /reports URL from the current state with overrides ('' removes a key).
+  function urlWith(o) {
+    const p = new URLSearchParams();
+    const cur = Object.assign({}, filters, {
+      sort: sort === 'newest' ? '' : sort,
+      scope: scope === 'all' ? 'all' : ''
+    });
+    Object.keys(cur).forEach(function (k) { if (cur[k]) p.set(k, cur[k]); });
+    Object.keys(o || {}).forEach(function (k) { if (o[k]) p.set(k, o[k]); else p.delete(k); });
+    p.delete('page');
+    const s = p.toString();
+    return '/reports' + (s ? '?' + s : '');
+  }
+  function fmtDate(d) {
+    return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+  function daysAgo(n) { return new Date(Date.now() - n * 864e5).toISOString().slice(0, 10); }
+  const _allTags = typeof allTags !== 'undefined' ? allTags : [];
+%>
+<%- include('../partials/head', { title: title }) %>
+<%- include('../partials/nav') %>
+
+<main id="main" class="container reports-page reports-page--<%= mode %>">
+  <%- include('../partials/flash') %>
+  <%- include('list-' + mode, { urlWith: urlWith, fmtDate: fmtDate, daysAgo: daysAgo, _allTags: _allTags }) %>
+</main>
+
+<%- include('../partials/foot') %>

@@ -1,0 +1,34 @@
+<!-- CSPC WhereITis — views/partials/matchCard.ejs -->
+<%
+  // The score and every reason are ALWAYS shown. The scorer in
+  // lib/matching.js is deterministic and explainable — never an
+  // opaque number a student or staff member has to just trust.
+  const matchOccurredOnDisplay = match.report.occurred_on ? new Date(match.report.occurred_on).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }) : '';
+%>
+<article class="card match-card">
+  <div class="match-card__ribbon">Possible match &middot; Score <%= match.score %></div>
+
+  <div class="report-card__top">
+    <span class="pill pill--<%= match.report.kind %>"><%= match.report.kind === 'lost' ? 'Lost' : 'Found' %></span>
+    <span class="pill pill--<%= match.report.status %>"><%= match.report.status.charAt(0).toUpperCase() + match.report.status.slice(1) %></span>
+  </div>
+
+  <h4 class="match-card__title">
+    <a href="/reports/<%= match.report.reference_no %>"><%= match.report.title %></a>
+  </h4>
+  <p class="report-card__ref"><code><%= match.report.reference_no %></code></p>
+
+  <p class="report-card__meta muted">
+    <%= match.report.category_name %> &middot; <%= match.report.location_name %> &middot; <%= matchOccurredOnDisplay %>
+  </p>
+
+  <ul class="match-card__reasons">
+    <% match.reasons.forEach(function (reason) { %>
+      <li><%- icons.check %> <%= reason %></li>
+    <% }); %>
+  </ul>
+
+  <a class="btn btn--ghost btn--sm" href="/reports/<%= match.report.reference_no %>">
+    View report <span aria-hidden="true">&rarr;</span>
+  </a>
+</article>

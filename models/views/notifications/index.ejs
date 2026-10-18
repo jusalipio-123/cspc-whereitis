@@ -1,0 +1,44 @@
+<!-- CSPC WhereITis — views/notifications/index.ejs -->
+<%- include('../partials/head', { title: title }) %>
+<%- include('../partials/nav') %>
+
+<main id="main" class="container">
+  <%- include('../partials/flash') %>
+
+  <h1>Inbox</h1>
+  <nav class="mod-tabs" aria-label="Inbox">
+    <a class="mod-tab" href="/notifications" aria-current="page">Notifications<% if (unreadCount) { %> <span class="mod-count"><%= unreadCount %></span><% } %></a>
+    <a class="mod-tab" href="/messages">Messages</a>
+    <a class="mod-tab mod-tab--end" href="/my-reports">&larr; My reports</a>
+  </nav>
+
+  <% if (notifications.length === 0) { %>
+    <div class="empty-state">
+      <h3>You're all caught up</h3>
+      <p>We'll tell you here when someone files a claim on your report, a staff member updates it, or you get a message.</p>
+    </div>
+  <% } else { %>
+    <% if (unreadCount) { %>
+      <form method="post" action="/notifications/read-all" class="inline">
+        <button class="btn btn--ghost btn--sm" type="submit">Mark all as read</button>
+      </form>
+    <% } %>
+    <ul class="notif-list">
+      <% notifications.forEach(function (n) { %>
+        <li class="notif<%= n.is_read ? '' : ' notif--unread' %>">
+          <div class="notif__main">
+            <a href="<%= n.link %>"><%= n.body %></a>
+            <span class="muted"><%= new Date(n.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) %></span>
+          </div>
+          <% if (!n.is_read) { %>
+            <form method="post" action="/notifications/<%= n.id %>/read" class="inline">
+              <button class="btn btn--ghost btn--sm" type="submit">Mark read</button>
+            </form>
+          <% } %>
+        </li>
+      <% }); %>
+    </ul>
+  <% } %>
+</main>
+
+<%- include('../partials/foot') %>
