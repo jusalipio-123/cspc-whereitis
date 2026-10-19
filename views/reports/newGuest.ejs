@@ -133,11 +133,11 @@
       <section class="form-section" aria-labelledby="sec-photo">
         <h2 id="sec-photo" class="form-section__title"><span class="form-section__num" aria-hidden="true">3</span>Photo</h2>
         <div class="field">
-          <label for="photo">Upload a photo of the item <span class="req" aria-hidden="true">*</span></label>
-          <input id="photo" name="photo" class="input" type="file" required accept="image/jpeg,image/png,image/gif,image/webp" data-photo-file
+          <label for="photo">Upload a photo of the item (optional)</label>
+          <input id="photo" name="photo" class="input" type="file" accept="image/jpeg,.jpg,.jpeg,.png,.webp,image/webp" data-photo-file
                  <%= _errors.photo ? 'aria-invalid="true" aria-describedby="err-photo"' : 'aria-describedby="hint-photo"' %>>
           <% if (_errors.photo) { %><p class="field-error" id="err-photo"><%= _errors.photo %> Please choose the photo again.</p><% } %>
-          <p class="field-hint" id="hint-photo">JPG, PNG, GIF or WebP, up to 5 MB. Everyone can see it.</p>
+          <p class="field-hint" id="hint-photo">JPG, JPEG, PNG or WebP, up to 5 MB. Everyone can see it.</p>
           <input type="hidden" id="photo_url" name="photo_url" value="">
           <div class="photo-preview" data-photo-preview hidden>
             <img alt="Preview of the item photo" data-photo-img>

@@ -32,6 +32,17 @@ app.locals.isoDate = phTime.isoDate;
 // ---------------------------------------------------------------------
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
+// Serve uploaded images from the same directory used by the upload handler.
+// This also supports UPLOAD_DIR pointing at a persistent hosting volume.
+const uploadStorage = require('./middleware/upload');
+app.use('/uploads', express.static(uploadStorage.UPLOAD_DIR, {
+  dotfiles: 'deny',
+  index: false,
+  setHeaders(res) {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
+  },
+}));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ---------------------------------------------------------------------
