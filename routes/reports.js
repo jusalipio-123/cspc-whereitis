@@ -49,7 +49,8 @@ function validateTags(rawTagIds, allTags) {
 
 // Shared validation for report creation/editing, so POST / and
 // POST /:reference/edit can never drift apart.
-function validateReportFields(body, allTags) {
+function validateReportFields(body, allTags, lookups) {
+  lookups = lookups || {};
   const errors = {};
   const values = {};
 
@@ -64,6 +65,31 @@ function validateReportFields(body, allTags) {
   const locationResult = validate.isInt({ min: 1 }, 'Location')(body.location_id);
   values.location_id = locationResult.value;
   if (!locationResult.ok) errors.location_id = locationResult.error;
+
+  // "Other (please specify)": when the chosen category / location is the
+  // "Other" row, the reporter must type their own text; otherwise it is dropped.
+  const pickedCategory = (lookups.categories || []).find((c) => c.id === categoryResult.value);
+  values.category_other = '';
+  if (pickedCategory && pickedCategory.is_other) {
+    const r = validate.compose(
+      validate.required('Item type'),
+      validate.minLen(2, 'Item type'),
+      validate.maxLen(60, 'Item type')
+    )(body.category_other);
+    values.category_other = r.value;
+    if (!r.ok) errors.category_other = r.error.replace(/^.*$/, 'Please specify what kind of item it is (2 to 60 characters).');
+  }
+  const pickedLocation = (lookups.locations || []).find((l) => l.id === locationResult.value);
+  values.location_other = '';
+  if (pickedLocation && pickedLocation.is_other) {
+    const r = validate.compose(
+      validate.required('Location'),
+      validate.minLen(2, 'Location'),
+      validate.maxLen(120, 'Location')
+    )(body.location_other);
+    values.location_other = r.value;
+    if (!r.ok) errors.location_other = 'Please specify the place (2 to 120 characters).';
+  }
 
   const titleResult = validate.compose(
     validate.required('Title'),
@@ -239,7 +265,7 @@ router.post('/', requireIdentity, upload.parsePhoto, async (req, res, next) => {
       tagModel.listAll(),
     ]);
 
-    const validated = validateReportFields(req.body, allTags);
+    const validated = validateReportFields(req.body, allTags, { categories, locations });
     const { values, errors, tagIds } = validated;
     let ok = validated.ok;
     const photoErr = upload.checkPhoto(req) || upload.requirePhoto(req);
@@ -261,7 +287,9 @@ router.post('/', requireIdentity, upload.parsePhoto, async (req, res, next) => {
       user_id: req.identity.userId,
       kind: values.kind,
       category_id: values.category_id,
+      category_other: values.category_other,
       location_id: values.location_id,
+      location_other: values.location_other,
       title: values.title,
       description: values.description,
       occurred_on: values.occurred_on,
@@ -392,7 +420,8 @@ router.post('/:reference/edit', requireIdentity, upload.parsePhoto, async (req, 
     // from the stored report, never from the submitted form.
     const validated = validateReportFields(
       { ...req.body, kind: report.kind },
-      allTags
+      allTags,
+      { categories, locations }
     );
     const { values, errors, tagIds } = validated;
     let ok = validated.ok;
@@ -426,7 +455,9 @@ router.post('/:reference/edit', requireIdentity, upload.parsePhoto, async (req, 
   title: values.title,
   description: values.description,
   category_id: values.category_id,
+  category_other: values.category_other,
   location_id: values.location_id,
+  location_other: values.location_other,
   occurred_on: values.occurred_on,
   holding_location: values.holding_location || null,
   photo_url: values.photo_url || null,

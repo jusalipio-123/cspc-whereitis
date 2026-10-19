@@ -2,14 +2,24 @@
 <%- include('../partials/head', { title: 'Accessibility Statement' }) %>
 <%- include('../partials/nav') %>
 
-<main id="main" class="container">
+<main id="main" class="container doc-page">
   <%- include('../partials/flash') %>
 
-  <h1>Accessibility Statement</h1>
-  <p class="lead">WhereITis aims to meet WCAG 2.2 Level AA. This page describes
-  what we have done, what we have not, and how to report a barrier.</p>
+  <header class="doc-hero">
+    <p class="page-head__eyebrow">Accessibility</p>
+    <h1>Accessibility Statement</h1>
+    <p class="lead">WhereITis aims to meet WCAG 2.2 Level AA. This page describes what we have done, what we have not, and how to report a barrier.</p>
+  </header>
+  <%- include('../partials/docNav', { current: 'accessibility' }) %>
 
-  <h2>The four POUR principles, in plain words</h2>
+  <div class="doc-layout">
+    <aside class="doc-toc" aria-label="On this page">
+      <p class="doc-toc__title">On this page</p>
+      <ol><li><a href="#s-1">The four POUR principles, in plain words</a></li><li><a href="#s-2">What has been done in this build</a></li><li><a href="#s-3">What is still incomplete</a></li><li><a href="#s-4">Keyboard-only instructions</a></li><li><a href="#s-5">How to report a barrier</a></li></ol>
+    </aside>
+    <article class="doc-body">
+
+  <h2 id="s-1">The four POUR principles, in plain words</h2>
   <ul>
     <li><strong>Perceivable</strong> — everyone can perceive the content, including
     people using screen readers or enlarged text.</li>
@@ -21,7 +31,7 @@
     technologies, now and in the future.</li>
   </ul>
 
-  <h2>What has been done in this build</h2>
+  <h2 id="s-2">What has been done in this build</h2>
   <ul>
     <li>Every form control has a <code>&lt;label for&gt;</code> bound to its id.</li>
     <li>Every error message is text and is announced to assistive tech via
@@ -42,7 +52,7 @@
     <li>Body text is at least 16 pixels.</li>
   </ul>
 
-  <h2>What is still incomplete</h2>
+  <h2 id="s-3">What is still incomplete</h2>
   <ul>
     <li>We have not yet had an external WCAG 2.2 AA audit. Our statement of
     compliance is based on self-testing only.</li>
@@ -53,7 +63,7 @@
     <li>Print stylesheet is provided, but we have not tested it on all printers.</li>
   </ul>
 
-  <h2>Keyboard-only instructions</h2>
+  <h2 id="s-4">Keyboard-only instructions</h2>
   <ul>
     <li><strong>Tab</strong> — move forward through links, buttons, and form fields.</li>
     <li><strong>Shift + Tab</strong> — move backward.</li>
@@ -64,11 +74,18 @@
     into the page.</li>
   </ul>
 
-  <h2>How to report a barrier</h2>
+  <h2 id="s-5">How to report a barrier</h2>
   <p>Email <a href="mailto:accessibility@cspc.edu.ph">accessibility@cspc.edu.ph</a>
   or tell any staff member at the College of Computer Studies or the IT office.
   You do not need to fill in any form. We will respond within five working days
   and, where possible, fix the barrier within one month.</p>
+
+      <aside class="doc-help">
+        <strong>Still have a question?</strong>
+        <span>Visit the IT office or any staff member, or read the <a href="/help">User guide</a>.</span>
+      </aside>
+    </article>
+  </div>
 </main>
 
 <%- include('../partials/foot') %>

@@ -21,6 +21,7 @@ async function start() {
   // the terminal immediately, not a server that "looks" up but 500s on
   // every request that touches the database.
   await db.ping();
+  await require('./lib/migrate').run();
 
   app.listen(PORT, () => {
     console.log(

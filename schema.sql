@@ -57,6 +57,7 @@ CREATE TABLE categories (
   slug        VARCHAR(60)  NOT NULL,
   icon_key    VARCHAR(40)  NULL,        -- maps to an inline SVG symbol id in views/partials/icons.ejs
   sort_order  INT          NOT NULL DEFAULT 0,
+  is_other    TINYINT(1)   NOT NULL DEFAULT 0,   -- the "Other (please specify)" choice: the reporter types their own text
   UNIQUE KEY uniq_categories_name (name),
   UNIQUE KEY uniq_categories_slug (slug)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -76,6 +77,7 @@ CREATE TABLE locations (
   name       VARCHAR(120) NOT NULL,
   zone       VARCHAR(60)  NULL,
   is_public  TINYINT(1)   NOT NULL DEFAULT 1,
+  is_other   TINYINT(1)   NOT NULL DEFAULT 0,   -- the "Other location (please specify)" choice
   UNIQUE KEY uniq_locations_name (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -235,7 +237,9 @@ CREATE TABLE reports (
   submitter_ip_hash CHAR(64)     NULL,     -- HMAC of the guest's IP (never the raw IP); used only for rate limits and spam review
   kind              ENUM('lost','found') NOT NULL,
   category_id       INT          NOT NULL,
+  category_other    VARCHAR(60)  NULL,     -- what the item is, when the category is "Other"
   location_id       INT          NOT NULL,
+  location_other    VARCHAR(120) NULL,     -- where, when the location is "Other"
   title             VARCHAR(120) NOT NULL,
   description       VARCHAR(1000) NOT NULL,
   occurred_on       DATE         NOT NULL,

@@ -271,7 +271,7 @@ router.get('/export.csv', requireIdentity, async (req, res, next) => {
     // No streaming needed for this volume; if the dataset grows past
     // about 10k rows, switch to a streaming CSV writer.
     const [rows] = await pool.execute(
-      'SELECT r.reference_no, r.kind, c.name AS category, l.name AS location, ' +
+      'SELECT r.reference_no, r.kind, CASE WHEN c.is_other = 1 AND r.category_other IS NOT NULL AND r.category_other <> '' THEN CONCAT('Other: ', r.category_other) ELSE c.name END AS category, CASE WHEN l.is_other = 1 AND r.location_other IS NOT NULL AND r.location_other <> '' THEN CONCAT('Other: ', r.location_other) ELSE l.name END AS location, ' +
       'r.title, r.status, r.occurred_on, r.created_at ' +
       'FROM reports r ' +
       'JOIN categories c ON c.id = r.category_id ' +

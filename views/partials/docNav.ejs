@@ -1,0 +1,12 @@
+<%# Tabs shared by the information pages. Local: current ('about' | 'help' | ...). %>
+<%
+  var _docTabs = [
+    ['about', '/about', 'About'], ['help', '/help', 'User guide'], ['accessibility', '/accessibility', 'Accessibility'],
+    ['privacy', '/privacy', 'Privacy'], ['terms', '/terms', 'Terms'], ['cookies', '/cookies', 'Cookies']
+  ];
+%>
+<nav class="doc-tabs" aria-label="Information pages">
+  <% _docTabs.forEach(function (t) { %>
+    <a href="<%= t[1] %>"<%- current === t[0] ? ' aria-current="page"' : '' %>><%= t[2] %></a>
+  <% }); %>
+</nav>

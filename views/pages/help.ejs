@@ -2,14 +2,24 @@
 <%- include('../partials/head', { title: 'User guide' }) %>
 <%- include('../partials/nav') %>
 
-<main id="main" class="container">
+<main id="main" class="container doc-page">
   <%- include('../partials/flash') %>
 
-  <h1>User guide</h1>
-  <p class="lead">Tasks, not screens. Each section below is written for a
-  first-time user.</p>
+  <header class="doc-hero">
+    <p class="page-head__eyebrow">Help</p>
+    <h1>User guide</h1>
+    <p class="lead">Tasks, not screens. Each section below is written for a first-time user.</p>
+  </header>
+  <%- include('../partials/docNav', { current: 'help' }) %>
 
-  <h2>How to report a lost item</h2>
+  <div class="doc-layout">
+    <aside class="doc-toc" aria-label="On this page">
+      <p class="doc-toc__title">On this page</p>
+      <ol><li><a href="#s-1">How to report a lost item</a></li><li><a href="#s-2">How to report a found item</a></li><li><a href="#s-3">How to search for an item</a></li><li><a href="#s-4">How to file a claim</a></li><li><a href="#s-5">How to check the status of your reports</a></li><li><a href="#s-6">What happens after a claim is approved</a></li><li><a href="#s-7">What to do when something goes wrong</a></li></ol>
+    </aside>
+    <article class="doc-body">
+
+  <h2 id="s-1">How to report a lost item</h2>
   <ol>
     <li>Click <strong>Report an item</strong> in the top-right of any page.</li>
     <li>Choose <strong>I lost something</strong>.</li>
@@ -22,7 +32,7 @@
   <p><strong>Expected result:</strong> your report is public and other users can match it
   against found items.</p>
 
-  <h2>How to report a found item</h2>
+  <h2 id="s-2">How to report a found item</h2>
   <ol>
     <li>Click <strong>Report an item</strong> and choose <strong>I found
     something</strong>.</li>
@@ -34,7 +44,7 @@
   <p><strong>Expected result:</strong> the item appears under Found reports, and
   its owner can file a claim.</p>
 
-  <h2>How to search for an item</h2>
+  <h2 id="s-3">How to search for an item</h2>
   <ol>
     <li>Use the search box on the home page or click <strong>Reports</strong> in
     the nav.</li>
@@ -44,7 +54,7 @@
     <li>Press Enter or click <strong>Apply filters</strong>.</li>
   </ol>
 
-  <h2>How to file a claim</h2>
+  <h2 id="s-4">How to file a claim</h2>
   <ol>
     <li>Open the found report you believe is yours.</li>
     <li>Click <strong>This is mine — file a claim</strong>.</li>
@@ -55,7 +65,7 @@
     <li>Submit. You will see a claim confirmation page.</li>
   </ol>
 
-  <h2>How to check the status of your reports</h2>
+  <h2 id="s-5">How to check the status of your reports</h2>
   <ol>
     <li>Click <strong>My Reports</strong> in the nav.</li>
     <li>Sign in with your student number and PIN.</li>
@@ -64,7 +74,7 @@
     archived.</li>
   </ol>
 
-  <h2>What happens after a claim is approved</h2>
+  <h2 id="s-6">What happens after a claim is approved</h2>
   <ol>
     <li>The person who posted the report approves your claim. Every other pending claim on the same report is
     automatically rejected.</li>
@@ -75,7 +85,7 @@
     <li>The report status changes to <strong>returned</strong>.</li>
   </ol>
 
-  <h2>What to do when something goes wrong</h2>
+  <h2 id="s-7">What to do when something goes wrong</h2>
   <ul>
     <li><strong>I forgot my PIN.</strong> Contact the IT office in person with
     your student ID. This is a demo constraint; Week 11 replaces PINs with real
@@ -87,6 +97,13 @@
     <li><strong>My claim was rejected but I think it is really mine.</strong>
     Contact Student Affairs. Bring whatever evidence you have.</li>
   </ul>
+
+      <aside class="doc-help">
+        <strong>Still have a question?</strong>
+        <span>Visit the IT office or any staff member, or read the <a href="/help">User guide</a>.</span>
+      </aside>
+    </article>
+  </div>
 </main>
 
 <%- include('../partials/foot') %>

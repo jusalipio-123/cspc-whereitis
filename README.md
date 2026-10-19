@@ -334,3 +334,7 @@ MIT — see [LICENSE](./LICENSE).
 ## Time zone
 
 The whole app runs on Philippine Standard Time (UTC+08:00, `Asia/Manila`). The server, the MySQL connection and every date shown on screen use it, whatever time zone the computer or host is set to. The helpers live in `lib/time.js`.
+
+## Categories and locations
+
+The category and location lists include an "Other (please specify)" choice; the reporter types their own text, shown on the report as "Other: ...". To add the new categories, the CSPC Nabua campus places and the new columns to an existing database, the server now applies `add-more-categories-locations.sql` automatically the first time it starts (you can also run it by hand once). Admins can rename, add or hide places under Admin > Locations.

@@ -5,7 +5,7 @@
   const _errors = errors || {};
   const _kind = values.kind || '';
   const _fieldIds = {
-    kind: 'kind-lost', title: 'title', category_id: 'category_id', location_id: 'location_id',
+    kind: 'kind-lost', title: 'title', category_id: 'category_id', category_other: 'category_other', location_id: 'location_id', location_other: 'location_other',
     occurred_on: 'occurred_on', holding_location: 'holding_location', description: 'description',
     tag_ids: 'tag-picker', photo_url: 'photo_url'
   };
@@ -83,11 +83,10 @@
           <select id="category_id" name="category_id" class="select" required
                   <%= _errors.category_id ? 'aria-invalid="true" aria-describedby="err-cat"' : '' %>>
             <option value="">Select a category</option>
-            <% categories.forEach(function (c) { %>
-              <option value="<%= c.id %>" <%= String(values.category_id) === String(c.id) ? 'selected' : '' %>><%= c.name %></option>
-            <% }); %>
+            <%- include('../partials/lookupOptions', { kind: 'category', items: categories, selectedId: values.category_id }) %>
           </select>
           <% if (_errors.category_id) { %><p class="field-error" id="err-cat"><%= _errors.category_id %></p><% } %>
+          <%- include('../partials/specifyField', { forSelect: 'category_id', name: 'category_other', label: 'What kind of item is it?', placeholder: 'e.g. Tuning fork, lab coat pin', value: values.category_other, error: _errors.category_other, max: 60, show: !!(categories.find(function (c) { return c.is_other && String(c.id) === String(values.category_id); })) }) %>
         </div>
 
         </div>
@@ -131,11 +130,10 @@
             <select id="location_id" name="location_id" class="select" required
                     <%= _errors.location_id ? 'aria-invalid="true" aria-describedby="err-loc"' : '' %>>
               <option value="">Select a location</option>
-              <% locations.forEach(function (l) { %>
-                <option value="<%= l.id %>" <%= String(values.location_id) === String(l.id) ? 'selected' : '' %>><%= l.name %><%= l.zone ? ' · ' + l.zone : '' %></option>
-              <% }); %>
+            <%- include('../partials/lookupOptions', { kind: 'location', items: locations, selectedId: values.location_id }) %>
             </select>
             <% if (_errors.location_id) { %><p class="field-error" id="err-loc"><%= _errors.location_id %></p><% } %>
+          <%- include('../partials/specifyField', { forSelect: 'location_id', name: 'location_other', label: 'Specify the place', placeholder: 'e.g. Beside the water refilling station', value: values.location_other, error: _errors.location_other, max: 120, show: !!(locations.find(function (l) { return l.is_other && String(l.id) === String(values.location_id); })) }) %>
           </div>
 
           <div class="field">
@@ -190,8 +188,8 @@
     <aside class="report-aside" aria-label="Help">
       <div class="card aside-card">
         <h2>Posting as</h2>
-        <p><strong><%= identity ? identity.studentNo : '' %></strong></p>
-        <p class="muted">Your student number is never shown on the public report.</p>
+        <p><strong><%= (typeof profileName !== 'undefined' && profileName) ? profileName : (identity ? identity.studentNo : '') %></strong></p>
+        <p class="muted">Your name and student number are never shown on the public report.</p>
       </div>
 
       <div class="card aside-card" data-show-for="none">

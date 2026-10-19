@@ -9,7 +9,7 @@ const { pool } = require('../db');
 // list: every location grouped by zone for admin/staff screens.
 async function list() {
   const [rows] = await pool.execute(
-    'SELECT * FROM locations ORDER BY zone ASC, name ASC'
+    'SELECT * FROM locations ORDER BY is_other ASC, zone ASC, name ASC'
   );
   return rows;
 }
@@ -17,7 +17,7 @@ async function list() {
 // listPublic: only locations students should see in the report-a-lost/found-item dropdown, hiding internal-only holding spots.
 async function listPublic() {
   const [rows] = await pool.execute(
-    'SELECT * FROM locations WHERE is_public = 1 ORDER BY zone ASC, name ASC'
+    'SELECT * FROM locations WHERE is_public = 1 ORDER BY is_other ASC, zone ASC, name ASC'
   );
   return rows;
 }

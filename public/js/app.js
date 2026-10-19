@@ -523,3 +523,27 @@ document.addEventListener('DOMContentLoaded', function () {
     }, { passive: true });
   }
 })();
+
+// ---------------------------------------------------------------------
+// "Other (please specify)": the text box under the Category / Location
+// select appears only while the "Other" option is chosen.
+// ---------------------------------------------------------------------
+(function () {
+  document.querySelectorAll('[data-specify-for]').forEach(function (box) {
+    const select = document.getElementById(box.getAttribute('data-specify-for'));
+    const input = box.querySelector('input');
+    if (!select || !input) { return; }
+    const sync = function () {
+      const opt = select.options[select.selectedIndex];
+      const other = !!(opt && opt.getAttribute('data-other') === '1');
+      box.hidden = !other;
+      input.required = other;
+      if (!other) { input.value = ''; }
+    };
+    select.addEventListener('change', function () {
+      sync();
+      if (!box.hidden) { input.focus(); }
+    });
+    sync();
+  });
+})();

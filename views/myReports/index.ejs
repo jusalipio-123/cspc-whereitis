@@ -1,34 +1,55 @@
 <!-- CSPC WhereITis — views/myReports/index.ejs -->
+<%
+  const _name = (typeof profileName !== 'undefined' && profileName) ? profileName : identity.studentNo;
+  const _initials = _name.split(/\s+/).filter(Boolean).slice(0, 2).map(function (w) { return w.charAt(0); }).join('').toUpperCase() || 'U';
+  const _unread = (typeof unreadCount !== 'undefined' && unreadCount > 0) ? unreadCount : 0;
+  const _pendingIncoming = incomingClaims.filter(function (c) { return c.status === 'pending'; }).length;
+  const _pillFor = function (st) { return st === 'approved' ? 'returned' : st === 'rejected' ? 'archived' : 'open'; };
+%>
 <%- include('../partials/head', { title: 'My Reports' }) %>
 <%- include('../partials/nav') %>
 
-<main id="main" class="container">
+<main id="main" class="container my-page">
   <%- include('../partials/flash') %>
 
-  <h1>My Reports</h1>
-  <p class="muted">Signed in as <strong><%= identity.studentNo %></strong>.</p>
+  <header class="my-hero card">
+    <div class="my-hero__who">
+      <span class="my-hero__avatar" aria-hidden="true"><%= _initials %></span>
+      <div>
+        <p class="page-head__eyebrow">My Reports</p>
+        <h1 class="my-hero__name"><%= _name %></h1>
+        <p class="my-hero__sub muted">Student no. <%= identity.studentNo %></p>
+      </div>
+    </div>
+    <div class="my-hero__actions">
+      <a class="btn btn--primary btn--sm" href="/reports/new">Report an item</a>
+      <a class="btn btn--ghost btn--sm" href="/notifications">Notifications<% if (_unread) { %> <span class="my-badge"><%= _unread %></span><% } %></a>
+      <a class="btn btn--ghost btn--sm" href="/messages">Messages</a>
+      <form method="post" action="/my-reports/sign-out" class="inline" data-confirm="Sign out of My Reports?">
+        <button type="submit" class="btn btn--ghost btn--sm">Sign out</button>
+      </form>
+    </div>
+  </header>
 
-  <p class="my-links">
-    <a class="btn btn--ghost btn--sm" href="/notifications">Notifications<% if (typeof unreadCount !== 'undefined' && unreadCount > 0) { %> (<%= unreadCount %> new)<% } %></a>
-    <a class="btn btn--ghost btn--sm" href="/messages">Messages</a>
-    <a class="btn btn--primary btn--sm" href="/reports/new">Report an item</a>
-  </p>
-
-  <form method="post" action="/my-reports/sign-out" class="inline"
-        data-confirm="Sign out of My Reports?">
-    <button type="submit" class="btn btn--ghost btn--sm">Sign out of My Reports</button>
-  </form>
+  <ul class="my-stats" aria-label="Summary">
+    <li><a href="#my-reports-h"><strong><%= reports.length %></strong><span>My reports</span></a></li>
+    <li><a href="#incoming-h"><strong><%= incomingClaims.length %></strong><span>Claims on my items<% if (_pendingIncoming) { %> <em><%= _pendingIncoming %> to review</em><% } %></span></a></li>
+    <li><a href="#my-claims-h"><strong><%= claims.length %></strong><span>My claims</span></a></li>
+    <li><a href="#my-bookmarks-h"><strong><%= bookmarks.length %></strong><span>Bookmarks</span></a></li>
+  </ul>
 
   <section class="my-section" aria-labelledby="my-reports-h">
-    <h2 id="my-reports-h">My reports (<%= reports.length %>)</h2>
+    <div class="my-section__head">
+      <h2 id="my-reports-h">My reports <span class="my-count"><%= reports.length %></span></h2>
+      <a class="btn btn--ghost btn--sm" href="/reports/new">New report</a>
+    </div>
     <% if (reports.length === 0) { %>
       <div class="empty-state">
-        <%- icons.search %>
         <p>You haven't filed any reports yet.</p>
         <a class="btn btn--primary" href="/reports/new">Report an item</a>
       </div>
     <% } else { %>
-      <ul class="card-grid">
+      <ul class="card-grid card-grid--compact">
         <% reports.forEach(function (r) { %>
           <li><%- include('../partials/reportCard', { report: r }) %></li>
         <% }); %>
@@ -36,54 +57,58 @@
     <% } %>
   </section>
 
-  <section class="my-section" aria-labelledby="incoming-h">
-    <h2 id="incoming-h">Claims on my reports (<%= incomingClaims.length %>)</h2>
-    <% if (incomingClaims.length === 0) { %>
-      <div class="empty-state">
-        <p>Nobody has claimed one of your items yet. You will get a notification when they do.</p>
-      </div>
-    <% } else { %>
-      <ul class="claim-list">
-        <% incomingClaims.forEach(function (c) { %>
-          <li class="claim-row">
-            <a href="/claims/<%= c.id %>"><%= c.status === 'pending' ? 'Review claim' : 'Claim' %> #<%= c.id %></a> &mdash;
-            <strong><%= c.report_title %></strong> by <%= c.claimant_name %> &middot;
-            <span class="pill pill--<%= c.status === 'approved' ? 'returned' : c.status === 'rejected' ? 'archived' : 'open' %>"><%= c.status %></span>
-            <p class="muted">Filed <%= fmtDateTime(c.created_at) %></p>
-          </li>
-        <% }); %>
-      </ul>
-    <% } %>
-  </section>
+  <div class="my-columns">
+    <section class="my-section" aria-labelledby="incoming-h">
+      <div class="my-section__head"><h2 id="incoming-h">Claims on my reports <span class="my-count"><%= incomingClaims.length %></span></h2></div>
+      <% if (incomingClaims.length === 0) { %>
+        <div class="empty-state"><p>Nobody has claimed one of your items yet. You will get a notification when they do.</p></div>
+      <% } else { %>
+        <ul class="claim-list claim-list--my">
+          <% incomingClaims.forEach(function (c) { %>
+            <li class="claim-row">
+              <div class="claim-row__main">
+                <strong><%= c.report_title %></strong>
+                <span class="muted">by <%= c.claimant_name %> &middot; <%= fmtDateTime(c.created_at) %></span>
+              </div>
+              <div class="claim-row__side">
+                <span class="pill pill--<%= _pillFor(c.status) %>"><%= c.status %></span>
+                <a href="/claims/<%= c.id %>"><%= c.status === 'pending' ? 'Review' : 'View' %></a>
+              </div>
+            </li>
+          <% }); %>
+        </ul>
+      <% } %>
+    </section>
 
-  <section class="my-section" aria-labelledby="my-claims-h">
-    <h2 id="my-claims-h">My claims (<%= claims.length %>)</h2>
-    <% if (claims.length === 0) { %>
-      <div class="empty-state">
-        <p>You haven't filed any claims yet.</p>
-      </div>
-    <% } else { %>
-      <ul class="claim-list">
-        <% claims.forEach(function (c) { %>
-          <li class="claim-row">
-            <a href="/claims/<%= c.id %>">Claim #<%= c.id %></a> —
-            <strong><%= c.report_title %></strong> &middot;
-            <span class="pill pill--<%= c.status === 'approved' ? 'returned' : c.status === 'rejected' ? 'archived' : 'open' %>"><%= c.status %></span>
-            <p class="muted">Filed <%= fmtDateTime(c.created_at) %></p>
-          </li>
-        <% }); %>
-      </ul>
-    <% } %>
-  </section>
+    <section class="my-section" aria-labelledby="my-claims-h">
+      <div class="my-section__head"><h2 id="my-claims-h">My claims <span class="my-count"><%= claims.length %></span></h2></div>
+      <% if (claims.length === 0) { %>
+        <div class="empty-state"><p>You haven't filed any claims yet.</p></div>
+      <% } else { %>
+        <ul class="claim-list claim-list--my">
+          <% claims.forEach(function (c) { %>
+            <li class="claim-row">
+              <div class="claim-row__main">
+                <strong><%= c.report_title %></strong>
+                <span class="muted">Claim #<%= c.id %> &middot; <%= fmtDateTime(c.created_at) %></span>
+              </div>
+              <div class="claim-row__side">
+                <span class="pill pill--<%= _pillFor(c.status) %>"><%= c.status %></span>
+                <a href="/claims/<%= c.id %>">View</a>
+              </div>
+            </li>
+          <% }); %>
+        </ul>
+      <% } %>
+    </section>
+  </div>
 
   <section class="my-section" aria-labelledby="my-bookmarks-h">
-    <h2 id="my-bookmarks-h">My bookmarks (<%= bookmarks.length %>)</h2>
+    <div class="my-section__head"><h2 id="my-bookmarks-h">My bookmarks <span class="my-count"><%= bookmarks.length %></span></h2></div>
     <% if (bookmarks.length === 0) { %>
-      <div class="empty-state">
-        <p>You haven't bookmarked anything yet.</p>
-      </div>
+      <div class="empty-state"><p>You haven't bookmarked anything yet.</p></div>
     <% } else { %>
-      <ul class="card-grid">
+      <ul class="card-grid card-grid--compact">
         <% bookmarks.forEach(function (r) { %>
           <li><%- include('../partials/reportCard', { report: r }) %></li>
         <% }); %>

@@ -1,0 +1,24 @@
+<%# Options for the category / location selects.
+    Locals: kind ('category' | 'location'), items, selectedId.
+    Locations are grouped by zone; the "Other (please specify)" row sits last and is marked data-other. %>
+<% if (kind === 'category') { %>
+  <% items.forEach(function (c) { %>
+    <option value="<%= c.id %>"<%- c.is_other ? ' data-other="1"' : '' %> <%= String(selectedId) === String(c.id) ? 'selected' : '' %>><%= c.name %></option>
+  <% }); %>
+<% } else { %>
+  <%
+    var _groups = [], _byZone = {};
+    items.forEach(function (l) {
+      var z = l.is_other ? '' : (l.zone || 'Other places');
+      if (!(z in _byZone)) { _byZone[z] = []; _groups.push(z); }
+      _byZone[z].push(l);
+    });
+  %>
+  <% _groups.forEach(function (z) { %>
+    <% if (z) { %><optgroup label="<%= z %>"><% } %>
+    <% _byZone[z].forEach(function (l) { %>
+      <option value="<%= l.id %>"<%- l.is_other ? ' data-other="1"' : '' %> <%= String(selectedId) === String(l.id) ? 'selected' : '' %>><%= l.name %></option>
+    <% }); %>
+    <% if (z) { %></optgroup><% } %>
+  <% }); %>
+<% } %>

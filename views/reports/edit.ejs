@@ -33,11 +33,10 @@
       <select id="category_id" name="category_id" class="select" required
               <%= errors.category_id ? 'aria-invalid="true" aria-describedby="err-cat"' : '' %>>
         <option value="">Choose a category</option>
-        <% categories.forEach(function (c) { %>
-          <option value="<%= c.id %>" <%= String(values.category_id) === String(c.id) ? 'selected' : '' %>><%= c.name %></option>
-        <% }); %>
+            <%- include('../partials/lookupOptions', { kind: 'category', items: categories, selectedId: values.category_id }) %>
       </select>
       <% if (errors.category_id) { %><p class="field-error" id="err-cat"><%= errors.category_id %></p><% } %>
+          <%- include('../partials/specifyField', { forSelect: 'category_id', name: 'category_other', label: 'What kind of item is it?', placeholder: 'e.g. Tuning fork, lab coat pin', value: values.category_other, error: errors.category_other, max: 60, show: !!(categories.find(function (c) { return c.is_other && String(c.id) === String(values.category_id); })) }) %>
     </div>
 
     <div class="field">
@@ -45,11 +44,10 @@
       <select id="location_id" name="location_id" class="select" required
               <%= errors.location_id ? 'aria-invalid="true" aria-describedby="err-loc"' : '' %>>
         <option value="">Choose a location</option>
-        <% locations.forEach(function (l) { %>
-          <option value="<%= l.id %>" <%= String(values.location_id) === String(l.id) ? 'selected' : '' %>><%= l.name %><%= l.zone ? ' · ' + l.zone : '' %></option>
-        <% }); %>
+            <%- include('../partials/lookupOptions', { kind: 'location', items: locations, selectedId: values.location_id }) %>
       </select>
       <% if (errors.location_id) { %><p class="field-error" id="err-loc"><%= errors.location_id %></p><% } %>
+          <%- include('../partials/specifyField', { forSelect: 'location_id', name: 'location_other', label: 'Specify the place', placeholder: 'e.g. Beside the water refilling station', value: values.location_other, error: errors.location_other, max: 120, show: !!(locations.find(function (l) { return l.is_other && String(l.id) === String(values.location_id); })) }) %>
     </div>
 
     <div class="field">

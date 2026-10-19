@@ -16,9 +16,11 @@ const DETAIL_SELECT = `
   SELECT
     r.*,
     u.full_name AS reporter_name,
-    c.name       AS category_name,
+    CASE WHEN c.is_other = 1 AND r.category_other IS NOT NULL AND r.category_other <> '' THEN CONCAT('Other: ', r.category_other) ELSE c.name END AS category_name,
     c.slug       AS category_slug,
-    l.name       AS location_name,
+    c.is_other   AS category_is_other,
+    CASE WHEN l.is_other = 1 AND r.location_other IS NOT NULL AND r.location_other <> '' THEN CONCAT('Other: ', r.location_other) ELSE l.name END AS location_name,
+    l.is_other   AS location_is_other,
     DATEDIFF(NOW(), r.occurred_on) AS days_held
   FROM reports r
   LEFT JOIN users u ON u.id = r.user_id
@@ -84,15 +86,17 @@ async function create(data) {
   const referenceNo = await nextReference(data.kind);
   const [result] = await pool.query(
     `INSERT INTO reports (
-       reference_no, user_id, kind, category_id, location_id,
+       reference_no, user_id, kind, category_id, category_other, location_id, location_other,
        title, description, occurred_on, holding_location, photo_url
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       referenceNo,
       data.user_id,
       data.kind,
       data.category_id,
+      data.category_other || null,
       data.location_id,
+      data.location_other || null,
       data.title,
       data.description,
       data.occurred_on,
@@ -188,14 +192,17 @@ async function list(filters = {}) {
 async function updateWhileOpen(id, userId, data) {
   const [result] = await pool.query(
     `UPDATE reports
-     SET title = ?, description = ?, category_id = ?, location_id = ?,
+     SET title = ?, description = ?, category_id = ?, category_other = ?,
+         location_id = ?, location_other = ?,
          occurred_on = ?, holding_location = ?, photo_url = ?, updated_at = NOW()
      WHERE id = ? AND user_id = ? AND status = 'open'`,
     [
       data.title,
       data.description,
       data.category_id,
+      data.category_other || null,
       data.location_id,
+      data.location_other || null,
       data.occurred_on,
       data.holding_location || null,
       data.photo_url || null,
@@ -340,8 +347,8 @@ async function latestN(n) {
 async function latestReturned(limit = 4) {
   const safeLimit = Math.min(Math.max(Number(limit) || 4, 1), 50);
   const [rows] = await pool.execute(
-    `SELECT r.*, c.name AS category_name, c.slug AS category_slug,
-            l.name AS location_name
+    `SELECT r.*, CASE WHEN c.is_other = 1 AND r.category_other IS NOT NULL AND r.category_other <> '' THEN CONCAT('Other: ', r.category_other) ELSE c.name END AS category_name, c.slug AS category_slug,
+            CASE WHEN l.is_other = 1 AND r.location_other IS NOT NULL AND r.location_other <> '' THEN CONCAT('Other: ', r.location_other) ELSE l.name END AS location_name
      FROM reports r
      LEFT JOIN categories c ON c.id = r.category_id
      LEFT JOIN locations  l ON l.id = r.location_id

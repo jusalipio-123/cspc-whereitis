@@ -1,0 +1,10 @@
+<%# The "please specify" text box shown when the "Other" choice is picked.
+    Locals: forSelect ('category_id' | 'location_id'), name, label, placeholder, value, error, max, show. %>
+<div class="field field--specify" data-specify-for="<%= forSelect %>"<%- show ? '' : ' hidden' %>>
+  <label for="<%= name %>"><%= label %> <span class="req" aria-hidden="true">*</span></label>
+  <input id="<%= name %>" name="<%= name %>" class="input" type="text" maxlength="<%= max %>" autocomplete="off"
+         placeholder="<%= placeholder %>" value="<%= value || '' %>"
+         <%= error ? 'aria-invalid="true" aria-describedby="err-' + name + '"' : '' %>>
+  <% if (error) { %><p class="field-error" id="err-<%= name %>"><%= error %></p><% } %>
+</div>
+<noscript><style>html [data-specify-for][hidden] { display: block; }</style></noscript>
