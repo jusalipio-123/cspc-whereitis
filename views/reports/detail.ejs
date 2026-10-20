@@ -107,6 +107,15 @@
 
     <section class="comments" id="comments" aria-labelledby="comments-h">
       <h2 id="comments-h">Comments</h2>
+      <p class="meeting-note">
+        <strong>Where to meet:</strong>
+        <% if (report.kind === 'found') { %>
+          Verify ownership at <%= report.holding_location || 'the custodian office' %> and bring a valid school ID.
+        <% } else { %>
+          If you found this item, say so below and hand it to the Security Office or Student Affairs, then the owner can claim it there.
+        <% } %>
+        Comments are public, so please do not post phone numbers, emails or home addresses.
+      </p>
       <% if (comments.length === 0) { %>
         <p class="muted">No comments yet.</p>
       <% } else { %>
@@ -123,7 +132,8 @@
         <form method="post" action="/reports/<%= report.reference_no %>/comments" class="form">
           <label for="body">Add a comment</label>
           <textarea id="body" name="body" class="textarea" rows="3" maxlength="500" required
-                    data-charcount data-charcount-max="500"></textarea>
+                    aria-describedby="hint-comment" data-charcount data-charcount-max="500"></textarea>
+          <p class="field-hint" id="hint-comment">Everyone can read comments. Do not share personal contact details; arrange the handover at an office.</p>
           <button class="btn btn--primary" type="submit">Post comment</button>
         </form>
       <% } else { %>

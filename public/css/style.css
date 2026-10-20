@@ -2043,3 +2043,6 @@ main.container.my-page > ul.my-stats { max-width: none; }
 .report-card__title a::after, .custody__title a::after { content: ''; position: absolute; inset: 0; z-index: 1; }
 .report-card__tags a, .custody__actions a, .custody__actions button { position: relative; z-index: 2; }
 .report-card:focus-within, .custody:focus-within { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+/* ---------- Where-to-meet note on report pages ---------- */
+.meeting-note { margin: 0 0 var(--s-3, 1rem); padding: .75rem 1rem; border: 1px solid var(--border); border-left: 3px solid var(--brand); border-radius: 8px; background: var(--card); font-size: .92rem; color: var(--ink); }
