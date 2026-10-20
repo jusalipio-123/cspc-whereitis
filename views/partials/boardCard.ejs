@@ -12,8 +12,6 @@
   const _me = (typeof identity !== 'undefined' && identity) ? identity.userId : null;
   const _mine = _me !== null && report.user_id === _me;
   const _canClaim = !_isLost && _open && !_mine;
-  const _canFound = _isLost && (_open || _status === 'matched') && !_mine;
-  const _foundHref = '/reports/new?kind=found&category_id=' + report.category_id + '&location_id=' + report.location_id;
 
   const _FLAGS = _isLost
     ? { open: 'Still missing', matched: 'Possible match', returned: 'Reunited', archived: 'Closed' }
@@ -73,9 +71,6 @@
     <% if (_canClaim) { %>
       <a class="btn btn--found btn--sm" href="/claims/new?report=<%= report.reference_no %>">This is mine</a>
     <% } %>
-    <% if (_canFound) { %>
-      <a class="btn btn--primary btn--sm" href="<%= _foundHref %>">I found this</a>
-    <% } %>
-    <a class="btn btn--ghost btn--sm" href="<%= _href %>"><%= (_canClaim || _canFound) ? 'Details' : 'View details' %></a>
+    <a class="btn btn--ghost btn--sm" href="<%= _href %>"><%= _canClaim ? 'Details' : 'View details' %></a>
   </div>
 </article>

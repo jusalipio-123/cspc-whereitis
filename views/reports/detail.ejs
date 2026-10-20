@@ -70,16 +70,6 @@
               This is mine &mdash; file a claim
             </a>
           <% } %>
-          <% if (report.kind === 'lost' && ['open', 'matched'].includes(report.status) && !(_identity && _identity.userId === report.user_id)) { %>
-            <% if (!_identity) { %>
-              <p class="muted">
-                <a href="/sign-in?next=<%= encodeURIComponent('/reports/' + report.reference_no) %>">Sign in</a> to report that you found this.
-              </p>
-            <% } %>
-            <a class="btn btn--primary" href="/reports/new?kind=found&amp;category_id=<%= report.category_id %>&amp;location_id=<%= report.location_id %>">
-              I found this
-            </a>
-          <% } %>
           <% if (_identity && _identity.userId === report.user_id) { %>
             <% if (report.kind === 'lost' && ['open', 'matched'].includes(report.status)) { %>
               <a class="btn btn--primary" href="#returned">Mark as returned</a>

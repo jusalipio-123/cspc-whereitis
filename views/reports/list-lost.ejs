@@ -1,15 +1,15 @@
-<!-- Lost board: same layout as the Found board (see list-board.ejs). Main action: "I found this". -->
+<!-- Lost board: same layout as the Found board (see list-board.ejs). Finders respond with a comment. -->
 <%- include('list-board', { cfg: {
   mode: 'lost',
   eyebrow: 'Missing items',
   title: 'Have you seen any of these?',
-  intro: 'These items are still missing (<strong>{n}</strong> right now). If you picked one up, tap <em>I found this</em> to post a found report. The owner will see it as a possible match. Hand the item to the Security Office or Student Affairs, and please do not post personal contact details.',
+  intro: 'These items are still missing (<strong>{n}</strong> right now). If you picked one up, open it and leave a comment saying you found it, then hand the item to the Security Office or Student Affairs. Please do not post personal contact details.',
   primaryClass: 'btn--lost', primaryHref: '/reports/new?kind=lost', primaryLabel: 'I lost something',
   ghostHref: '/reports?kind=found', ghostLabel: 'Check found items first',
   steps: [
     ['Spot the item', 'Browse or search the missing items.'],
-    ['Tap I found this', 'The owner reviews your claim.'],
-    ['Hand it over', 'Confirm it is theirs, then arrange the pickup.']
+    ['Leave a comment', 'Open the item and say you found it.'],
+    ['Hand it over', 'Give it to the Security Office or Student Affairs for pickup.']
   ],
   searchLabel: 'Search missing items', searchPlaceholder: 'e.g. black wallet, ID lace',
   placeLabel: 'Last seen at', whenLabel: 'Lost within',
