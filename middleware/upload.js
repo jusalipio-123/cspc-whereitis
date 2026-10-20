@@ -18,11 +18,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-// Set UPLOAD_DIR to a persistent writable directory on production hosting.
-// By default, keep uploads under the same public root served by Express.
-const UPLOAD_DIR = process.env.UPLOAD_DIR
-  ? path.resolve(process.env.UPLOAD_DIR)
-  : path.join(__dirname, '..', 'public', 'uploads');
+const UPLOAD_DIR = path.join(__dirname, '..', 'public', 'uploads');
 const URL_PREFIX = '/uploads/';
 const MAX_BYTES = 5 * 1024 * 1024;
 
@@ -51,6 +47,7 @@ function parsePhoto(req, res, next) {
 function sniffExtension(buf) {
   if (buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return '.jpg';
   if (buf.length >= 8 && buf.slice(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return '.png';
+  if (buf.length >= 6 && /^GIF8[79]a$/.test(buf.slice(0, 6).toString('latin1'))) return '.gif';
   if (buf.length >= 12 && buf.slice(0, 4).toString('latin1') === 'RIFF' && buf.slice(8, 12).toString('latin1') === 'WEBP') return '.webp';
   return null;
 }
@@ -58,16 +55,16 @@ function sniffExtension(buf) {
 // Returns an error message if the uploaded file is unacceptable, else null.
 function checkPhoto(req) {
   if (req.uploadError) return req.uploadError;
-  if (req.file && (!req.file.size || !sniffExtension(req.file.buffer))) {
-    return 'Photos must be JPG, JPEG, PNG or WebP images.';
+  if (req.file && req.file.size > 0 && !sniffExtension(req.file.buffer)) {
+    return 'Photos must be JPG, PNG, GIF or WebP images.';
   }
   return null;
 }
 
-// Photos are optional when creating a report. Keep this helper for callers that
-// explicitly need to check whether a file was supplied.
+// A photo is mandatory when a report is created. Returns an error message
+// if no file was uploaded (checkPhoto() above covers a bad/oversized file).
 function requirePhoto(req) {
-  return null; // Photos are optional; invalid/oversized files are still rejected by checkPhoto().
+  return hasPhoto(req) ? null : 'Please upload a photo of the item.';
 }
 
 function hasPhoto(req) {
@@ -84,7 +81,7 @@ async function savePhoto(file) {
 }
 
 function isUploadPath(p) {
-  return typeof p === 'string' && /^\/uploads\/[a-f0-9]{32}\.(jpg|png|webp)$/.test(p);
+  return typeof p === 'string' && /^\/uploads\/[a-f0-9]{32}\.(jpg|png|gif|webp)$/.test(p);
 }
 
 // Best-effort delete of a previously uploaded photo (ignores external links).
@@ -93,4 +90,4 @@ async function removePhoto(p) {
   try { await fs.promises.unlink(path.join(UPLOAD_DIR, path.basename(p))); } catch (e) { /* already gone */ }
 }
 
-module.exports = { UPLOAD_DIR, parsePhoto, checkPhoto, requirePhoto, hasPhoto, savePhoto, removePhoto, isUploadPath };
+module.exports = { parsePhoto, checkPhoto, requirePhoto, hasPhoto, savePhoto, removePhoto, isUploadPath };

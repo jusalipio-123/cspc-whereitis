@@ -8,14 +8,13 @@
   <h1>Inbox</h1>
   <nav class="mod-tabs" aria-label="Inbox">
     <a class="mod-tab" href="/notifications" aria-current="page">Notifications<% if (unreadCount) { %> <span class="mod-count"><%= unreadCount %></span><% } %></a>
-    <a class="mod-tab" href="/messages">Messages</a>
     <a class="mod-tab mod-tab--end" href="/my-reports">&larr; My reports</a>
   </nav>
 
   <% if (notifications.length === 0) { %>
     <div class="empty-state">
       <h3>You're all caught up</h3>
-      <p>We'll tell you here when someone files a claim on your report, your claim is decided, or you get a message.</p>
+      <p>We'll tell you here when someone files a claim on your report, or your claim is decided.</p>
     </div>
   <% } else { %>
     <% if (unreadCount) { %>

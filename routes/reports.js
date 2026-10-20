@@ -7,8 +7,6 @@ const reportModel = require('../models/reportModel');
 const categoryModel = require('../models/categoryModel');
 const locationModel = require('../models/locationModel');
 const commentModel = require('../models/commentModel');
-const notificationModel = require('../models/notificationModel');
-const bookmarkModel = require('../models/bookmarkModel');
 const claimModel = require('../models/claimModel');
 const status = require('../lib/status');
 const tagModel = require('../models/tagModel');
@@ -268,7 +266,7 @@ router.post('/', requireIdentity, upload.parsePhoto, async (req, res, next) => {
     const validated = validateReportFields(req.body, allTags, { categories, locations });
     const { values, errors, tagIds } = validated;
     let ok = validated.ok;
-    const photoErr = upload.checkPhoto(req);
+    const photoErr = upload.checkPhoto(req) || upload.requirePhoto(req);
     if (photoErr) { errors.photo_url = photoErr; ok = false; }
 
     if (!ok) {
@@ -295,7 +293,7 @@ router.post('/', requireIdentity, upload.parsePhoto, async (req, res, next) => {
       occurred_on: values.occurred_on,
       holding_location: values.holding_location || null,
       tag_ids: tagIds,
-      photo_url: upload.hasPhoto(req) ? await upload.savePhoto(req.file) : null,
+      photo_url: await upload.savePhoto(req.file),
     });
 
     // 303 (not 302/307) guarantees the browser follows up with a GET, so
@@ -335,13 +333,8 @@ router.get('/:reference', async (req, res, next) => {
       comments,
       possibleMatches,
       claims,
-      bookmarked: false,
       identity: req.identity,
     };
-
-    if (req.identity) {
-      locals.bookmarked = await bookmarkModel.isBookmarked(req.identity.userId, report.id);
-    }
 
     res.render('reports/detail', locals);
   } catch (err) {
@@ -531,19 +524,6 @@ router.post('/:reference/comments', requireIdentity, async (req, res, next) => {
       body: bodyResult.value,
     });
 
-    // Tell the report's owner when somebody else comments. Never notify
-    // people about their own comments; create() never throws, so a failed
-    // notification cannot undo the comment.
-    if (!isOwner) {
-      await notificationModel.create({
-        user_id: report.user_id,
-        type: 'comment_added',
-        report_id: report.id,
-        body: 'New comment on ' + report.reference_no + ' (' + report.title + ')',
-        link: '/reports/' + report.reference_no + '#comments',
-      });
-    }
-
     res.redirect(303, '/reports/' + report.reference_no + '?flash=ok:Comment%20added#comments');
   } catch (err) {
     next(err);
@@ -575,22 +555,6 @@ router.post('/:reference/returned', requireIdentity, async (req, res, next) => {
 
     await reportModel.markReturned(report.id, returnedToResult.value, req.identity.userId);
     res.redirect(303, back + '?flash=ok:Marked%20as%20returned');
-  } catch (err) {
-    next(err);
-  }
-});
-
-// POST /:reference/bookmark
-router.post('/:reference/bookmark', requireIdentity, async (req, res, next) => {
-  try {
-    const report = await reportModel.findByReference(req.params.reference);
-    if (!report || report.moderation_status !== 'approved' || !reportModel.canView(report, req.identity)) {
-      return res.status(404).render('errors/404', { title: 'Not found' });
-    }
-
-    await bookmarkModel.toggle(req.identity.userId, report.id);
-
-    res.redirect(303, '/reports/' + report.reference_no + '?flash=ok:Bookmark%20updated');
   } catch (err) {
     next(err);
   }

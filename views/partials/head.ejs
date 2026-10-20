@@ -1,20 +1,11 @@
 <!-- CSPC WhereITis — views/partials/head.ejs -->
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title><%= title %> | CSPC WhereITis</title>
   <meta name="description" content="<%= typeof description !== 'undefined' ? description : 'Lost & Found at Camarines Sur Polytechnic Colleges' %>">
-  <!-- Theme: runs before first paint so there is no light/dark flash. Saved choice wins, otherwise the device setting. -->
-  <script>
-  (function () {
-    var t = null;
-    try { t = localStorage.getItem('whereitis_theme'); } catch (e) {}
-    if (t !== 'light' && t !== 'dark') { t = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; }
-    document.documentElement.setAttribute('data-theme', t);
-  })();
-  </script>
   <link rel="stylesheet" href="/css/style.css">
   <!-- "Refining" detector: runs before first paint. When the page you are leaving is the SAME page (same path,
        e.g. /reports -> /reports?status=open: status tab, sort, filter, pagination), mark <html class="nav-refine">.

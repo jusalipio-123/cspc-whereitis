@@ -11,8 +11,7 @@
 %>
 <article class="card report-card report-card--<%= report.kind %> report-card--<%= report.status %>">
   <a class="report-card__photo-wrap" href="<%= href %>" tabindex="-1" aria-hidden="true">
-    <img class="report-card__photo" src="<%= report.photo_url ? report.photo_url : '/img/placeholder.svg' %>" alt="" loading="lazy" referrerpolicy="no-referrer"
-         onerror="if(this.getAttribute('src')!=='/img/placeholder.svg'){this.onerror=null;this.src='/img/placeholder.svg';}">
+    <img class="report-card__photo" src="<%= report.photo_url ? report.photo_url : '/img/placeholder.svg' %>" alt="" loading="lazy" referrerpolicy="no-referrer">
     <span class="report-card__kind report-card__kind--<%= report.kind %>"><%= report.kind === 'lost' ? 'Lost' : 'Found' %></span>
   </a>
 
@@ -48,9 +47,6 @@
     </p>
 
     <p class="report-card__ref"><code><%= report.reference_no %></code>
-      <% if (typeof bookmarked !== 'undefined' && bookmarked) { %>
-        <span class="report-card__bookmark">Bookmarked</span>
-      <% } %>
     </p>
   </div>
 </article>

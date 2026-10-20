@@ -11,8 +11,7 @@
   const _held = typeof report.days_held !== 'undefined' && report.days_held !== null ? Number(report.days_held) : null;
   const _me = (typeof identity !== 'undefined' && identity) ? identity.userId : null;
   const _mine = _me !== null && report.user_id === _me;
-  const _canContact = _isLost && _open && !_mine && report.user_id !== null;
-  const _canClaim = !_isLost && _open;
+  const _canClaim = !_isLost && _open && !_mine;
 
   const _FLAGS = _isLost
     ? { open: 'Still missing', matched: 'Possible match', returned: 'Reunited', archived: 'Closed' }
@@ -69,14 +68,9 @@
   </div>
 
   <div class="custody__actions">
-    <% if (_canContact) { %>
-      <form method="post" action="/messages/found" class="inline">
-        <input type="hidden" name="report_reference" value="<%= report.reference_no %>">
-        <button class="btn btn--lost btn--sm" type="submit">I found this</button>
-      </form>
-    <% } else if (_canClaim) { %>
+    <% if (_canClaim) { %>
       <a class="btn btn--found btn--sm" href="/claims/new?report=<%= report.reference_no %>">This is mine</a>
     <% } %>
-    <a class="btn btn--ghost btn--sm" href="<%= _href %>"><%= (_canContact || _canClaim) ? 'Details' : 'View details' %></a>
+    <a class="btn btn--ghost btn--sm" href="<%= _href %>"><%= _canClaim ? 'Details' : 'View details' %></a>
   </div>
 </article>

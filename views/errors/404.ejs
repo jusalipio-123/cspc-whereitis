@@ -1,10 +1,11 @@
 <!-- CSPC WhereITis — views/errors/404.ejs -->
-<%- include('../partials/head', { title: 'Page not found' }) %>
+<% const _msg = (typeof flash !== 'undefined' && flash && flash.message) ? flash.message : ''; %>
+<%- include('../partials/head', { title: _msg ? title : 'Page not found' }) %>
 <%- include('../partials/nav') %>
 
 <main id="main" class="container error-page">
-  <h1>Page not found</h1>
-  <p>We couldn't find that page.</p>
+  <h1><%= _msg ? title : 'Page not found' %></h1>
+  <p><%= _msg || "We couldn't find that page." %></p>
   <p>You can <a href="/reports">search all reports</a> or
      <a href="/">go to the home page</a>.</p>
   <form method="get" action="/reports" class="form form--narrow">
