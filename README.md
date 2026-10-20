@@ -1,6 +1,6 @@
 # CSPC WhereITis — Lost & Found Management System
 
-CSPC WhereITis is a full-stack, server-rendered Lost &amp; Found management system built for Camarines Sur Polytechnic Colleges as a CCIT 106 midterm project. Students report lost or found items, file claims on items they believe are theirs, and track everything from a single "My Reports" page; staff review claims and mark items returned or archived; admins watch monthly trends and manage the category and location lists. "Kung nawala, hanapin dito. Kung nakita, i-report dito."
+CSPC WhereITis is a full-stack, server-rendered Lost &amp; Found management system built for Camarines Sur Polytechnic Colleges as a CCIT 106 midterm project. Students report lost or found items, file claims on items they believe are theirs, and track everything from a single "My Reports" page; ; the person who posted a report reviews claims on it and marks the item returned. There are no staff or admin accounts. "Kung nawala, hanapin dito. Kung nakita, i-report dito."
 
 ## Live demo (planned)
 
@@ -50,13 +50,13 @@ mysql -u root -p whereitis < seed.sql
 
 ## Demo accounts and seed data
 
-| Student No. | Full name | Role | PIN |
-|---|---|---|---|
-| 2021-00001 | Juan Miguel Dela Cruz | student | 1234 |
-| 2021-00002 | Maria Clara Santos | student | 2345 |
-| 2021-00003 | Jose Rizal Bautista | student | 3456 |
-| 2022-00004 | Andrea Lyn Villanueva | student | 4567 |
-| 2022-00005 | Miguel Antonio Reyes | student | 5678 |
+| Student No. | Full name | PIN |
+|---|---|---|
+| 2021-00001 | Juan Miguel Dela Cruz | 1234 |
+| 2021-00002 | Maria Clara Santos | 2345 |
+| 2021-00003 | Jose Rizal Bautista | 3456 |
+| 2022-00004 | Andrea Lyn Villanueva | 4567 |
+| 2022-00005 | Miguel Antonio Reyes | 5678 |
 
 These PINs are published here because this is a midterm demo. Week 11 replaces PINs with bcrypt-hashed passwords and real account provisioning.
 
@@ -73,12 +73,10 @@ These PINs are published here because this is a midterm demo. Week 11 replaces P
 | `DB_NAME` | Yes | `whereitis` | Database created by `schema.sql`. |
 | `PROCESS_SECRET` | Yes | `<64 random hex chars>` | HMAC key signing the `whereitis_id` cookie. Generate with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` and NEVER commit the real value. |
 | `MATCH_WINDOW_DAYS` | No | `30` | Day window the matching engine (FR-09) searches for candidates. |
-| `GUEST_REPORTS_PER_DAY` | No | `3` | Most guest reports one connection may send in 24 hours. |
 | `HOLDING_PERIOD_DAYS` | No | `90` | Default days before a found item may be archived as unclaimed (FR-15). |
 
 ## Database
-
-The schema has eight tables. `categories` and `locations` are small admin-managed lookup tables. `users` holds the pre-seeded demo accounts, including the PIN salt/hash pair used by the midterm's sign-in mechanism. `reports` is the core table — every lost or found item, tied to the user who filed it, a category, and a location. `claims` records a student's assertion that a found report belongs to them, tied to both the report and the claimant. `report_comments` lets an owner add follow-up notes to their own report. `report_status_history` is an append-only audit trail — every status change writes a row here, satisfying NFR-08. `counter_sequence` backs the transactional reference-number generator.
+A fresh install from `schema.sql` creates 10 tables. `categories` and `locations` are lookup tables for the report forms. `users` holds the pre-seeded demo accounts, including the PIN salt/hash pair used by the midterm's sign-in mechanism; every account is an ordinary user. `reports` is the core table: every lost or found item, tied to the user who filed it, a category, and a location. `claims` records a user's assertion that a found report belongs to them. `report_comments` lets an owner add follow-up notes. `report_status_history` is an append-only audit trail of status changes (NFR-08). `tags` and `report_tags` provide a fixed allow-list of tags and the many-to-many link to reports. `counter_sequence` backs the transactional reference-number generator.
 
 categories locations users
 | | |
@@ -117,9 +115,8 @@ counter_sequence — standalone, keyed by year, feeds reports.reference_no
 | GET | `/` | Public | Home — hero, live counters, latest reports, quick search |
 | GET | `/health` | Public | JSON liveness/DB check |
 | GET | `/reports` | Public | List + filter reports |
-| GET | `/reports/new` | Public | Guests get the simple found-item form; signed-in users get the full form (`?kind=lost` needs sign-in) |
+| GET | `/reports/new` | Identity required | Report form (signed-out visitors are redirected to sign-in) |
 | POST | `/reports` | Identity required | Create a report (registered users; published immediately) |
-| GET | `/reports/guest/thanks` | Public | Confirmation page with the reference number |
 | GET | `/reports/:reference` | Public | Report detail page |
 | GET | `/reports/:reference/edit` | Owner only | Edit form (status must be `open`) |
 | POST | `/reports/:reference/edit` | Owner only | Update a report |
@@ -143,14 +140,11 @@ counter_sequence — standalone, keyed by year, feeds reports.reference_no
 | GET | `/help` | Public | User guide |
 | GET | `*` | Public | 404 page |
 
-## Guest and registered reports
+## Reporting and notifications
 
-Anyone can report a **found** item without an account. A guest report needs only an item name, category, description, where it was found, the date, and where the item is now; name, email and phone are optional and visible to staff only. Guest reports are created with `moderation_status = 'pending'` and stay invisible everywhere public (lists, counters, matching, detail page) until a staff member approves them at `/admin/moderation`. **Lost** reports still need an account, because the owner is the person who has to review claims.
+Reporting needs an account. The person who files a report is the one who later approves or rejects claims on it, so `GET /reports/new` redirects signed-out visitors to the sign-in page. Anyone, signed in or not, can browse and search reports and open report details.
 
-Spam safeguards on `POST /reports/guest` (`lib/antispam.js`): hidden honeypot field, signed time token (rejects instant, forged and stale posts), per-source rate limit stored in the database (default 3 per 24 hours, keyed by an HMAC of the IP, never the raw IP), duplicate and link checks, and the staff approval step above, which is the control that actually stops abuse.
-
-Registered users keep everything they had (full form with photo and tags, edit while open, withdraw, claims, My Reports) and additionally see a badge on their profile icon showing how many claims on their reports wait for a decision. Existing databases: run `add-guest-reports.sql` once. Fresh installs get it from `schema.sql`.
-
+Signed-in users can file lost and found reports (full form with photo and tags), edit a report while it is open, withdraw it, comment on their own reports, file claims on other people's found reports, and use My Reports to see their reports and claims. Nothing is emailed.
 ## Identification Without Sessions — Midterm Approach
 
 This identity is now VISIBLE and usable site-wide, not just on /my-reports. Every request runs an `optionalIdentity` check that sets `req.identity` (and exposes it to every view) without ever redirecting — guest browsing and guest reporting are never interrupted. The top navigation shows "Hi, <student_no>" with a sign-out link when signed in, or a "Sign in" link when not; gated actions (like filing a claim) link to `/sign-in?next=<path>` so the person returns to what they were doing afterward. `/sign-in` and `/sign-out` are now available as short top-level aliases of `/my-reports/sign-in` and `/my-reports/sign-out`.
