@@ -10,7 +10,7 @@ This document is CSPC WhereITis's honest, self-conducted audit against the requi
 | Terms of Use | Compliant | None found — every clause traced and readable | Re-review after any new feature that changes acceptable use |
 | Cookie Notice | Compliant | `Secure` flag only applies in production, by design | None — this is correct behaviour, documented as such |
 | Accessibility (WCAG 2.2 AA) | Self-tested pass | No external audit; no full screen-reader test matrix | Schedule an external WCAG 2.2 AA audit (Week 13) |
-| Claims flow | Compliant, exceptions handled | Some exception paths (role enforcement) are honour-system only | Add `requireRole()` in Week 11 |
+| Claims flow | Compliant, exceptions handled | Authorisation is by ownership: only the report owner can approve or reject; there are no staff roles | None |
 | Possible errors | Handled for every case tested | No automated regression tests yet | Add Vitest/SuperTest coverage (Week 15) |
 | Headers and hygiene | Baseline only | No helmet, no CSP, no CSRF, no rate limiting | Add helmet + CSRF + rate limiting (Week 12) |
 
@@ -23,25 +23,24 @@ This document is CSPC WhereITis's honest, self-conducted audit against the requi
 | users | student_no | Sign-in form, My Reports, claim/report ownership checks | Traceable |
 | users | full_name | Comments, claim detail (claimant name), print receipt | Traceable |
 | users | email | Stored only; not yet surfaced anywhere (email notifications are Week 11+ WON'T-list territory) | Traceable to purpose, unused by UI — flagged below |
-| users | role | Route honour-system checks, admin user list | Traceable |
 | users | pin_salt | Sign-in PIN verification (`userModel.verifyPin`) | Traceable |
 | users | pin_hash | Sign-in PIN verification | Traceable |
-| users | contact_no | Optional; intended for staff to call a reporter directly | Traceable, low usage — kept as optional |
-| users | created_at | Admin user list, audit context | Traceable |
-| categories | name, slug, icon_key, sort_order | Report forms, filter dropdowns, category admin screen | Traceable |
-| locations | name, zone, is_public | Report forms, filter dropdowns, location admin screen | Traceable |
+| users | contact_no | Optional;  optional contact number the user may provide| Traceable, low usage — kept as optional |
+| users | created_at |Account record, audit context | Traceable |
+| categories | name, slug, icon_key, sort_order | Report forms, filter dropdowns | Traceable |
+| locations | name, zone, is_public | Report forms, filter dropdowns | Traceable |
 | reports | reference_no | Every report-facing page and the print receipt | Traceable |
 | reports | user_id | Ownership checks, My Reports, history | Traceable |
 | reports | kind, category_id, location_id | Display, filtering, matching engine | Traceable |
 | reports | title, description | Display, search (LIKE), matching engine | Traceable |
 | reports | occurred_on | Display, matching engine date window, aging calculation | Traceable |
 | reports | holding_location | Report detail, claim form, print receipt | Traceable |
-| reports | status | Display (pills), staff queue, transition enforcement | Traceable |
-| reports | archived_reason | Report detail (when archived), staff queue | Traceable |
+| reports | status | Display (pills), My Reports, transition enforcement | Traceable |
+| reports | archived_reason | Report detail (when archived), My Reports | Traceable |
 | reports | returned_to, returned_at | Report detail, print receipt | Traceable |
 | reports | created_at, updated_at | Sorting (latest reports), edit-window logic | Traceable |
-| claims | proof_text, distinguishing_features | Claim detail, staff decision screen | Traceable |
-| claims | status, decided_by, decided_at, decision_note | Claim detail, staff queue, My Reports claims list | Traceable |
+| claims | proof_text, distinguishing_features | Claim detail, the owner's claim decision screen. | Traceable |
+| claims | status, decided_by, decided_at, decision_note | Claim detail, My Reports, My Reports claims list | Traceable |
 | report_comments | body, user_id, created_at | Report detail comments thread | Traceable |
 | report_status_history | from_status, to_status, changed_by, note, changed_at | Not yet surfaced on any screen — exists purely as an audit trail (NFR-08) | Traceable to purpose (audit), no UI reader yet — acceptable, this table's entire purpose is the trail itself, not display |
 | counter_sequence | year, last_value | Internal to `lib/refs.js` only, never displayed | Traceable to purpose (reference number generation) |
