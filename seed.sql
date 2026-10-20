@@ -25,12 +25,8 @@ USE whereitis;
 -- Reseeding: FK-safe reset (children first, then parents, with FK checks disabled)
 
 -- Reset demo data using DELETE (works with FKs on, unlike TRUNCATE)
-DELETE FROM messages;
-DELETE FROM conversations;
-DELETE FROM notifications;
 DELETE FROM report_status_history;
 DELETE FROM report_comments;
-DELETE FROM bookmarks;
 DELETE FROM claims;
 DELETE FROM reports;
 DELETE FROM users;
@@ -39,9 +35,6 @@ DELETE FROM locations;
 DELETE FROM counter_sequence;
 
 -- Reset auto-increment counters so ids stay predictable for the seed data
-ALTER TABLE messages AUTO_INCREMENT = 1;
-ALTER TABLE conversations AUTO_INCREMENT = 1;
-ALTER TABLE notifications AUTO_INCREMENT = 1;
 ALTER TABLE report_status_history AUTO_INCREMENT = 1;
 ALTER TABLE report_comments AUTO_INCREMENT = 1;
 ALTER TABLE claims AUTO_INCREMENT = 1;
@@ -394,29 +387,6 @@ INSERT INTO report_comments (id, report_id, user_id, body, created_at) VALUES
   (6, 9, 2, 'The name tag inside the collar says "J.C. Reyes" in blue permanent marker in case that helps confirm ownership.', DATE_SUB(NOW(), INTERVAL 20 DAY)),
   (7, 11, 4, 'Also checking with the canteen staff directly just in case it was already turned in but not yet logged here.', DATE_SUB(NOW(), INTERVAL 12 DAY)),
   (8, 12, 8, 'Reminder to CCS faculty: please claim personally at the faculty office with a valid ID for verification.', DATE_SUB(NOW(), INTERVAL 8 DAY));
-
--- ---------------------------------------------------------------------
--- bookmarks  (3 rows)
--- ---------------------------------------------------------------------
-INSERT INTO bookmarks (user_id, report_id, created_at) VALUES
-  (1, 9,  DATE_SUB(NOW(), INTERVAL 18 DAY)),
-  (2, 11, DATE_SUB(NOW(), INTERVAL 10 DAY)),
-  (3, 1,  DATE_SUB(NOW(), INTERVAL 70 DAY));
-
--- ---------------------------------------------------------------------
--- notifications + one direct-message thread  (demo of registered-user
--- features: user 1 is asking user 2 about user 2's found report LF-2026-0002)
--- ---------------------------------------------------------------------
-INSERT INTO conversations (id, report_id, owner_user_id, starter_user_id, created_at, last_message_at) VALUES
-  (1, 2, 2, 1, DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_SUB(NOW(), INTERVAL 20 HOUR));
-
-INSERT INTO messages (id, conversation_id, sender_user_id, body, read_at, created_at) VALUES
-  (1, 1, 1, 'Hi! I think this is my item. Is it still at the circulation desk?', DATE_SUB(NOW(), INTERVAL 22 HOUR), DATE_SUB(NOW(), INTERVAL 1 DAY)),
-  (2, 1, 2, 'Yes, it is still there. Please bring your school ID when you come.', NULL, DATE_SUB(NOW(), INTERVAL 20 HOUR));
-
-INSERT INTO notifications (id, user_id, type, report_id, body, link, is_read, created_at) VALUES
-  (1, 1, 'message_received', 2, 'New message about LF-2026-0002', '/messages/1', 0, DATE_SUB(NOW(), INTERVAL 20 HOUR)),
-  (2, 2, 'message_received', 2, 'New message about LF-2026-0002', '/messages/1', 1, DATE_SUB(NOW(), INTERVAL 1 DAY));
 
 -- ---------------------------------------------------------------------
 -- counter_sequence  (current year, matching highest LF number issued

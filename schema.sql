@@ -21,10 +21,6 @@ USE whereitis;
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
-DROP TABLE IF EXISTS messages;
-DROP TABLE IF EXISTS conversations;
-DROP TABLE IF EXISTS notifications;
-DROP TABLE IF EXISTS bookmarks;
 DROP TABLE IF EXISTS report_status_history;
 DROP TABLE IF EXISTS report_comments;
 DROP TABLE IF EXISTS claims;
@@ -359,27 +355,6 @@ CREATE TABLE report_status_history (
     FOREIGN KEY (changed_by) REFERENCES users(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ---------------------------------------------------------------------
--- bookmarks
--- FR-18. Composite primary key (user_id, report_id) instead of a
--- surrogate id: a bookmark is inherently the pair itself ("this user
--- bookmarked this report"), there is never a reason to reference a
--- bookmark row by any other identity, and the composite PK doubles as
--- the "no duplicate bookmark" constraint for free. CASCADE both ways:
--- a bookmark is purely a convenience pointer with no audit-trail
--- purpose, so it should simply disappear if either side disappears.
--- ---------------------------------------------------------------------
-CREATE TABLE bookmarks (
-  user_id     INT NOT NULL,
-  report_id   INT NOT NULL,
-  created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (user_id, report_id),
-  CONSTRAINT fk_bookmarks_user
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-  CONSTRAINT fk_bookmarks_report
-    FOREIGN KEY (report_id) REFERENCES reports(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 -- =====================================================================
 -- schema.sql -- ADDITIONS (append to the END of the existing schema.sql)
 -- Feature 2: tags (many-to-many).  
@@ -491,79 +466,3 @@ INSERT IGNORE INTO tags (slug, label, sort_order) VALUES
   ('accessories', 'Accessories', 5);
 
 
--- =====================================================================
--- schema.sql -- ADDITIONS: registered-user features
--- (notifications, direct messages). Same content lives in
--- add-guest-reports.sql for databases that already exist.
--- =====================================================================
-
--- ---------------------------------------------------------------------
--- notifications
--- In-app only (this system sends no email). One row per thing a
--- registered user should hear about: someone filed a claim on their
--- report, staff changed its status, a claim was decided, a new direct
--- message arrived. `link` is a same-site path so the list can deep-link.
--- CASCADE on user_id/report_id: a notification is a pointer with no audit
--- value of its own (the audit trail is report_status_history).
--- idx_notifications_user_unread serves the nav badge, which runs on
--- every page for a signed-in user.
--- ---------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS notifications (
-  id          INT AUTO_INCREMENT PRIMARY KEY,
-  user_id     INT NOT NULL,
-  type        ENUM('claim_filed','claim_decided','status_changed','message_received','comment_added') NOT NULL,
-  report_id   INT NULL,
-  body        VARCHAR(255) NOT NULL,
-  link        VARCHAR(200) NOT NULL,
-  is_read     TINYINT(1) NOT NULL DEFAULT 0,
-  created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_notifications_user
-    FOREIGN KEY (user_id)   REFERENCES users(id)   ON DELETE CASCADE,
-  CONSTRAINT fk_notifications_report
-    FOREIGN KEY (report_id) REFERENCES reports(id) ON DELETE CASCADE,
-  INDEX idx_notifications_user_unread (user_id, is_read, created_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- ---------------------------------------------------------------------
--- conversations + messages (direct messaging between registered users)
--- A conversation is always ABOUT one report: it is opened by someone
--- looking at a report (starter) and talks to that report's owner. That
--- keeps messaging purposeful (no open-ended DMs between students) and
--- gives staff context if a thread is ever reported.
--- UNIQUE (report_id, starter_user_id): one thread per person per report,
--- so pressing "Message" twice reopens the thread instead of forking it.
--- RESTRICT on the two user keys for the same traceability reason as
--- reports.user_id. messages.read_at is NULL until the recipient opens
--- the thread.
--- ---------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS conversations (
-  id               INT AUTO_INCREMENT PRIMARY KEY,
-  report_id        INT NOT NULL,
-  owner_user_id    INT NOT NULL,
-  starter_user_id  INT NOT NULL,
-  created_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  last_message_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY uniq_conversation (report_id, starter_user_id),
-  CONSTRAINT fk_conversations_report
-    FOREIGN KEY (report_id)       REFERENCES reports(id) ON DELETE CASCADE,
-  CONSTRAINT fk_conversations_owner
-    FOREIGN KEY (owner_user_id)   REFERENCES users(id)   ON DELETE RESTRICT,
-  CONSTRAINT fk_conversations_starter
-    FOREIGN KEY (starter_user_id) REFERENCES users(id)   ON DELETE RESTRICT,
-  INDEX idx_conversations_owner   (owner_user_id, last_message_at),
-  INDEX idx_conversations_starter (starter_user_id, last_message_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS messages (
-  id               INT AUTO_INCREMENT PRIMARY KEY,
-  conversation_id  INT NOT NULL,
-  sender_user_id   INT NOT NULL,
-  body             VARCHAR(1000) NOT NULL,
-  read_at          DATETIME NULL,
-  created_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_messages_conversation
-    FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
-  CONSTRAINT fk_messages_sender
-    FOREIGN KEY (sender_user_id)  REFERENCES users(id)         ON DELETE RESTRICT,
-  INDEX idx_messages_conversation (conversation_id, created_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

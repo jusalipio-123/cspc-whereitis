@@ -1,0 +1,20 @@
+<!-- CSPC WhereITis — views/partials/itemTile.ejs
+     Image-free item panel: icon badge, category label, and a colour swatch when the colour is recognised.
+     Locals: kind ('lost' | 'found'), category (optional), color (optional), compact (optional, thumbnail size).
+     Purely decorative (the same facts are written in the card text), so it is hidden from screen readers. -->
+<%
+  const _tk = kind === 'found' ? 'found' : 'lost';
+  const _tc = typeof compact !== 'undefined' && compact;
+  const _tCat = typeof category !== 'undefined' && category ? String(category) : '';
+  const _tCol = typeof color !== 'undefined' && color ? String(color) : '';
+  const _SWATCH = { black: '#1d232b', white: '#ffffff', grey: '#8a94a0', gray: '#8a94a0', silver: '#c3c9d0', red: '#c0392b',
+    maroon: '#7b1e2b', orange: '#e67e22', yellow: '#f1c40f', gold: '#c9a227', green: '#2e8b57', teal: '#1b8a8f',
+    blue: '#2f6fb5', navy: '#1b2f5b', purple: '#7a4fa3', violet: '#7a4fa3', pink: '#e08aa8', brown: '#7a5230', beige: '#d8c3a5' };
+  let _tHex = '';
+  _tCol.toLowerCase().split(/[^a-z]+/).some(function (w) { if (_SWATCH[w]) { _tHex = _SWATCH[w]; return true; } return false; });
+%>
+<span class="item-tile item-tile--<%= _tk %><%= _tc ? ' item-tile--compact' : '' %>" aria-hidden="true">
+  <span class="item-tile__badge"><%- _tk === 'found' ? icons.found : icons.lost %></span>
+  <% if (!_tc && _tCat) { %><span class="item-tile__label"><%= _tCat %></span><% } %>
+  <% if (!_tc && _tHex) { %><span class="item-tile__swatch" style="background: <%= _tHex %>"></span><% } %>
+</span>

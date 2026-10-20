@@ -10,7 +10,6 @@ const claimModel = require('../models/claimModel');
 const reportModel = require('../models/reportModel');
 const validate = require('../middleware/validate');
 const { requireIdentity } = require('../middleware/identity');
-const notificationModel = require('../models/notificationModel');
 
 // Shared validation for the claim form — used by both the pre-check and
 // the actual POST /, so the rules can never drift apart.
@@ -177,15 +176,6 @@ router.post('/', requireIdentity, async (req, res, next) => {
       throw err;
     }
 
-    // Tell the report's owner: they are the one who decides this claim.
-    await notificationModel.create({
-      user_id: report.user_id,
-      type: 'claim_filed',
-      report_id: report.id,
-      body: 'Someone filed a claim on ' + report.reference_no + ' (' + report.title + ')',
-      link: '/reports/' + report.reference_no,
-    });
-
     // 303 so a page refresh re-fetches the claim detail page with a GET
     // instead of resubmitting this claim a second time.
     res.redirect(303, `/claims/${claim.id}?flash=ok:Claim%20filed`);
@@ -269,14 +259,6 @@ router.post('/:id/approve', requireIdentity, async (req, res, next) => {
       throw err;
     }
 
-    await notificationModel.create({
-      user_id: claim.claimant_user_id,
-      type: 'claim_decided',
-      report_id: claim.report_id,
-      body: 'Your claim on ' + claim.reference_no + ' was approved',
-      link: '/claims/' + claim.id,
-    });
-
     res.redirect(303, `/claims/${claim.id}?flash=ok:Claim%20approved`);
   } catch (err) {
     next(err);
@@ -315,14 +297,6 @@ router.post('/:id/reject', requireIdentity, async (req, res, next) => {
       }
       throw err;
     }
-
-    await notificationModel.create({
-      user_id: claim.claimant_user_id,
-      type: 'claim_decided',
-      report_id: claim.report_id,
-      body: 'Your claim on ' + claim.reference_no + ' was not approved',
-      link: '/claims/' + claim.id,
-    });
 
     res.redirect(303, `/claims/${claim.id}?flash=ok:Claim%20rejected`);
   } catch (err) {

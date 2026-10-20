@@ -43,7 +43,6 @@ This document is CSPC WhereITis's honest, self-conducted audit against the requi
 | claims | status, decided_by, decided_at, decision_note | Claim detail, My Reports, My Reports claims list | Traceable |
 | report_comments | body, user_id, created_at | Report detail comments thread | Traceable |
 | report_status_history | from_status, to_status, changed_by, note, changed_at | Not yet surfaced on any screen — exists purely as an audit trail (NFR-08) | Traceable to purpose (audit), no UI reader yet — acceptable, this table's entire purpose is the trail itself, not display |
-| bookmarks | user_id, report_id, created_at | My Reports bookmarks section | Traceable |
 | counter_sequence | year, last_value | Internal to `lib/refs.js` only, never displayed | Traceable to purpose (reference number generation) |
 
 **Flagged for review:** `users.email` is collected and stored but is not read by any current screen (email notifications are explicitly out of scope this term). We are **not** proposing to delete it, because it has a clear stated future purpose (Week 11+ notifications) documented on `/privacy`, and RA 10173's proportionality test is about collecting only what is needed for a *stated* purpose — not only what is *currently rendered*. If email notifications are dropped from the roadmap entirely, this column should be revisited.

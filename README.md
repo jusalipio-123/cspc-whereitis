@@ -16,7 +16,7 @@ http://localhost:3000
 | `screenshots/home.png` | Home page | Hero, search box, live counters, latest reports grid |
 | `screenshots/reports-list.png` | Reports list | Filter form filled in, a full page of result cards |
 | `screenshots/report-detail.png` | Report detail page | Status pills, possible matches section, comments |
-| `screenshots/my-reports.png` | My Reports page | Signed-in view with reports, claims, and bookmarks sections |
+| `screenshots/my-reports.png` | My Reports page | Signed-in view with reports and claims sections |
 
 ## Technology
 
@@ -76,8 +76,7 @@ These PINs are published here because this is a midterm demo. Week 11 replaces P
 | `HOLDING_PERIOD_DAYS` | No | `90` | Default days before a found item may be archived as unclaimed (FR-15). |
 
 ## Database
-
-A fresh install from `schema.sql` creates 14 tables. `categories` and `locations` are lookup tables for the report forms. `users` holds the pre-seeded demo accounts, including the PIN salt/hash pair used by the midterm's sign-in mechanism; every account is an ordinary user. `reports` is the core table: every lost or found item, tied to the user who filed it, a category, and a location. `claims` records a user's assertion that a found report belongs to them. `report_comments` lets an owner add follow-up notes. `report_status_history` is an append-only audit trail of status changes (NFR-08). `bookmarks` is a many-to-many join between users and reports. `tags` and `report_tags` provide a fixed allow-list of tags and the many-to-many link to reports. `notifications` holds in-app notifications. `conversations` and `messages` hold direct messages between users about a report. `counter_sequence` backs the transactional reference-number generator. The `reports` table still has `submitter_type` and `moderation_status` columns from an earlier guest-report design; no current route uses them.
+A fresh install from `schema.sql` creates 10 tables. `categories` and `locations` are lookup tables for the report forms. `users` holds the pre-seeded demo accounts, including the PIN salt/hash pair used by the midterm's sign-in mechanism; every account is an ordinary user. `reports` is the core table: every lost or found item, tied to the user who filed it, a category, and a location. `claims` records a user's assertion that a found report belongs to them. `report_comments` lets an owner add follow-up notes. `report_status_history` is an append-only audit trail of status changes (NFR-08). `tags` and `report_tags` provide a fixed allow-list of tags and the many-to-many link to reports. `counter_sequence` backs the transactional reference-number generator.
 
 categories locations users
 | | |
@@ -87,9 +86,9 @@ categories locations users
 reports <---------------------- report_status_history
 / | \ (report_id, changed_by)
 / |
-report_comments | bookmarks
-(report_id, | (report_id,
-user_id) \ user_id)
+report_comments
+(report_id,
+user_id)
 
 claims
 (report_id, claimant_user_id,
@@ -123,22 +122,13 @@ counter_sequence — standalone, keyed by year, feeds reports.reference_no
 | POST | `/reports/:reference/edit` | Owner only | Update a report |
 | POST | `/reports/:reference/withdraw` | Owner only | Withdraw (soft-archive) a report |
 | POST | `/reports/:reference/comments` | Owner only | Add a comment |
-| POST | `/reports/:reference/bookmark` | Identity required | Toggle a bookmark |
 | GET | `/claims/new` | Identity required | Claim form for a found report |
 | POST | `/claims` | Identity required | File a claim |
 | GET | `/claims/:id` | Identity required | Claim detail |
 | POST | `/claims/:id/approve` | Report owner only | Approve a claim on your own report |
 | POST | `/claims/:id/reject` | Report owner only | Reject a claim on your own report (reason required) |
 | POST | `/reports/:reference/returned` | Report owner only | Mark your report's item as handed over |
-| GET | `/notifications` | Identity required | In-app notifications |
-| POST | `/notifications/read-all` | Identity required | Mark all notifications read |
-| POST | `/notifications/:id/read` | Owner only | Mark one notification read |
-| GET | `/messages` | Identity required | Message inbox |
-| GET | `/messages/new?report=` | Identity required | Start a message about a report |
-| POST | `/messages` | Identity required | Send the first message (opens the thread) |
-| GET | `/messages/:id` | Participants only | Message thread |
-| POST | `/messages/:id` | Participants only | Reply in a thread |
-| GET | `/my-reports` | Identity required | My reports, claims, and bookmarks |
+| GET | `/my-reports` | Identity required | My reports and claims |
 | GET | `/my-reports/sign-in` | Public | Sign-in form |
 | POST | `/my-reports/sign-in` | Public | Verify PIN, set signed cookie |
 | POST | `/my-reports/sign-out` | Identity required | Clear the signed cookie |
@@ -150,13 +140,11 @@ counter_sequence — standalone, keyed by year, feeds reports.reference_no
 | GET | `/help` | Public | User guide |
 | GET | `*` | Public | 404 page |
 
-## Guest and registered reports
 ## Reporting and notifications
 
-Reporting needs an account. The person who files a report is the one who later approves or rejects claims on it, receives notifications and exchanges messages about it, so `GET /reports/new` redirects signed-out visitors to the sign-in page. Anyone, signed in or not, can browse and search reports and open report details.
+Reporting needs an account. The person who files a report is the one who later approves or rejects claims on it, so `GET /reports/new` redirects signed-out visitors to the sign-in page. Anyone, signed in or not, can browse and search reports and open report details.
 
-Signed-in users can file lost and found reports (full form with photo and tags), edit a report while it is open, withdraw it, file claims on other people's found reports, bookmark reports, and use My Reports. They also get in-app notifications (claim filed on their report, status changed, their claim decided, new message) and direct messages with other users about a report. Nothing is emailed.
-
+Signed-in users can file lost and found reports (full form with photo and tags), edit a report while it is open, withdraw it, comment on their own reports, file claims on other people's found reports, and use My Reports to see their reports and claims. Nothing is emailed.
 ## Identification Without Sessions — Midterm Approach
 
 This identity is now VISIBLE and usable site-wide, not just on /my-reports. Every request runs an `optionalIdentity` check that sets `req.identity` (and exposes it to every view) without ever redirecting — guest browsing and guest reporting are never interrupted. The top navigation shows "Hi, <student_no>" with a sign-out link when signed in, or a "Sign in" link when not; gated actions (like filing a claim) link to `/sign-in?next=<path>` so the person returns to what they were doing afterward. `/sign-in` and `/sign-out` are now available as short top-level aliases of `/my-reports/sign-in` and `/my-reports/sign-out`.
@@ -257,7 +245,7 @@ No automated test suite exists yet (Week 15 territory — see Known issues). Man
 ## Known issues
 
 - Guest reports are verified by staff approval, not by email: the system has no mail sender (see `/about`), so email verification is not implemented. Adding it needs a mailer and a token table; the approval queue would then be the fallback.
-- Notifications and messages are in-app only; nothing is emailed.
+- There are no notifications. Owners see a badge on the profile icon (and on My Reports) for claims waiting for their decision; claimants check My Reports for the outcome. Nothing is emailed.
 - There are no staff or admin roles. The user who uploaded a report is the only one who can approve or reject claims on it (`POST /claims/:id/approve|reject`) and mark it returned (`POST /reports/:reference/returned`).
 
 - PIN-based identification is a documented midterm compromise (SHA-256, not bcrypt) — see "Identification Without Sessions" above.

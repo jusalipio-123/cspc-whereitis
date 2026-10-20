@@ -2,7 +2,6 @@
 <%
   const _name = (typeof profileName !== 'undefined' && profileName) ? profileName : identity.studentNo;
   const _initials = _name.split(/\s+/).filter(Boolean).slice(0, 2).map(function (w) { return w.charAt(0); }).join('').toUpperCase() || 'U';
-  const _unread = (typeof unreadCount !== 'undefined' && unreadCount > 0) ? unreadCount : 0;
   const _pendingIncoming = incomingClaims.filter(function (c) { return c.status === 'pending'; }).length;
   const _pillFor = function (st) { return st === 'approved' ? 'returned' : st === 'rejected' ? 'archived' : 'open'; };
 %>
@@ -23,8 +22,6 @@
     </div>
     <div class="my-hero__actions">
       <a class="btn btn--primary btn--sm" href="/reports/new">Report an item</a>
-      <a class="btn btn--ghost btn--sm" href="/notifications">Notifications<% if (_unread) { %> <span class="my-badge"><%= _unread %></span><% } %></a>
-      <a class="btn btn--ghost btn--sm" href="/messages">Messages</a>
       <form method="post" action="/my-reports/sign-out" class="inline" data-confirm="Sign out of My Reports?">
         <button type="submit" class="btn btn--ghost btn--sm">Sign out</button>
       </form>
@@ -35,7 +32,6 @@
     <li><a href="#my-reports-h"><strong><%= reports.length %></strong><span>My reports</span></a></li>
     <li><a href="#incoming-h"><strong><%= incomingClaims.length %></strong><span>Claims on my items<% if (_pendingIncoming) { %> <em><%= _pendingIncoming %> to review</em><% } %></span></a></li>
     <li><a href="#my-claims-h"><strong><%= claims.length %></strong><span>My claims</span></a></li>
-    <li><a href="#my-bookmarks-h"><strong><%= bookmarks.length %></strong><span>Bookmarks</span></a></li>
   </ul>
 
   <section class="my-section" aria-labelledby="my-reports-h">
@@ -61,7 +57,7 @@
     <section class="my-section" aria-labelledby="incoming-h">
       <div class="my-section__head"><h2 id="incoming-h">Claims on my reports <span class="my-count"><%= incomingClaims.length %></span></h2></div>
       <% if (incomingClaims.length === 0) { %>
-        <div class="empty-state"><p>Nobody has claimed one of your items yet. You will get a notification when they do.</p></div>
+        <div class="empty-state"><p>Nobody has claimed one of your items yet. New claims show up here, and a number appears on your profile icon.</p></div>
       <% } else { %>
         <ul class="claim-list claim-list--my">
           <% incomingClaims.forEach(function (c) { %>
@@ -102,19 +98,6 @@
       <% } %>
     </section>
   </div>
-
-  <section class="my-section" aria-labelledby="my-bookmarks-h">
-    <div class="my-section__head"><h2 id="my-bookmarks-h">My bookmarks <span class="my-count"><%= bookmarks.length %></span></h2></div>
-    <% if (bookmarks.length === 0) { %>
-      <div class="empty-state"><p>You haven't bookmarked anything yet.</p></div>
-    <% } else { %>
-      <ul class="card-grid card-grid--compact">
-        <% bookmarks.forEach(function (r) { %>
-          <li><%- include('../partials/reportCard', { report: r }) %></li>
-        <% }); %>
-      </ul>
-    <% } %>
-  </section>
 </main>
 
 <%- include('../partials/foot') %>

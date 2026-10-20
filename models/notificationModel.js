@@ -55,12 +55,4 @@ async function markAllRead(userId) {
   return r.affectedRows;
 }
 
-// markLinkRead: opening a message thread clears its notification(s).
-async function markLinkRead(userId, link) {
-  await pool.execute(
-    'UPDATE notifications SET is_read = 1 WHERE user_id = ? AND link = ? AND is_read = 0',
-    [userId, link]
-  );
-}
-
-module.exports = { create, listByUser, unreadCount, markRead, markAllRead, markLinkRead };
+module.exports = { create, listByUser, unreadCount, markRead, markAllRead };

@@ -80,28 +80,6 @@
               </form>
             <% } %>
           <% } %>
-          <% if (report.kind === 'lost' && report.status === 'open' && report.user_id && !(_identity && _identity.userId === report.user_id)) { %>
-            <% if (!_identity) { %>
-              <p class="muted">
-                <a href="/sign-in?next=<%= encodeURIComponent('/reports/' + report.reference_no) %>">Sign in</a> to contact the owner.
-              </p>
-            <% } else { %>
-              <form method="post" action="/messages/found" class="inline">
-                <input type="hidden" name="report_reference" value="<%= report.reference_no %>">
-                <button class="btn btn--primary" type="submit">I found this</button>
-              </form>
-            <% } %>
-          <% } %>
-          <% if (report.user_id && _identity && _identity.userId !== report.user_id) { %>
-            <a class="btn btn--ghost" href="/messages/new?report=<%= report.reference_no %>">Message the <%= report.kind === 'found' ? 'finder' : 'owner' %></a>
-          <% } %>
-          <% if (_identity) { %>
-            <form method="post" action="/reports/<%= report.reference_no %>/bookmark" class="inline">
-              <button class="btn btn--ghost btn--sm" type="submit">
-                <%= bookmarked ? 'Remove bookmark' : 'Bookmark' %>
-              </button>
-            </form>
-          <% } %>
         </section>
       </div>
     </div>
@@ -111,7 +89,7 @@
         <p><strong>Have an account?</strong>
           <a href="/sign-in?next=<%= encodeURIComponent('/reports/' + report.reference_no) %>">Sign in</a>
           or <a href="/register?next=<%= encodeURIComponent('/reports/' + report.reference_no) %>">create one</a>
-          to message the <%= report.kind === 'found' ? 'finder' : 'owner' %>, bookmark items, and get notified when someone responds.</p>
+          to manage claims and comments on your reports.</p>
       </aside>
     <% } %>
 

@@ -42,7 +42,7 @@
   </article>
 
   <% if (claim.status === 'pending' && !canDecide) { %>
-    <p class="muted">Waiting for the person who posted this report to review your claim. You will get a notification when they decide.</p>
+    <p class="muted">Waiting for the person who posted this report to review your claim. Check My Reports to see their decision.</p>
   <% } %>
 
   <% if (claim.status === 'pending' && canDecide) { %>

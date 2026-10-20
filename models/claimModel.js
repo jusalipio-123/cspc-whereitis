@@ -74,6 +74,18 @@ async function listForOwner(ownerUserId) {
   return rows;
 }
 
+// countPendingForOwner: how many claims on this user's reports still wait for their decision.
+// Cheap COUNT used for the badge in the nav (runs on every page for a signed-in user).
+async function countPendingForOwner(ownerUserId) {
+  const [[row]] = await pool.execute(
+    `SELECT COUNT(*) AS n FROM claims cl
+     JOIN reports r ON r.id = cl.report_id
+     WHERE r.user_id = ? AND cl.status = 'pending'`,
+    [ownerUserId]
+  );
+  return row.n;
+}
+
 // listByUser: powers "My Reports" — claims a given identity has filed on other people's found reports.
 async function listByUser(userId) {
   const [rows] = await pool.execute(
@@ -180,6 +192,7 @@ async function reject(claimId, decidedBy, note = null) {
 }
 
 module.exports = {
+  countPendingForOwner,
   create,
   findById,
   findByReportAndUser,

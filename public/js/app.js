@@ -8,7 +8,7 @@
 //   3. Remember the My Reports student number (localStorage ONLY, never the PIN)
 //   4. Character counter under textareas
 //   5. Show/hide the holding_location field based on kind (Lost vs Found)
-//   6. Dark / light mode toggle (stores 'light' or 'dark' in localStorage; nothing else)
+//   6. (removed: the site is dark-only)
 //   7. Cosmetic polish only (see "Visual polish" at the bottom): header shadow on scroll,
 //      scroll-reveal of cards, count-up of the stat numbers. No data, no requests.
 //   8. Press "/" to jump to the home-page search box
@@ -357,62 +357,6 @@ document.addEventListener('DOMContentLoaded', function () {
   }
   if (document.prerendering) { document.addEventListener('prerenderingchange', visualPolish, { once: true }); }
   else { visualPolish(); }
-})();
-
-
-// ---------------------------------------------------------------------
-// Dark / light mode. The saved choice is applied before paint by a tiny script in head.ejs;
-// this part only wires up the button. Without JS the page simply follows the device setting.
-// ---------------------------------------------------------------------
-(function () {
-  const btn = document.querySelector('[data-theme-toggle]');
-  if (!btn) { return; }
-  const root = document.documentElement;
-  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const KEY = 'whereitis_theme';
-
-  const current = function () { return root.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'; };
-  const label = function () {
-    const text = current() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
-    btn.setAttribute('aria-label', text);
-    btn.setAttribute('title', text);
-  };
-  const set = function (theme) {
-    root.setAttribute('data-theme', theme);
-    try { localStorage.setItem(KEY, theme); } catch (err) { /* private mode: still works for this visit */ }
-    label();
-  };
-
-  btn.hidden = false;
-  label();
-
-  btn.addEventListener('click', function () {
-    const next = current() === 'dark' ? 'light' : 'dark';
-    if (reduce || !document.startViewTransition) { set(next); return; }
-
-    // circular reveal that grows from the button
-    const r = btn.getBoundingClientRect();
-    const x = r.left + r.width / 2, y = r.top + r.height / 2;
-    const radius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y));
-    root.classList.add('theme-switching');
-    const vt = document.startViewTransition(function () { set(next); });
-    vt.ready.then(function () {
-      root.animate(
-        { clipPath: ['circle(0px at ' + x + 'px ' + y + 'px)', 'circle(' + radius + 'px at ' + x + 'px ' + y + 'px)'] },
-        { duration: 650, easing: 'cubic-bezier(.22, 1, .36, 1)', pseudoElement: '::view-transition-new(root)' }
-      );
-    }).catch(function () { /* transition skipped: theme is already switched */ });
-    vt.finished.finally(function () { root.classList.remove('theme-switching'); });
-  });
-
-  // Follow the device setting live, but only until the visitor makes their own choice.
-  if (window.matchMedia) {
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function (e) {
-      let saved = null;
-      try { saved = localStorage.getItem(KEY); } catch (err) {}
-      if (saved !== 'light' && saved !== 'dark') { root.setAttribute('data-theme', e.matches ? 'dark' : 'light'); label(); }
-    });
-  }
 })();
 
 
