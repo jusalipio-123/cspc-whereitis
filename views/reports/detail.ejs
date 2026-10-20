@@ -70,7 +70,20 @@
               This is mine &mdash; file a claim
             </a>
           <% } %>
+          <% if (report.kind === 'lost' && ['open', 'matched'].includes(report.status) && !(_identity && _identity.userId === report.user_id)) { %>
+            <% if (!_identity) { %>
+              <p class="muted">
+                <a href="/sign-in?next=<%= encodeURIComponent('/reports/' + report.reference_no) %>">Sign in</a> to report that you found this.
+              </p>
+            <% } %>
+            <a class="btn btn--primary" href="/reports/new?kind=found&amp;category_id=<%= report.category_id %>&amp;location_id=<%= report.location_id %>">
+              I found this
+            </a>
+          <% } %>
           <% if (_identity && _identity.userId === report.user_id) { %>
+            <% if (report.kind === 'lost' && ['open', 'matched'].includes(report.status)) { %>
+              <a class="btn btn--primary" href="#returned">Mark as returned</a>
+            <% } %>
             <% if (report.status === 'open') { %>
               <a class="btn btn--ghost" href="/reports/<%= report.reference_no %>/edit">
                 Edit
@@ -102,6 +115,20 @@
             <li><%- include('../partials/matchCard', { match: m }) %></li>
           <% }); %>
         </ul>
+      </section>
+    <% } %>
+
+    <% if (_identity && _identity.userId === report.user_id && report.kind === 'lost' && ['open', 'matched'].includes(report.status)) { %>
+      <section class="owner-panel" id="returned" aria-labelledby="owner-returned-h">
+        <h2 id="owner-returned-h">Got your item back?</h2>
+        <p class="field-hint">Once the item is in your hands, mark this report as returned so people stop looking for it.</p>
+        <form method="post" action="/reports/<%= report.reference_no %>/returned" class="form"
+              data-confirm="Mark this item as returned? This closes the report.">
+          <label for="returned_to">Returned by</label>
+          <input id="returned_to" name="returned_to" class="input" type="text" minlength="2" maxlength="120" required
+                 placeholder="Name of the finder, or the office that handed it to you">
+          <button class="btn btn--primary" type="submit">Mark as returned</button>
+        </form>
       </section>
     <% } %>
 
@@ -141,7 +168,7 @@
       <% } %>
     </section>
 
-    <% if (_identity && _identity.userId === report.user_id) { %>
+    <% if (_identity && _identity.userId === report.user_id && report.kind === 'found') { %>
       <section class="owner-panel" id="claims" aria-labelledby="owner-claims-h">
         <h2 id="owner-claims-h">Claims on this report (<%= claims.length %>)</h2>
         <p class="field-hint">You posted this report, so you decide which claim, if any, is approved.</p>
