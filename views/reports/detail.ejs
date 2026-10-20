@@ -134,6 +134,8 @@
 
     <section class="comments" id="comments" aria-labelledby="comments-h">
       <h2 id="comments-h">Comments</h2>
+      <% const _closed = ["returned", "archived"].includes(report.status); %>
+      <% if (!_closed) { %>
       <p class="meeting-note">
         <strong>Where to meet:</strong>
         <% if (report.kind === 'found') { %>
@@ -143,6 +145,7 @@
         <% } %>
         Comments are public, so please do not post phone numbers, emails or home addresses.
       </p>
+      <% } %>
       <% if (comments.length === 0) { %>
         <p class="muted">No comments yet.</p>
       <% } else { %>
@@ -155,7 +158,9 @@
           <% }); %>
         </ul>
       <% } %>
-      <% if (_identity) { %>
+      <% if (_closed) { %>
+        <p class="muted">Comments are closed because this item has been <%= report.status === 'returned' ? 'returned' : 'archived' %>.</p>
+      <% } else if (_identity) { %>
         <form method="post" action="/reports/<%= report.reference_no %>/comments" class="form">
           <label for="body">Add a comment</label>
           <textarea id="body" name="body" class="textarea" rows="3" maxlength="500" required

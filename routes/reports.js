@@ -505,6 +505,10 @@ router.post('/:reference/comments', requireIdentity, async (req, res, next) => {
       return res.status(404).render('errors/404', { title: 'Not found' });
     }
 
+    if (['returned', 'archived'].includes(report.status)) {
+      return res.redirect(303, '/reports/' + report.reference_no + '?flash=err:' + encodeURIComponent('Comments are closed because this item has been ' + report.status + '.') + '#comments');
+    }
+
     const bodyResult = validate.compose(
       validate.required('Comment'),
       validate.minLen(1, 'Comment'),
