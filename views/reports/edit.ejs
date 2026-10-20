@@ -1,120 +1,187 @@
-<!-- CSPC WhereITis — views/reports/edit.ejs -->
+<!-- CSPC WhereITis — views/reports/edit.ejs
+     Same layout as the new-report page: heading banner, numbered sections, help panel on the side. -->
 <%
   const _allTags = typeof allTags !== 'undefined' ? allTags : [];
   const _selectedTagIds = typeof selectedTagIds !== 'undefined' ? selectedTagIds : [];
+  const _errors = errors || {};
+  const _isFound = report.kind === 'found';
+  const _fieldIds = {
+    title: 'title', category_id: 'category_id', category_other: 'category_other', description: 'description',
+    tag_ids: 'tag-picker', location_id: 'location_id', location_other: 'location_other', occurred_on: 'occurred_on',
+    holding_location: 'holding_location', photo_url: 'photo'
+  };
+  const _errorKeys = Object.keys(_fieldIds).filter(function (k) { return _errors[k]; });
+  const _today = todayISO();
 %>
 <%- include('../partials/head', { title: 'Edit ' + report.reference_no }) %>
 <%- include('../partials/nav') %>
 
-<main id="main" class="container">
+<main id="main" class="container report-page">
   <%- include('../partials/flash') %>
 
-  <h1>Edit report</h1>
-
-  <p class="detail__pills">
-    <span class="pill pill--<%= report.kind %>"><%= report.kind === 'lost' ? 'Lost' : 'Found' %></span>
-  </p>
-
-  <form method="post" action="/reports/<%= report.reference_no %>/edit" class="form" enctype="multipart/form-data">
-    <!-- Kind cannot change on an existing report: shown read-only above; the server also ignores this field and uses the stored kind. -->
-    <input type="hidden" name="kind" value="<%= report.kind %>">
-
-    <div class="field">
-      <label for="title">Item title <span aria-hidden="true">*</span></label>
-      <input id="title" name="title" class="input" type="text"
-             maxlength="120" required
-             value="<%= values.title || '' %>"
-             <%= errors.title ? 'aria-invalid="true" aria-describedby="err-title"' : '' %>>
-      <% if (errors.title) { %><p class="field-error" id="err-title"><%= errors.title %></p><% } %>
+  <section class="board-hero board-hero--all">
+    <div>
+      <p class="page-head__eyebrow">Edit report</p>
+      <h1>Edit your report</h1>
+      <p>Update the details below. Changes are saved to the same report, and its reference number stays the same.</p>
     </div>
+  </section>
 
-    <div class="field">
-      <label for="category_id">Category</label>
-      <select id="category_id" name="category_id" class="select" required
-              <%= errors.category_id ? 'aria-invalid="true" aria-describedby="err-cat"' : '' %>>
-        <option value="">Choose a category</option>
-            <%- include('../partials/lookupOptions', { kind: 'category', items: categories, selectedId: values.category_id }) %>
-      </select>
-      <% if (errors.category_id) { %><p class="field-error" id="err-cat"><%= errors.category_id %></p><% } %>
-          <%- include('../partials/specifyField', { forSelect: 'category_id', name: 'category_other', label: 'What kind of item is it?', placeholder: 'e.g. Tuning fork, lab coat pin', value: values.category_other, error: errors.category_other, max: 60, show: !!(categories.find(function (c) { return c.is_other && String(c.id) === String(values.category_id); })) }) %>
-    </div>
-
-    <div class="field">
-      <label for="location_id">Location (where it was lost or found)</label>
-      <select id="location_id" name="location_id" class="select" required
-              <%= errors.location_id ? 'aria-invalid="true" aria-describedby="err-loc"' : '' %>>
-        <option value="">Choose a location</option>
-            <%- include('../partials/lookupOptions', { kind: 'location', items: locations, selectedId: values.location_id }) %>
-      </select>
-      <% if (errors.location_id) { %><p class="field-error" id="err-loc"><%= errors.location_id %></p><% } %>
-          <%- include('../partials/specifyField', { forSelect: 'location_id', name: 'location_other', label: 'Specify the place', placeholder: 'e.g. Beside the water refilling station', value: values.location_other, error: errors.location_other, max: 120, show: !!(locations.find(function (l) { return l.is_other && String(l.id) === String(values.location_id); })) }) %>
-    </div>
-
-    <div class="field">
-      <label for="occurred_on">Date lost or found</label>
-      <input id="occurred_on" name="occurred_on" class="input" type="date"
-             value="<%= values.occurred_on instanceof Date ? isoDate(values.occurred_on) : (values.occurred_on || '') %>" required
-             <%= errors.occurred_on ? 'aria-invalid="true" aria-describedby="err-date"' : '' %>>
-      <% if (errors.occurred_on) { %><p class="field-error" id="err-date"><%= errors.occurred_on %></p><% } %>
-    </div>
-
-    <div class="field">
-      <label for="description">Description</label>
-      <textarea id="description" name="description" class="textarea" rows="5"
-                maxlength="1000" required
-                data-charcount data-charcount-min="20" data-charcount-max="1000"
-                <%= errors.description ? 'aria-invalid="true" aria-describedby="err-desc"' : '' %>><%= values.description || '' %></textarea>
-      <% if (errors.description) { %><p class="field-error" id="err-desc"><%= errors.description %></p><% } %>
-    </div>
-
-    <div class="field" data-found-only>
-      <label for="holding_location">Holding location (required for found items)</label>
-      <input id="holding_location" name="holding_location" class="input" type="text"
-             maxlength="160"
-             value="<%= values.holding_location || '' %>"
-             <%= errors.holding_location ? 'aria-invalid="true" aria-describedby="err-hold"' : '' %>>
-      <% if (errors.holding_location) { %><p class="field-error" id="err-hold"><%= errors.holding_location %></p><% } %>
-    </div>
-
-    <fieldset class="fieldset" <%= errors.tag_ids ? 'aria-describedby="err-tags"' : '' %>>
-      <legend>Tags (optional)</legend>
-      <p class="field-hint">Pick up to 3. Used to filter and to help people
-      find related reports.</p>
-      <div class="tag-picker">
-        <% _allTags.forEach(function (t) { %>
-          <label class="tag-chip">
-            <input type="checkbox" name="tag_ids" value="<%= t.id %>"
-                   <%= _selectedTagIds.includes(t.id) ? 'checked' : '' %>>
-            <span><%= t.label %></span>
-          </label>
+  <% if (_errorKeys.length) { %>
+    <div class="form-alert" role="alert" tabindex="-1" id="form-alert">
+      <strong>We couldn't save your changes. Please fix <%= _errorKeys.length === 1 ? 'this' : 'these ' + _errorKeys.length + ' items' %>:</strong>
+      <ul>
+        <% _errorKeys.forEach(function (k) { %>
+          <li><a href="#<%= _fieldIds[k] %>"><%= _errors[k] %></a></li>
         <% }); %>
+      </ul>
+    </div>
+  <% } %>
+
+  <div class="report-layout">
+    <form method="post" action="/reports/<%= report.reference_no %>/edit" class="report-form" enctype="multipart/form-data">
+      <!-- The type of report cannot change: the server ignores this field and uses the stored kind. -->
+      <input type="hidden" name="kind" value="<%= report.kind %>">
+
+      <!-- 1 · Item -->
+      <section class="form-section" aria-labelledby="sec-item">
+        <h2 id="sec-item" class="form-section__title"><span class="form-section__num" aria-hidden="true">1</span>Item information</h2>
+
+        <div class="field-row">
+          <div class="field">
+            <label for="title">Item name <span class="req" aria-hidden="true">*</span></label>
+            <input id="title" name="title" class="input" type="text" maxlength="120" required autocomplete="off"
+                   value="<%= values.title || '' %>"
+                   <%= _errors.title ? 'aria-invalid="true" aria-describedby="err-title"' : '' %>>
+            <% if (_errors.title) { %><p class="field-error" id="err-title"><%= _errors.title %></p><% } %>
+          </div>
+
+          <div class="field">
+            <label for="category_id">Category <span class="req" aria-hidden="true">*</span></label>
+            <select id="category_id" name="category_id" class="select" required
+                    <%= _errors.category_id ? 'aria-invalid="true" aria-describedby="err-cat"' : '' %>>
+              <option value="">Select a category</option>
+              <%- include('../partials/lookupOptions', { kind: 'category', items: categories, selectedId: values.category_id }) %>
+            </select>
+            <% if (_errors.category_id) { %><p class="field-error" id="err-cat"><%= _errors.category_id %></p><% } %>
+            <%- include('../partials/specifyField', { forSelect: 'category_id', name: 'category_other', label: 'What kind of item is it?', placeholder: 'e.g. Tuning fork, lab coat pin', value: values.category_other, error: _errors.category_other, max: 60, show: !!(categories.find(function (c) { return c.is_other && String(c.id) === String(values.category_id); })) }) %>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="description">Description <span class="req" aria-hidden="true">*</span></label>
+          <textarea id="description" name="description" class="textarea" rows="5" maxlength="1000" required
+                    data-charcount data-charcount-min="20" data-charcount-max="1000"
+                    <%= _errors.description ? 'aria-invalid="true" aria-describedby="err-desc"' : 'aria-describedby="hint-desc"' %>><%= values.description || '' %></textarea>
+          <% if (_errors.description) { %><p class="field-error" id="err-desc"><%= _errors.description %></p><% } %>
+          <p class="field-hint" id="hint-desc">At least 20 characters. Do not include phone numbers or ID numbers.</p>
+        </div>
+
+        <% if (_allTags.length) { %>
+          <div class="field" role="group" aria-labelledby="tags-label">
+            <span id="tags-label" class="label">Tags <span class="optional">(optional, up to 3)</span></span>
+            <div class="tag-picker" id="tag-picker" tabindex="-1" data-max-tags="3">
+              <% _allTags.forEach(function (t) { %>
+                <label class="tag-chip tag-chip--pick">
+                  <input type="checkbox" name="tag_ids" value="<%= t.id %>" <%= _selectedTagIds.includes(t.id) ? 'checked' : '' %>>
+                  <span><%= t.label %></span>
+                </label>
+              <% }); %>
+            </div>
+            <% if (_errors.tag_ids) { %><p class="field-error"><%= _errors.tag_ids %></p><% } %>
+          </div>
+        <% } %>
+      </section>
+
+      <!-- 2 · Where & when -->
+      <section class="form-section" aria-labelledby="sec-where">
+        <h2 id="sec-where" class="form-section__title"><span class="form-section__num" aria-hidden="true">2</span>Location and date</h2>
+
+        <div class="field-row">
+          <div class="field">
+            <label for="location_id"><%= _isFound ? 'Where did you find it?' : 'Where did you lose it?' %> <span class="req" aria-hidden="true">*</span></label>
+            <select id="location_id" name="location_id" class="select" required
+                    <%= _errors.location_id ? 'aria-invalid="true" aria-describedby="err-loc"' : '' %>>
+              <option value="">Select a location</option>
+              <%- include('../partials/lookupOptions', { kind: 'location', items: locations, selectedId: values.location_id }) %>
+            </select>
+            <% if (_errors.location_id) { %><p class="field-error" id="err-loc"><%= _errors.location_id %></p><% } %>
+            <%- include('../partials/specifyField', { forSelect: 'location_id', name: 'location_other', label: 'Specify the place', placeholder: 'e.g. Beside the water refilling station', value: values.location_other, error: _errors.location_other, max: 120, show: !!(locations.find(function (l) { return l.is_other && String(l.id) === String(values.location_id); })) }) %>
+          </div>
+
+          <div class="field">
+            <label for="occurred_on"><%= _isFound ? 'Date found' : 'Date lost' %> <span class="req" aria-hidden="true">*</span></label>
+            <input id="occurred_on" name="occurred_on" class="input" type="date" required max="<%= _today %>"
+                   value="<%= values.occurred_on instanceof Date ? isoDate(values.occurred_on) : (values.occurred_on || '') %>"
+                   <%= _errors.occurred_on ? 'aria-invalid="true" aria-describedby="err-date"' : '' %>>
+            <% if (_errors.occurred_on) { %><p class="field-error" id="err-date"><%= _errors.occurred_on %></p><% } %>
+          </div>
+        </div>
+
+        <% if (_isFound) { %>
+          <div class="field">
+            <label for="holding_location">Where is the item now? <span class="req" aria-hidden="true">*</span></label>
+            <input id="holding_location" name="holding_location" class="input" type="text" maxlength="160"
+                   placeholder="e.g. CCS Dean's Office, 2nd floor"
+                   value="<%= values.holding_location || '' %>"
+                   <%= _errors.holding_location ? 'aria-invalid="true" aria-describedby="err-hold"' : 'aria-describedby="hint-hold"' %>>
+            <% if (_errors.holding_location) { %><p class="field-error" id="err-hold"><%= _errors.holding_location %></p><% } %>
+            <p class="field-hint" id="hint-hold">The office or person holding it, so the owner knows where to go.</p>
+          </div>
+        <% } %>
+      </section>
+
+      <!-- 3 · Photo -->
+      <section class="form-section" aria-labelledby="sec-photo">
+        <h2 id="sec-photo" class="form-section__title"><span class="form-section__num" aria-hidden="true">3</span>Photo</h2>
+
+        <% if (report.photo_url) { %>
+          <div class="field">
+            <span class="label">Current photo</span>
+            <div class="photo-preview"><img src="<%= report.photo_url %>" referrerpolicy="no-referrer" alt="Current photo of <%= report.title %>"></div>
+            <label class="check"><input type="checkbox" name="remove_photo" value="1"> Remove the current photo</label>
+          </div>
+        <% } %>
+
+        <div class="field">
+          <label for="photo"><%= report.photo_url ? 'Replace the photo' : 'Upload a photo of the item' %> <span class="optional">(optional)</span></label>
+          <input id="photo" name="photo" class="input" type="file" accept="image/jpeg,image/png,image/gif,image/webp"
+                 <%= _errors.photo_url ? 'aria-invalid="true" aria-describedby="err-photo"' : 'aria-describedby="hint-photo"' %>>
+          <% if (_errors.photo_url) { %><p class="field-error" id="err-photo"><%= _errors.photo_url %></p><% } %>
+          <p class="field-hint" id="hint-photo">JPG, PNG, GIF or WebP, up to 5 MB. Choosing a file replaces the current photo.</p>
+        </div>
+
+        <div class="field">
+          <label for="photo_url">Or paste an image link <span class="optional">(optional)</span></label>
+          <input id="photo_url" name="photo_url" class="input" type="url" maxlength="500" placeholder="https://example.com/photo.jpg"
+                 value="<%= /^https?:/.test(values.photo_url || '') ? values.photo_url : '' %>">
+        </div>
+      </section>
+
+      <div class="form-actions form-actions--bar">
+        <button type="submit" class="btn btn--primary">Save changes</button>
+        <a href="/reports/<%= report.reference_no %>" class="btn btn--ghost">Cancel</a>
+        <p class="form-actions__note"><span class="req" aria-hidden="true">*</span> Required</p>
       </div>
-      <% if (errors.tag_ids) { %><p class="field-error" id="err-tags"><%= errors.tag_ids %></p><% } %>
-    </fieldset>
+    </form>
 
-    <div class="field">
-      <label for="photo">Photo (optional)</label>
-      <% if (report.photo_url) { %>
-        <div class="photo-preview"><img src="<%= report.photo_url %>" referrerpolicy="no-referrer" alt="Current photo of <%= report.title %>"></div>
-        <label class="check"><input type="checkbox" name="remove_photo" value="1"> Remove the current photo</label>
-      <% } %>
-      <input id="photo" name="photo" class="input" type="file" accept="image/jpeg,image/png,image/gif,image/webp"
-             <%= errors.photo_url ? 'aria-invalid="true" aria-describedby="err-photo"' : 'aria-describedby="hint-photo"' %>>
-      <% if (errors.photo_url) { %><p class="field-error" id="err-photo"><%= errors.photo_url %></p><% } %>
-      <p class="field-hint" id="hint-photo">JPG, PNG, GIF or WebP, up to 5 MB. Choosing a file replaces the current photo.</p>
-    </div>
+    <aside class="report-aside" aria-label="Help">
+      <div class="card aside-card">
+        <h2>You are editing</h2>
+        <p><strong><%= report.title %></strong></p>
+        <p class="muted">Reference <span class="ref-id"><%= report.reference_no %></span> &middot; <%= _isFound ? 'Found' : 'Lost' %> report</p>
+      </div>
 
-    <div class="field">
-      <label for="photo_url">Or paste an image link (optional)</label>
-      <input id="photo_url" name="photo_url" class="input" type="url" maxlength="500"
-             value="<%= /^https?:/.test(values.photo_url || '') ? values.photo_url : '' %>" placeholder="https://example.com/photo.jpg">
-    </div>
-
-    <div class="form-actions">
-      <button type="submit" class="btn btn--primary">Save changes</button>
-      <a href="/reports/<%= report.reference_no %>" class="btn btn--ghost">Cancel</a>
-    </div>
-  </form>
+      <div class="card aside-card">
+        <h2>Good to know</h2>
+        <ul>
+          <li>The type of report (lost or found) cannot be changed.</li>
+          <li>You can edit a report while it is still open.</li>
+          <li>To remove it completely, use Withdraw on the report page.</li>
+        </ul>
+      </div>
+    </aside>
+  </div>
 </main>
 
 <%- include('../partials/foot') %>
