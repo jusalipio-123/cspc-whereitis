@@ -177,6 +177,12 @@ document.addEventListener('DOMContentLoaded', function () {
       document.querySelectorAll('[data-show-for]').forEach(function (el) {
         el.hidden = el.dataset.showFor !== kind;
       });
+      // Photo is only mandatory for FOUND reports (the server enforces the same rule).
+      const photoFile = reportForm.querySelector('[data-photo-file]');
+      const isFound = kind === 'found';
+      if (photoFile) photoFile.required = isFound;
+      document.querySelectorAll('[data-photo-req]').forEach(function (el) { el.hidden = !isFound; });
+      document.querySelectorAll('[data-photo-opt]').forEach(function (el) { el.hidden = isFound; });
     };
     reportForm.querySelectorAll('input[name="kind"]').forEach(function (r) { r.addEventListener('change', syncKind); });
     syncKind();
