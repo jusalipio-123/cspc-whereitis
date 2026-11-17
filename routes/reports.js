@@ -7,6 +7,8 @@ const reportModel = require('../models/reportModel');
 const categoryModel = require('../models/categoryModel');
 const locationModel = require('../models/locationModel');
 const commentModel = require('../models/commentModel');
+const notificationModel = require('../models/notificationModel');
+const bookmarkModel = require('../models/bookmarkModel');
 const claimModel = require('../models/claimModel');
 const status = require('../lib/status');
 const tagModel = require('../models/tagModel');
@@ -333,8 +335,13 @@ router.get('/:reference', async (req, res, next) => {
       comments,
       possibleMatches,
       claims,
+      bookmarked: false,
       identity: req.identity,
     };
+
+    if (req.identity) {
+      locals.bookmarked = await bookmarkModel.isBookmarked(req.identity.userId, report.id);
+    }
 
     res.render('reports/detail', locals);
   } catch (err) {
@@ -505,10 +512,6 @@ router.post('/:reference/comments', requireIdentity, async (req, res, next) => {
       return res.status(404).render('errors/404', { title: 'Not found' });
     }
 
-    if (['returned', 'archived'].includes(report.status)) {
-      return res.redirect(303, '/reports/' + report.reference_no + '?flash=err:' + encodeURIComponent('Comments are closed because this item has been ' + report.status + '.') + '#comments');
-    }
-
     const bodyResult = validate.compose(
       validate.required('Comment'),
       validate.minLen(1, 'Comment'),
@@ -527,6 +530,19 @@ router.post('/:reference/comments', requireIdentity, async (req, res, next) => {
       user_id: req.identity.userId,
       body: bodyResult.value,
     });
+
+    // Tell the report's owner when somebody else comments. Never notify
+    // people about their own comments; create() never throws, so a failed
+    // notification cannot undo the comment.
+    if (!isOwner) {
+      await notificationModel.create({
+        user_id: report.user_id,
+        type: 'comment_added',
+        report_id: report.id,
+        body: 'New comment on ' + report.reference_no + ' (' + report.title + ')',
+        link: '/reports/' + report.reference_no + '#comments',
+      });
+    }
 
     res.redirect(303, '/reports/' + report.reference_no + '?flash=ok:Comment%20added#comments');
   } catch (err) {
@@ -559,6 +575,22 @@ router.post('/:reference/returned', requireIdentity, async (req, res, next) => {
 
     await reportModel.markReturned(report.id, returnedToResult.value, req.identity.userId);
     res.redirect(303, back + '?flash=ok:Marked%20as%20returned');
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /:reference/bookmark
+router.post('/:reference/bookmark', requireIdentity, async (req, res, next) => {
+  try {
+    const report = await reportModel.findByReference(req.params.reference);
+    if (!report || report.moderation_status !== 'approved' || !reportModel.canView(report, req.identity)) {
+      return res.status(404).render('errors/404', { title: 'Not found' });
+    }
+
+    await bookmarkModel.toggle(req.identity.userId, report.id);
+
+    res.redirect(303, '/reports/' + report.reference_no + '?flash=ok:Bookmark%20updated');
   } catch (err) {
     next(err);
   }

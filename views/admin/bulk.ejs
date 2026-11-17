@@ -1,0 +1,58 @@
+<!-- CSPC WhereITis — views/admin/bulk.ejs -->
+<%- include('../partials/head', { title: 'Bulk status update' }) %>
+<%- include('../partials/nav') %>
+
+<main id="main" class="container">
+  <%- include('../partials/flash') %>
+
+  <h1>Bulk status update</h1>
+  <p class="muted">Select up to 100 recent reports and apply one status change to all
+  of them. This is all-or-nothing — if any report cannot legally make the change,
+  the whole batch is aborted.</p>
+
+  <form method="post" action="/admin/bulk" class="form"
+        data-confirm="Apply this status change to every selected report?">
+    <div class="field">
+      <label for="to_status">New status</label>
+      <select id="to_status" name="to_status" class="select" required>
+        <option value="">Choose&hellip;</option>
+        <option value="open">open</option>
+        <option value="matched">matched</option>
+        <option value="claimed">claimed</option>
+        <option value="returned">returned</option>
+        <option value="archived">archived</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="note">Note (optional)</label>
+      <input id="note" name="note" class="input" type="text" maxlength="255">
+    </div>
+
+    <fieldset class="fieldset">
+      <legend>Reports</legend>
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th></th><th>Ref</th><th>Title</th><th>Status</th></tr></thead>
+          <tbody>
+            <% reports.forEach(function (r) { %>
+              <tr>
+                <td><input type="checkbox" name="report_ids" value="<%= r.reference_no %>" aria-label="Select <%= r.reference_no %>"></td>
+                <td><code><%= r.reference_no %></code></td>
+                <td><%= r.title %></td>
+                <td><span class="pill pill--<%= r.status %>"><%= r.status %></span></td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    </fieldset>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn--primary">Apply to selected</button>
+      <a href="/admin" class="btn btn--ghost">Cancel</a>
+    </div>
+  </form>
+</main>
+
+<%- include('../partials/foot') %>

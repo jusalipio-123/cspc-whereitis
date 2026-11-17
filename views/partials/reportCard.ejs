@@ -47,6 +47,9 @@
     </p>
 
     <p class="report-card__ref"><code><%= report.reference_no %></code>
+      <% if (typeof bookmarked !== 'undefined' && bookmarked) { %>
+        <span class="report-card__bookmark">Bookmarked</span>
+      <% } %>
     </p>
   </div>
 </article>

@@ -74,18 +74,6 @@ async function listForOwner(ownerUserId) {
   return rows;
 }
 
-// countPendingForOwner: how many claims on this user's reports still wait for their decision.
-// Cheap COUNT used for the badge in the nav (runs on every page for a signed-in user).
-async function countPendingForOwner(ownerUserId) {
-  const [[row]] = await pool.execute(
-    `SELECT COUNT(*) AS n FROM claims cl
-     JOIN reports r ON r.id = cl.report_id
-     WHERE r.user_id = ? AND cl.status = 'pending'`,
-    [ownerUserId]
-  );
-  return row.n;
-}
-
 // listByUser: powers "My Reports" — claims a given identity has filed on other people's found reports.
 async function listByUser(userId) {
   const [rows] = await pool.execute(
@@ -98,7 +86,7 @@ async function listByUser(userId) {
 }
 
 // Approves one claim and auto-rejects every other pending claim on the
-// same report, in ONE transaction, then sets the report to 'claimed' and
+// same report, in ONE transaction, then marks the report 'returned' (to the claimant) and
 // writes a history row. See FR-06.
 async function approve(claimId, decidedBy, note = null) {
   const conn = await pool.getConnection();
@@ -137,14 +125,20 @@ async function approve(claimId, decidedBy, note = null) {
     );
     const fromStatus = reportRows[0].status;
 
+    const [claimantRows] = await conn.execute(
+      'SELECT full_name FROM users WHERE id = ?',
+      [claim.claimant_user_id]
+    );
+    const claimantName = (claimantRows[0] && claimantRows[0].full_name) || 'Claimant';
+
     await conn.execute(
-      `UPDATE reports SET status = 'claimed' WHERE id = ?`,
-      [claim.report_id]
+      `UPDATE reports SET status = 'returned', returned_to = ?, returned_at = NOW() WHERE id = ?`,
+      [claimantName.slice(0, 120), claim.report_id]
     );
 
     await conn.execute(
       `INSERT INTO report_status_history (report_id, from_status, to_status, changed_by, note)
-       VALUES (?, ?, 'claimed', ?, 'Claim approved')`,
+       VALUES (?, ?, 'returned', ?, 'Claim approved, item returned')`,
       [claim.report_id, fromStatus, decidedBy]
     );
 
@@ -192,7 +186,6 @@ async function reject(claimId, decidedBy, note = null) {
 }
 
 module.exports = {
-  countPendingForOwner,
   create,
   findById,
   findByReportAndUser,

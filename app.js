@@ -54,7 +54,7 @@ function safeRequire(modPath, label) {
 const logger = safeRequire('./middleware/logger', 'middleware/logger');
 const flash = safeRequire('./middleware/flash', 'middleware/flash');
 const identity = safeRequire('./middleware/identity', 'middleware/identity');
-const navInfo = safeRequire('./middleware/navInfo', 'middleware/navInfo');
+const unread = safeRequire('./middleware/unread', 'middleware/unread');
 
 if (logger) app.use(logger);
 if (flash) app.use(flash);
@@ -66,8 +66,8 @@ if (flash) app.use(flash);
 //      if (identity) app.use(identity);
 //    AFTER:
 if (identity) app.use(identity.optionalIdentity);
-// Pending-claims count + display name for the nav (signed-in users only).
-if (navInfo) app.use(navInfo);
+// Unread-notification count for the nav badge (signed-in users only).
+if (unread) app.use(unread);
 
 // 2) Expose req.identity to every view via res.locals, and compute the
 //    current path for the nav's sign-out "return here" hidden field.
@@ -117,6 +117,18 @@ try {
   app.use('/', require('./routes/myReports'));
 } catch (err) {
   console.warn('[app.js] Warning: routes/myReports not available yet (' + err.message + ')');
+}
+
+// Registered-user features: notifications and direct messages.
+try {
+  app.use('/notifications', require('./routes/notifications'));
+} catch (err) {
+  console.warn('[app.js] Warning: routes/notifications not available yet (' + err.message + ')');
+}
+try {
+  app.use('/messages', require('./routes/messages'));
+} catch (err) {
+  console.warn('[app.js] Warning: routes/messages not available yet (' + err.message + ')');
 }
 
 try {

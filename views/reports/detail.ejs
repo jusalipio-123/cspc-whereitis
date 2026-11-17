@@ -71,9 +71,6 @@
             </a>
           <% } %>
           <% if (_identity && _identity.userId === report.user_id) { %>
-            <% if (report.kind === 'lost' && ['open', 'matched'].includes(report.status)) { %>
-              <a class="btn btn--primary" href="#returned">Mark as returned</a>
-            <% } %>
             <% if (report.status === 'open') { %>
               <a class="btn btn--ghost" href="/reports/<%= report.reference_no %>/edit">
                 Edit
@@ -82,6 +79,28 @@
                 <button class="btn btn--danger btn--sm" type="submit">Withdraw</button>
               </form>
             <% } %>
+          <% } %>
+          <% if (report.kind === 'lost' && report.status === 'open' && report.user_id && !(_identity && _identity.userId === report.user_id)) { %>
+            <% if (!_identity) { %>
+              <p class="muted">
+                <a href="/sign-in?next=<%= encodeURIComponent('/reports/' + report.reference_no) %>">Sign in</a> to contact the owner.
+              </p>
+            <% } else { %>
+              <form method="post" action="/messages/found" class="inline">
+                <input type="hidden" name="report_reference" value="<%= report.reference_no %>">
+                <button class="btn btn--primary" type="submit">I found this</button>
+              </form>
+            <% } %>
+          <% } %>
+          <% if (report.user_id && _identity && _identity.userId !== report.user_id) { %>
+            <a class="btn btn--ghost" href="/messages/new?report=<%= report.reference_no %>">Message the <%= report.kind === 'found' ? 'finder' : 'owner' %></a>
+          <% } %>
+          <% if (_identity) { %>
+            <form method="post" action="/reports/<%= report.reference_no %>/bookmark" class="inline">
+              <button class="btn btn--ghost btn--sm" type="submit">
+                <%= bookmarked ? 'Remove bookmark' : 'Bookmark' %>
+              </button>
+            </form>
           <% } %>
         </section>
       </div>
@@ -92,7 +111,7 @@
         <p><strong>Have an account?</strong>
           <a href="/sign-in?next=<%= encodeURIComponent('/reports/' + report.reference_no) %>">Sign in</a>
           or <a href="/register?next=<%= encodeURIComponent('/reports/' + report.reference_no) %>">create one</a>
-          to manage claims and comments on your reports.</p>
+          to message the <%= report.kind === 'found' ? 'finder' : 'owner' %>, bookmark items, and get notified when someone responds.</p>
       </aside>
     <% } %>
 
@@ -108,34 +127,8 @@
       </section>
     <% } %>
 
-    <% if (_identity && _identity.userId === report.user_id && report.kind === 'lost' && ['open', 'matched'].includes(report.status)) { %>
-      <section class="owner-panel" id="returned" aria-labelledby="owner-returned-h">
-        <h2 id="owner-returned-h">Got your item back?</h2>
-        <p class="field-hint">Once the item is in your hands, mark this report as returned so people stop looking for it.</p>
-        <form method="post" action="/reports/<%= report.reference_no %>/returned" class="form"
-              data-confirm="Mark this item as returned? This closes the report.">
-          <label for="returned_to">Returned by</label>
-          <input id="returned_to" name="returned_to" class="input" type="text" minlength="2" maxlength="120" required
-                 placeholder="Name of the finder, or the office that handed it to you">
-          <button class="btn btn--primary" type="submit">Mark as returned</button>
-        </form>
-      </section>
-    <% } %>
-
     <section class="comments" id="comments" aria-labelledby="comments-h">
       <h2 id="comments-h">Comments</h2>
-      <% const _closed = ["returned", "archived"].includes(report.status); %>
-      <% if (!_closed) { %>
-      <p class="meeting-note">
-        <strong>Where to meet:</strong>
-        <% if (report.kind === 'found') { %>
-          Verify ownership at <%= report.holding_location || 'the custodian office' %> and bring a valid school ID.
-        <% } else { %>
-          If you found this item, say so below and hand it to the Security Office or Student Affairs, then the owner can claim it there.
-        <% } %>
-        Comments are public, so please do not post phone numbers, emails or home addresses.
-      </p>
-      <% } %>
       <% if (comments.length === 0) { %>
         <p class="muted">No comments yet.</p>
       <% } else { %>
@@ -148,14 +141,11 @@
           <% }); %>
         </ul>
       <% } %>
-      <% if (_closed) { %>
-        <p class="muted">Comments are closed because this item has been <%= report.status === 'returned' ? 'returned' : 'archived' %>.</p>
-      <% } else if (_identity) { %>
+      <% if (_identity) { %>
         <form method="post" action="/reports/<%= report.reference_no %>/comments" class="form">
           <label for="body">Add a comment</label>
           <textarea id="body" name="body" class="textarea" rows="3" maxlength="500" required
-                    aria-describedby="hint-comment" data-charcount data-charcount-max="500"></textarea>
-          <p class="field-hint" id="hint-comment">Everyone can read comments. Do not share personal contact details; arrange the handover at an office.</p>
+                    data-charcount data-charcount-max="500"></textarea>
           <button class="btn btn--primary" type="submit">Post comment</button>
         </form>
       <% } else { %>
@@ -163,7 +153,7 @@
       <% } %>
     </section>
 
-    <% if (_identity && _identity.userId === report.user_id && report.kind === 'found') { %>
+    <% if (_identity && _identity.userId === report.user_id) { %>
       <section class="owner-panel" id="claims" aria-labelledby="owner-claims-h">
         <h2 id="owner-claims-h">Claims on this report (<%= claims.length %>)</h2>
         <p class="field-hint">You posted this report, so you decide which claim, if any, is approved.</p>

@@ -19,6 +19,7 @@ const router = express.Router();
 const userModel = require('../models/userModel');
 const reportModel = require('../models/reportModel');
 const claimModel = require('../models/claimModel');
+const bookmarkModel = require('../models/bookmarkModel');
 const hmac = require('../lib/hmac');
 const { requireIdentity } = require('../middleware/identity');
 const validate = require('../middleware/validate');
@@ -55,9 +56,10 @@ function isSafeRelativePath(path) {
 // GET /my-reports
 async function myReportsIndexHandler(req, res, next) {
   try {
-    const [reports, claims, incomingClaims] = await Promise.all([
+    const [reports, claims, bookmarks, incomingClaims] = await Promise.all([
       reportModel.findByUser(req.identity.userId),
       claimModel.listByUser(req.identity.userId),
+      bookmarkModel.listByUser(req.identity.userId),
       claimModel.listForOwner(req.identity.userId),
     ]);
 
@@ -66,6 +68,7 @@ async function myReportsIndexHandler(req, res, next) {
       reports,
       claims,
       incomingClaims,
+      bookmarks,
       identity: req.identity,
     });
   } catch (err) {
