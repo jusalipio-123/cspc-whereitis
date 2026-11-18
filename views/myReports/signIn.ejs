@@ -1,7 +1,7 @@
 <!-- CSPC WhereITis — views/myReports/signIn.ejs -->
 <%
   const _errors = errors || {};
-  const _errorList = [_errors.student_no, _errors.pin].filter(Boolean);
+  const _errorList = [_errors.student_no, _errors.password].filter(Boolean);
   const _values = values || {};
   const _next = (typeof next !== 'undefined' && next) ? next : '';
   const _reason = _next.indexOf('/reports/new') === 0 ? 'Sign in to submit your report.'
@@ -37,7 +37,7 @@
     <!-- Form panel -->
     <section class="auth-panel" aria-labelledby="auth-title">
       <h1 id="auth-title">Sign in</h1>
-      <p class="auth-panel__sub muted"><%= _reason || 'Use your student number and 4-digit PIN.' %></p>
+      <p class="auth-panel__sub muted"><%= _reason || 'Use your student number and password.' %></p>
 
       <% if (_errorList.length) { %>
         <div class="form-alert auth-alert" role="alert" id="auth-alert">
@@ -57,14 +57,14 @@
         </div>
 
         <div class="field">
-          <label for="pin">4-digit PIN</label>
-          <div class="pin-wrap">
-            <input id="pin" name="pin" class="input input--lg" type="password" inputmode="numeric" pattern="\d{4}"
-                   maxlength="4" required autocomplete="current-password" placeholder="&bull;&bull;&bull;&bull;"
-                   <%= _errors.pin ? 'aria-invalid="true" aria-describedby="auth-alert"' : 'aria-describedby="pin-hint"' %>>
-            <button type="button" class="pin-toggle" data-toggle-pin aria-controls="pin" aria-pressed="false">Show</button>
+          <label for="password">Password</label>
+          <div class="pin-wrap pin-wrap--password">
+            <input id="password" name="password" class="input input--lg" type="password"
+                   maxlength="128" required autocomplete="current-password" placeholder="Your password"
+                   <%= _errors.password ? 'aria-invalid="true" aria-describedby="auth-alert"' : 'aria-describedby="password-hint"' %>>
+            <button type="button" class="pin-toggle" data-toggle-password aria-controls="password" aria-pressed="false">Show</button>
           </div>
-          <p class="field-hint" id="pin-hint">The 4-digit PIN you chose when you created your account.</p>
+          <p class="field-hint" id="password-hint">Made your account before passwords? Type your old 4-digit PIN once. We will then ask you to choose a new password.</p>
         </div>
 
         <label class="checkbox auth-remember">

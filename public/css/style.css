@@ -2042,3 +2042,23 @@ main.container.my-page > ul.my-stats { max-width: none; }
 .tag-chip--pick:hover span { background: color-mix(in srgb, var(--brand) 14%, var(--card)); }
 .btn--pill { border-radius: 8px; }
 .chat__day span { background: var(--brand-050); }
+
+/* ---------- Passwords: show/hide field, strength meter and checklist (sign-up / set-password) ---------- */
+.pin-wrap--password .input { letter-spacing: normal; }
+.pin-wrap--password .input::placeholder { letter-spacing: normal; }
+.pw-meter { margin-top: .55rem; }
+.pw-meter__track { height: 6px; border-radius: 999px; background: var(--border); overflow: hidden; }
+.pw-meter__bar { display: block; height: 100%; width: 0; border-radius: inherit; background: var(--muted); transition: width .25s ease, background-color .25s ease; }
+.pw-meter__label { margin: .3rem 0 0; font-size: .85rem; font-weight: 600; color: var(--muted); }
+.pw-meter[data-level="1"] .pw-meter__bar { width: 25%; background: var(--danger); }
+.pw-meter[data-level="2"] .pw-meter__bar { width: 50%; background: var(--amber); }
+.pw-meter[data-level="3"] .pw-meter__bar { width: 75%; background: var(--green); }
+.pw-meter[data-level="4"] .pw-meter__bar { width: 100%; background: var(--green); }
+.pw-meter[data-level="1"] .pw-meter__label { color: var(--danger); }
+.pw-meter[data-level="2"] .pw-meter__label { color: var(--amber); }
+.pw-meter[data-level="3"] .pw-meter__label, .pw-meter[data-level="4"] .pw-meter__label { color: var(--green); }
+.pw-rules { list-style: none; margin: .5rem 0 0; padding: 0; display: grid; gap: .2rem; font-size: .85rem; color: var(--muted); }
+.pw-rules li::before { content: "\25CB"; display: inline-block; width: 1.3em; }
+.pw-rules li.is-met { color: var(--green); }
+.pw-rules li.is-met::before { content: "\2713"; font-weight: 700; }
+@media (prefers-reduced-motion: reduce) { .pw-meter__bar { transition: none; } }
