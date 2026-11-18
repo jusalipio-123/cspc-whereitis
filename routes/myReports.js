@@ -6,7 +6,11 @@
 //
 // The /my-reports page uses a signed HttpOnly cookie called whereitis_id, NOT
 // a session. See README "Identification Without Sessions — Midterm Approach".
-// Week 11 replaces this with express-session + bcrypt.
+//
+// PASSWORDS: accounts use a real password (10+ characters, checked against
+// common/guessable passwords) stored with scrypt, and sign-in is rate-limited
+// per account and per IP. Accounts created with the old 4-digit PIN sign in
+// once with that PIN and are then forced to choose a password (/set-password).
 //
 // ROUTE PATHS: every route below is defined with its FULL path, including
 // /my-reports where that's the "real" location — this file is mounted at
@@ -23,9 +27,49 @@ const bookmarkModel = require('../models/bookmarkModel');
 const hmac = require('../lib/hmac');
 const { requireIdentity } = require('../middleware/identity');
 const validate = require('../middleware/validate');
+const passwords = require('../lib/passwords');
+const limiter = require('../lib/loginLimiter');
 
 const COOKIE_NAME = 'whereitis_id';
 const COOKIE_MAX_AGE_MS = 30 * 60 * 1000; // 30 minutes
+
+// Short-lived cookie that only proves "this person just typed their old PIN
+// correctly". It lets them reach /set-password and nothing else.
+const RESET_COOKIE = 'whereitis_pwreset';
+const RESET_MAX_AGE_MS = 10 * 60 * 1000; // 10 minutes
+
+function cookieOptions(maxAgeMs) {
+  return {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: maxAgeMs,
+    path: '/',
+  };
+}
+
+function buildResetCookieValue(userId, expiresAtMs) {
+  return `${userId}.${expiresAtMs}.${hmac.sign(`pwreset.${userId}.${expiresAtMs}`)}`;
+}
+
+// readResetUserId: the user id from a valid, unexpired reset cookie, or null.
+function readResetUserId(req) {
+  const raw = req.cookies && req.cookies[RESET_COOKIE];
+  if (!raw) return null;
+  const parts = raw.split('.');
+  if (parts.length !== 3) return null;
+  const [idStr, expStr, sig] = parts;
+  const userId = Number(idStr);
+  const expires = Number(expStr);
+  if (!Number.isInteger(userId) || !Number.isFinite(expires) || expires <= Date.now()) return null;
+  if (!hmac.verify(`pwreset.${idStr}.${expStr}`, sig)) return null;
+  return userId;
+}
+
+function signInAs(res, user) {
+  const expiresAt = Date.now() + COOKIE_MAX_AGE_MS;
+  res.cookie(COOKIE_NAME, buildCookieValue(user.id, user.student_no, expiresAt), cookieOptions(COOKIE_MAX_AGE_MS));
+}
 
 function buildCookieValue(userId, studentNo, expiresAtMs) {
   const payload = `${userId}.${studentNo}.${expiresAtMs}`;
@@ -104,10 +148,12 @@ async function signInSubmitHandler(req, res, next) {
     )(req.body.student_no);
     if (!studentNoResult.ok) errors.student_no = studentNoResult.error;
 
-    const pinRaw = String(req.body.pin || '').trim();
-    const pinShapeOk = /^\d{4}$/.test(pinRaw);
-    if (!pinShapeOk) {
-      errors.pin = 'PIN must be exactly 4 digits.';
+    // Passwords are used exactly as typed (never trimmed), so spaces are allowed.
+    const password = typeof req.body.password === 'string' ? req.body.password : '';
+    if (!password) {
+      errors.password = 'Please enter your password.';
+    } else if (password.length > passwords.MAX_LENGTH) {
+      errors.password = 'Student number and password do not match our records.';
     }
 
     if (Object.keys(errors).length > 0) {
@@ -119,19 +165,35 @@ async function signInSubmitHandler(req, res, next) {
       });
     }
 
-    const user = await userModel.verifyPin(studentNoResult.value, pinRaw);
-
-    // We deliberately do NOT reveal whether the student_no exists or the
-    // PIN was wrong — the same generic message either way prevents
-    // account enumeration.
-    if (!user) {
-      return res.status(401).render('myReports/signIn', {
+    // Too many wrong guesses on this student number (or from this address)? Pause, without
+    // checking the password at all, so a guessing script gets nothing back while paused.
+    const gate = limiter.check(studentNoResult.value, req.ip);
+    if (gate.limited) {
+      return res.status(429).render('myReports/signIn', {
         title: 'Sign in to My Reports',
         values: { student_no: req.body.student_no },
-        errors: { pin: 'Student number and PIN do not match our records.' },
+        errors: { password: 'Too many failed attempts. Please try again in ' + limiter.minutesText(gate.retryAfterMs) + '.' },
         next: nextPath,
       });
     }
+
+    const result = await userModel.verifyPassword(studentNoResult.value, password);
+
+    // We deliberately do NOT reveal whether the student_no exists or the
+    // password was wrong — the same generic message either way prevents
+    // account enumeration.
+    if (!result) {
+      limiter.recordFailure(studentNoResult.value, req.ip);
+      return res.status(401).render('myReports/signIn', {
+        title: 'Sign in to My Reports',
+        values: { student_no: req.body.student_no },
+        errors: { password: 'Student number and password do not match our records.' },
+        next: nextPath,
+      });
+    }
+
+    limiter.recordSuccess(studentNoResult.value);
+    const user = result.user;
 
     // Soft policy check (not authentication) — @cspc.edu.ph accounts only.
     if (!user.email || !SCHOOL_EMAIL_RE.test(user.email)) {
@@ -146,16 +208,14 @@ async function signInSubmitHandler(req, res, next) {
       });
     }
 
-    const expiresAt = Date.now() + COOKIE_MAX_AGE_MS;
-    const value = buildCookieValue(user.id, user.student_no, expiresAt);
+    // Old account that just used its 4-digit PIN: they are NOT signed in yet. They must choose a
+    // real password first (this erases the old PIN).
+    if (result.legacy) {
+      res.cookie(RESET_COOKIE, buildResetCookieValue(user.id, Date.now() + RESET_MAX_AGE_MS), cookieOptions(RESET_MAX_AGE_MS));
+      return res.redirect(303, '/set-password' + (nextPath ? '?next=' + encodeURIComponent(nextPath) : ''));
+    }
 
-    res.cookie(COOKIE_NAME, value, {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: COOKIE_MAX_AGE_MS,
-      path: '/',
-    });
+    signInAs(res, user);
 
     const destination = nextPath || '/my-reports';
     const sep = destination.includes('?') ? '&' : '?';
@@ -229,10 +289,15 @@ async function registerSubmitHandler(req, res, next) {
       errors.contact_no = 'Enter a valid contact number, or leave it blank.';
     }
 
-    const pin = String(req.body.pin || '').trim();
-    const pin2 = String(req.body.pin_confirm || '').trim();
-    if (!/^\d{4}$/.test(pin)) errors.pin = 'PIN must be exactly 4 digits.';
-    else if (pin !== pin2) errors.pin_confirm = 'The two PINs do not match.';
+    const password = typeof req.body.password === 'string' ? req.body.password : '';
+    const password2 = typeof req.body.password_confirm === 'string' ? req.body.password_confirm : '';
+    const passwordError = passwords.validate(password, {
+      student_no: values.student_no,
+      email: values.email,
+      full_name: values.full_name,
+    });
+    if (passwordError) errors.password = passwordError;
+    else if (password !== password2) errors.password_confirm = 'The two passwords do not match.';
 
     if (!req.body.agree) errors.agree = 'Please accept the Terms and Privacy notice to continue.';
 
@@ -253,7 +318,7 @@ async function registerSubmitHandler(req, res, next) {
         full_name: values.full_name,
         email: values.email,
         contact_no: values.contact_no || null,
-        pin,
+        password,
       });
     } catch (err) {
       // Two people registering at once can slip past the pre-check; the UNIQUE keys catch it.
@@ -268,14 +333,7 @@ async function registerSubmitHandler(req, res, next) {
     }
 
     // Sign the new student straight in.
-    const expiresAt = Date.now() + COOKIE_MAX_AGE_MS;
-    res.cookie(COOKIE_NAME, buildCookieValue(user.id, user.student_no, expiresAt), {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: COOKIE_MAX_AGE_MS,
-      path: '/',
-    });
+    signInAs(res, user);
     const destination = nextPath || '/my-reports';
     const sep = destination.includes('?') ? '&' : '?';
     res.redirect(303, `${destination}${sep}flash=ok:Account%20created.%20Welcome%2C%20${encodeURIComponent(user.full_name.split(' ')[0])}!`);
@@ -284,9 +342,67 @@ async function registerSubmitHandler(req, res, next) {
   }
 }
 
+// ---------------------------------------------------------------------
+// Choose a new password. Only reachable right after an old 4-digit-PIN
+// sign-in (see the reset cookie above). Replaces the PIN for good.
+// ---------------------------------------------------------------------
+function renderSetPassword(res, status, errors, nextPath) {
+  return res.status(status).render('myReports/setPassword', {
+    title: 'Choose a new password',
+    errors: errors || {},
+    next: nextPath || '',
+  });
+}
+
+function backToSignIn(res) {
+  res.clearCookie(RESET_COOKIE, { path: '/' });
+  return res.redirect(303, '/sign-in?flash=err:' + encodeURIComponent('Please sign in first.'));
+}
+
+// GET /set-password
+function setPasswordFormHandler(req, res) {
+  if (!readResetUserId(req)) return backToSignIn(res);
+  const nextPath = isSafeRelativePath(req.query.next) ? req.query.next : '';
+  renderSetPassword(res, 200, {}, nextPath);
+}
+
+// POST /set-password
+async function setPasswordSubmitHandler(req, res, next) {
+  try {
+    const userId = readResetUserId(req);
+    if (!userId) return backToSignIn(res);
+
+    const user = await userModel.findById(userId);
+    if (!user) return backToSignIn(res);
+
+    const nextPath = isSafeRelativePath(req.body.next) ? req.body.next : '';
+    const password = typeof req.body.password === 'string' ? req.body.password : '';
+    const password2 = typeof req.body.password_confirm === 'string' ? req.body.password_confirm : '';
+
+    const errors = {};
+    const passwordError = passwords.validate(password, user);
+    if (passwordError) errors.password = passwordError;
+    else if (password !== password2) errors.password_confirm = 'The two passwords do not match.';
+
+    if (Object.keys(errors).length > 0) return renderSetPassword(res, 422, errors, nextPath);
+
+    await userModel.setPassword(user.id, password);
+
+    res.clearCookie(RESET_COOKIE, { path: '/' });
+    signInAs(res, user);
+
+    const destination = nextPath || '/my-reports';
+    const sep = destination.includes('?') ? '&' : '?';
+    res.redirect(303, `${destination}${sep}flash=ok:Password%20updated.%20You%20are%20signed%20in.`);
+  } catch (err) {
+    next(err);
+  }
+}
+
 // POST /my-reports/sign-out, POST /sign-out
 function signOutHandler(req, res) {
   res.clearCookie(COOKIE_NAME, { path: '/' });
+  res.clearCookie(RESET_COOKIE, { path: '/' });
 
   // Always land on the sign-in page after signing out.
   res.redirect(303, '/sign-in?flash=ok:You%20have%20been%20signed%20out');
@@ -308,6 +424,9 @@ router.get('/register', registerFormHandler);
 router.get('/my-reports/register', registerFormHandler);
 router.post('/register', registerSubmitHandler);
 router.post('/my-reports/register', registerSubmitHandler);
+
+router.get('/set-password', setPasswordFormHandler);
+router.post('/set-password', setPasswordSubmitHandler);
 
 router.post('/my-reports/sign-out', signOutHandler);
 router.post('/sign-out', signOutHandler);

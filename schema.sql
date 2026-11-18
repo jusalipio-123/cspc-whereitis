@@ -111,8 +111,9 @@ CREATE TABLE users (
   student_no  VARCHAR(20)  NOT NULL,
   full_name   VARCHAR(120) NOT NULL,
   email       VARCHAR(160) NOT NULL,
-  pin_salt    CHAR(32)     NOT NULL,     -- per-user random hex salt (16 random bytes, hex-encoded)
-  pin_hash    CHAR(64)     NOT NULL,     -- hex SHA-256(salt || pin) — midterm-only, see note above
+  password_hash VARCHAR(255) NULL,       -- scrypt$N$r$p$salt$hash (see lib/passwords.js); NULL until an old PIN account upgrades
+  pin_salt    CHAR(32)     NULL,         -- LEGACY 4-digit PIN (old accounts only); erased once the user sets a password
+  pin_hash    CHAR(64)     NULL,         -- LEGACY hex SHA-256(salt || pin); erased once the user sets a password
   contact_no  VARCHAR(20)  NULL,         -- optional; only collected because the student may want to be called
   created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uniq_users_student_no (student_no),

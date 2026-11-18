@@ -5,7 +5,7 @@
 // more:
 //   1. Confirm before submitting a destructive form
 //   2. Auto-dismiss the flash banner
-//   3. Remember the My Reports student number (localStorage ONLY, never the PIN)
+//   3. Remember the My Reports student number (localStorage ONLY, never the password)
 //   4. Character counter under textareas
 //   5. Show/hide the holding_location field based on kind (Lost vs Found)
 //   6. Dark / light mode toggle (stores 'light' or 'dark' in localStorage; nothing else)
@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // -------------------------------------------------------------------
   // 3. Remember me (My Reports student number) — localStorage ONLY,
-  // NEVER the PIN. The PIN field is never read or written by this file.
+  // NEVER the password. The password field is never stored by this file.
   // -------------------------------------------------------------------
   const STUDENT_NO_KEY = 'whereitis_student_no';
   const studentNoField = document.querySelector('#student_no');
@@ -249,36 +249,71 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   // -------------------------------------------------------------------
-  // 7. Sign-in page: show/hide PIN, digits only, focus, no double submit
+  // 7. Sign-in / sign-up / set-password pages: show/hide password, live strength
+  //    meter + checklist, focus, no double submit. The server re-checks every rule.
   // -------------------------------------------------------------------
   const authForm = document.querySelector('form[data-auth-form]');
   if (authForm) {
-    const pin = authForm.querySelector('#pin');
-    const toggle = authForm.querySelector('[data-toggle-pin]');
-    if (pin && toggle) {
+    const pw = authForm.querySelector('#password');
+    const pw2 = authForm.querySelector('#password_confirm');
+    const toggle = authForm.querySelector('[data-toggle-password]');
+
+    if (pw && toggle) {
       toggle.addEventListener('click', function () {
-        const show = pin.type === 'password';
-        pin.type = show ? 'text' : 'password';
+        const show = pw.type === 'password';
+        pw.type = show ? 'text' : 'password';
+        if (pw2) { pw2.type = pw.type; }
         toggle.textContent = show ? 'Hide' : 'Show';
         toggle.setAttribute('aria-pressed', show ? 'true' : 'false');
       });
-      pin.addEventListener('input', function () { pin.value = pin.value.replace(/\D/g, '').slice(0, 4); });
     }
-    const pin2 = authForm.querySelector('#pin_confirm');
-    if (pin2) { pin2.addEventListener('input', function () { pin2.value = pin2.value.replace(/\D/g, '').slice(0, 4); }); }
+
+    // Strength meter + checklist (only on pages that include partials/passwordMeter).
+    const meter = authForm.querySelector('[data-pw-meter]');
+    const rules = authForm.querySelectorAll('[data-pw-rules] [data-rule]');
+    if (pw && (meter || rules.length)) {
+      const labels = ['', 'Too weak', 'Fair', 'Good', 'Strong'];
+      const scorePassword = function (v) {
+        const hasLetter = /[A-Za-z\u00C0-\u024F]/.test(v);
+        const hasOther = /[^A-Za-z\u00C0-\u024F]/.test(v);
+        const classes = [/[a-z]/, /[A-Z]/, /[0-9]/, /[^A-Za-z0-9]/].filter(function (re) { return re.test(v); }).length;
+        const checks = {
+          length: v.length >= 10,
+          mix: hasLetter && hasOther,
+          long: v.length >= 14,
+        };
+        let level = 0;
+        if (v.length > 0) { level = 1; }
+        if (checks.length && checks.mix) { level = 2; }
+        if (checks.length && checks.mix && (v.length >= 12 || classes >= 3)) { level = 3; }
+        if (checks.length && checks.mix && v.length >= 14 && (classes >= 3 || /\s/.test(v) || v.length >= 18)) { level = 4; }
+        return { level: level, checks: checks };
+      };
+      const refresh = function () {
+        const r = scorePassword(pw.value);
+        if (meter) {
+          meter.hidden = pw.value.length === 0;
+          meter.setAttribute('data-level', String(r.level));
+          const label = meter.querySelector('[data-pw-label]');
+          if (label) { label.textContent = labels[r.level] ? 'Strength: ' + labels[r.level] : ''; }
+        }
+        rules.forEach(function (li) { li.classList.toggle('is-met', !!r.checks[li.dataset.rule]); });
+      };
+      pw.addEventListener('input', refresh);
+      refresh();
+    }
+
     const fullName = authForm.querySelector('#full_name');
     const sn = authForm.querySelector('#student_no');
     if (fullName) { if (!authForm.querySelector('.field-error')) fullName.focus(); }
-    else if (sn && pin) { (sn.value ? pin : sn).focus(); }
+    else if (sn && pw) { (sn.value ? pw : sn).focus(); }
+    else if (pw && !authForm.querySelector('.field-error')) { pw.focus(); }
 
     const btn = authForm.querySelector('[data-submit]');
     authForm.addEventListener('submit', function (e) {
-      if (pin2 && pin.value !== pin2.value) {
-        e.preventDefault(); pin2.setCustomValidity('The two PINs do not match.'); pin2.reportValidity(); return;
-      }
-      if (pin2) pin2.setCustomValidity('');
+      if (pw2) { pw2.setCustomValidity(pw.value !== pw2.value ? 'The two passwords do not match.' : ''); }
       if (!authForm.checkValidity()) { e.preventDefault(); authForm.reportValidity(); return; }
-      if (btn) { btn.disabled = true; btn.textContent = pin2 ? 'Creating account\u2026' : 'Signing in\u2026'; }
+      if (btn) { btn.disabled = true; btn.textContent = pw2 ? (fullName ? 'Creating account\u2026' : 'Saving\u2026') : 'Signing in\u2026'; }
     });
   }
 

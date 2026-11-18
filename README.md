@@ -50,7 +50,7 @@ mysql -u root -p whereitis < seed.sql
 
 ## Demo accounts and seed data
 
-| Student No. | Full name | Role | PIN |
+| Student No. | Full name | Role | Old PIN (first sign-in only) |
 |---|---|---|---|
 | 2021-00001 | Juan Miguel Dela Cruz | student | 1234 |
 | 2021-00002 | Maria Clara Santos | student | 2345 |
@@ -58,7 +58,7 @@ mysql -u root -p whereitis < seed.sql
 | 2022-00004 | Andrea Lyn Villanueva | student | 4567 |
 | 2022-00005 | Miguel Antonio Reyes | student | 5678 |
 
-These PINs are published here because this is a midterm demo. Week 11 replaces PINs with bcrypt-hashed passwords and real account provisioning.
+These demo accounts were created with a 4-digit PIN. Each one can sign in **once** with its PIN, and the app then makes the person choose a real password (10+ characters). After that the PIN is erased and no longer works. New accounts choose a password at sign-up and never have a PIN.
 
 ## Environment variables
 
@@ -78,7 +78,7 @@ These PINs are published here because this is a midterm demo. Week 11 replaces P
 
 ## Database
 
-The schema has nine tables. `categories` and `locations` are small admin-managed lookup tables. `users` holds the pre-seeded demo accounts, including the PIN salt/hash pair used by the midterm's sign-in mechanism. `reports` is the core table — every lost or found item, tied to the user who filed it, a category, and a location. `claims` records a student's assertion that a found report belongs to them, tied to both the report and the claimant. `report_comments` lets an owner add follow-up notes to their own report. `report_status_history` is an append-only audit trail — every status change writes a row here, satisfying NFR-08. `bookmarks` is a simple many-to-many join between users and reports. `counter_sequence` backs the transactional reference-number generator.
+The schema has nine tables. `categories` and `locations` are small admin-managed lookup tables. `users` holds the pre-seeded demo accounts, including `password_hash` (a salted scrypt hash, see `lib/passwords.js`) and the legacy `pin_salt`/`pin_hash` pair that old accounts use for one last sign-in before they set a password. `reports` is the core table — every lost or found item, tied to the user who filed it, a category, and a location. `claims` records a student's assertion that a found report belongs to them, tied to both the report and the claimant. `report_comments` lets an owner add follow-up notes to their own report. `report_status_history` is an append-only audit trail — every status change writes a row here, satisfying NFR-08. `bookmarks` is a simple many-to-many join between users and reports. `counter_sequence` backs the transactional reference-number generator.
 
 categories locations users
 | | |
@@ -142,7 +142,8 @@ counter_sequence — standalone, keyed by year, feeds reports.reference_no
 | POST | `/messages/:id` | Participants only | Reply in a thread |
 | GET | `/my-reports` | Identity required | My reports, claims, and bookmarks |
 | GET | `/my-reports/sign-in` | Public | Sign-in form |
-| POST | `/my-reports/sign-in` | Public | Verify PIN, set signed cookie |
+| POST | `/my-reports/sign-in` | Public | Verify password (rate-limited), set signed cookie |
+| GET, POST | `/set-password` | Old PIN accounts only | Choose a new password right after the one-time PIN sign-in |
 | POST | `/my-reports/sign-out` | Identity required | Clear the signed cookie |
 | GET | `/about` | Public | About page |
 | GET | `/privacy` | Public | Privacy Notice |
@@ -250,8 +251,8 @@ No automated test suite exists yet (Week 15 territory — see Known issues). Man
 | 7 | Claim with too-short proof | 422, form re-rendered, values preserved, error next to the field |
 | 8 | Approve a claim | Claim → `approved`, every sibling pending claim → `rejected`, report → `claimed`, all in one transaction |
 | 9 | Reject a claim | Claim → `rejected` with a note, report status untouched |
-| 10 | Sign in with valid PIN | `whereitis_id` cookie set, redirect to `/my-reports` |
-| 11 | Sign in with wrong PIN | 401, generic "do not match our records" message, no hint whether the student number exists |
+| 10 | Sign in with valid password | `whereitis_id` cookie set, redirect to `/my-reports` |
+| 11 | Sign in with wrong password | 401, generic "do not match our records" message, no hint whether the student number exists |
 | 12 | Edit own open report | Fields update, `updated_at` bumped, redirect 303 |
 | 13 | Withdraw own open report | Status → `archived`, reason `withdrawn by owner`, history row written |
 | 14 | Illegal status transition (e.g. `archived` → `open`) | 422 with "That status change is not allowed from archived." |
@@ -263,8 +264,9 @@ No automated test suite exists yet (Week 15 territory — see Known issues). Man
 - Notifications and messages are in-app only; nothing is emailed.
 - There are no staff or admin roles. The user who uploaded a report is the only one who can approve or reject claims on it (`POST /claims/:id/approve|reject`) and mark it returned (`POST /reports/:reference/returned`).
 
-- PIN-based identification is a documented midterm compromise (SHA-256, not bcrypt) — see "Identification Without Sessions" above.
-- No rate limiting on `/my-reports/sign-in` (Week 12 — `express-rate-limit`).
+- Passwords must be 10+ characters, are checked against common/guessable passwords and the person's own name, student number and email, and are stored with scrypt (`lib/passwords.js`).
+- Sign-in is rate-limited in memory (`lib/loginLimiter.js`): 5 wrong attempts pause that student number for 15 minutes, 20 from one IP pause that address. Counters reset when the server restarts.
+- There is no "forgot password" email flow or "change password" page yet.
 - No CSRF tokens on any form (Week 12 — `csurf`).
 - No external WCAG 2.2 AA audit has been performed (Week 13).
 - No automated test suite — Vitest/SuperTest are Week 15 additions.
@@ -300,9 +302,9 @@ No automated test suite exists yet (Week 15 territory — see Known issues). Man
 
 | Feature | Week | Why it is not here yet |
 |---|---|---|
-| Real login + bcrypt passwords | 11 | Replaces the PIN + signed-cookie approach |
+| express-session login | 11 | Replaces the signed-cookie approach (passwords are already scrypt-hashed) |
 | express-session | 11 | Replaces the whereitis_id cookie |
-| Rate limiting on /my-reports/sign-in | 12 | Currently unlimited |
+| Shared rate limiting (Redis / database) | 12 | Sign-in limits are in memory today and reset on restart |
 | CSRF tokens on every POST form | 12 | Currently none |
 | helmet() + Content-Security-Policy | 12 | Currently no CSP |
 | Server-side HTML escaping audit | 12 | We escape, but there is no automated check yet |
