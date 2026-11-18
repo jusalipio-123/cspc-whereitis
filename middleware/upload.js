@@ -61,12 +61,6 @@ function checkPhoto(req) {
   return null;
 }
 
-// A photo is mandatory when a report is created. Returns an error message
-// if no file was uploaded (checkPhoto() above covers a bad/oversized file).
-function requirePhoto(req) {
-  return hasPhoto(req) ? null : 'Please upload a photo of the item.';
-}
-
 function hasPhoto(req) {
   return !!(req.file && req.file.size > 0);
 }
@@ -90,4 +84,4 @@ async function removePhoto(p) {
   try { await fs.promises.unlink(path.join(UPLOAD_DIR, path.basename(p))); } catch (e) { /* already gone */ }
 }
 
-module.exports = { parsePhoto, checkPhoto, requirePhoto, hasPhoto, savePhoto, removePhoto, isUploadPath };
+module.exports = { parsePhoto, checkPhoto, hasPhoto, savePhoto, removePhoto, isUploadPath };

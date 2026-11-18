@@ -76,9 +76,8 @@
     <aside class="report-aside" aria-label="Item being claimed">
       <div class="card aside-card claim-item">
         <h2>Item you are claiming</h2>
-        <% if (report.photo_url) { %>
-          <figure class="claim-item__photo"><img src="<%= report.photo_url %>" alt="Photo of <%= report.title %>" referrerpolicy="no-referrer"></figure>
-        <% } %>
+        <figure class="claim-item__photo"><img src="<%= report.photo_url || '/img/placeholder.svg' %>" alt="<%= report.photo_url ? 'Photo of ' + report.title : 'No photo provided' %>" referrerpolicy="no-referrer"
+          onerror="if(this.getAttribute('src')!=='/img/placeholder.svg'){this.onerror=null;this.src='/img/placeholder.svg';}"></figure>
         <p class="claim-item__title"><strong><%= report.title %></strong></p>
         <dl class="claim-item__meta">
           <dt>Reference</dt><dd><code><%= report.reference_no %></code></dd>

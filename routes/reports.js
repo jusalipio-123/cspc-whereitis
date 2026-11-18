@@ -268,7 +268,10 @@ router.post('/', requireIdentity, upload.parsePhoto, async (req, res, next) => {
     const validated = validateReportFields(req.body, allTags, { categories, locations });
     const { values, errors, tagIds } = validated;
     let ok = validated.ok;
-    const photoErr = upload.checkPhoto(req) || upload.requirePhoto(req);
+    // The photo is optional (people may keep it private). If a file WAS chosen it
+    // must still be a valid image; with no file the report simply has no photo
+    // and the site shows a blank placeholder instead.
+    const photoErr = upload.checkPhoto(req);
     if (photoErr) { errors.photo_url = photoErr; ok = false; }
 
     if (!ok) {
@@ -295,7 +298,7 @@ router.post('/', requireIdentity, upload.parsePhoto, async (req, res, next) => {
       occurred_on: values.occurred_on,
       holding_location: values.holding_location || null,
       tag_ids: tagIds,
-      photo_url: await upload.savePhoto(req.file),
+      photo_url: upload.hasPhoto(req) ? await upload.savePhoto(req.file) : null,
     });
 
     // 303 (not 302/307) guarantees the browser follows up with a GET, so

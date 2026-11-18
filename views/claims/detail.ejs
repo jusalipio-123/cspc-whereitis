@@ -17,12 +17,10 @@
         <%= claim.status %></span></p>
     </header>
 
-    <% if (report.photo_url) { %>
-      <figure class="claim-card__photo">
-        <img src="<%= report.photo_url %>" alt="Photo of <%= report.title %>" loading="lazy" referrerpolicy="no-referrer"
-             onerror="this.closest('figure').style.display='none';">
-      </figure>
-    <% } %>
+    <figure class="claim-card__photo">
+      <img src="<%= report.photo_url || '/img/placeholder.svg' %>" alt="<%= report.photo_url ? 'Photo of ' + report.title : 'No photo provided' %>" loading="lazy" referrerpolicy="no-referrer"
+           onerror="if(this.getAttribute('src')!=='/img/placeholder.svg'){this.onerror=null;this.src='/img/placeholder.svg';}">
+    </figure>
 
     <section class="claim-card__body">
       <h2>Proof of ownership</h2>
