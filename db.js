@@ -24,6 +24,12 @@ require('dotenv').config();
 
 const mysql = require('mysql2/promise');
 
+function dbSsl() {
+  const flag = (process.env.DB_SSL || '').toLowerCase();
+  const on = flag ? flag === 'true' : process.env.NODE_ENV === 'production';
+  return on ? { minVersion: 'TLSv1.2', rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false' } : undefined;
+}
+
 const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
   port: Number(process.env.DB_PORT) || 3306,
@@ -31,7 +37,7 @@ const pool = mysql.createPool({
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'lostfound',
   waitForConnections: true,
-  connectionLimit: 10,
+  connectionLimit: 5,
   queueLimit: 0,
   // Return JS Date objects (not strings) for DATE/DATETIME/TIMESTAMP
   // columns — every model in this project expects real Date objects.
@@ -39,6 +45,9 @@ const pool = mysql.createPool({
   // Philippine Standard Time (UTC+08:00): how JS Dates are read from and
   // written to MySQL.
   timezone: '+08:00',
+  // TLS to the managed MySQL server. Set DB_SSL=false only for a local MySQL
+  // that has no TLS (development). Default: on in production.
+  ssl: dbSsl(),
 });
 
 // ...and make MySQL's own clock (NOW(), CURDATE(), TIMESTAMP columns) use

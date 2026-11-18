@@ -18,6 +18,9 @@ const app = express();
 // ---------------------------------------------------------------------
 // View engine
 // ---------------------------------------------------------------------
+// Behind the host's reverse proxy: trust 1 hop so req.ip is the visitor and
+// req.protocol reflects HTTPS (needed by the login limiter, anti-spam, Secure cookies).
+app.set('trust proxy', 1);
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.locals.icons = require('./views/partials/icons.js');
