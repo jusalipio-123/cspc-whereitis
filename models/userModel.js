@@ -51,7 +51,7 @@ function legacyPinMatches(row, pin) {
 // set a new password before letting them in".
 async function verifyPassword(studentNo, password) {
   const [rows] = await db.pool.query(
-    'SELECT id, student_no, full_name, email, password_hash, pin_salt, pin_hash FROM users WHERE student_no = ?',
+    'SELECT id, student_no, full_name, email, email_verified_at, password_hash, pin_salt, pin_hash FROM users WHERE student_no = ?',
     [studentNo]
   );
   const row = rows[0];
@@ -61,7 +61,10 @@ async function verifyPassword(studentNo, password) {
     return null;
   }
 
-  const user = { id: row.id, student_no: row.student_no, full_name: row.full_name, email: row.email };
+  const user = {
+    id: row.id, student_no: row.student_no, full_name: row.full_name, email: row.email,
+    email_verified: !!row.email_verified_at,
+  };
 
   if (row.password_hash) {
     return (await passwords.verify(password, row.password_hash)) ? { user, legacy: false } : null;
@@ -107,7 +110,58 @@ async function emailExists(email) {
   return rows.length > 0;
 }
 
+// ---------------------------------------------------------------------
+// Email verification. Only the SHA-256 of the token is stored, so a leaked
+// database cannot be used to verify accounts. The raw token exists only in
+// the email we send.
+// ---------------------------------------------------------------------
+const VERIFY_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const RESEND_COOLDOWN_MS = 60 * 1000;            // 1 minute between emails
+
+function hashToken(token) {
+  return crypto.createHash('sha256').update(String(token)).digest('hex');
+}
+
+// issueVerificationToken: makes a fresh token for the user (replacing any old one) and returns it.
+async function issueVerificationToken(userId) {
+  const token = crypto.randomBytes(32).toString('hex');
+  await pool.execute(
+    'UPDATE users SET verify_token_hash = ?, verify_token_expires = ?, verify_sent_at = ? WHERE id = ?',
+    [hashToken(token), new Date(Date.now() + VERIFY_TOKEN_TTL_MS), new Date(), userId]
+  );
+  return token;
+}
+
+async function findByEmail(email) {
+  const [rows] = await db.pool.query(
+    'SELECT id, student_no, full_name, email, email_verified_at, verify_sent_at FROM users WHERE email = ?',
+    [email]
+  );
+  return rows[0] || null;
+}
+
+async function findByVerificationToken(token) {
+  const [rows] = await db.pool.query(
+    'SELECT id, email_verified_at, verify_token_expires FROM users WHERE verify_token_hash = ?',
+    [hashToken(token)]
+  );
+  return rows[0] || null;
+}
+
+async function markEmailVerified(userId) {
+  const [result] = await pool.execute(
+    'UPDATE users SET email_verified_at = ? WHERE id = ? AND email_verified_at IS NULL',
+    [new Date(), userId]
+  );
+  return result.affectedRows > 0;
+}
+
 module.exports = {
+  RESEND_COOLDOWN_MS,
+  issueVerificationToken,
+  findByEmail,
+  findByVerificationToken,
+  markEmailVerified,
   findByStudentNo,
   findById,
   verifyPassword,

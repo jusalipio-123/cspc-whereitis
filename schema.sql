@@ -116,6 +116,10 @@ CREATE TABLE users (
   pin_hash    CHAR(64)     NULL,         -- LEGACY hex SHA-256(salt || pin); erased once the user sets a password
   contact_no  VARCHAR(20)  NULL,         -- optional; only collected because the student may want to be called
   created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  email_verified_at    DATETIME NULL,    -- NULL until the student clicks the link we email them; sign-in is blocked until set
+  verify_token_hash    CHAR(64) NULL,    -- SHA-256 of the emailed verification token (the token itself is never stored)
+  verify_token_expires DATETIME NULL,
+  verify_sent_at       DATETIME NULL,    -- when the last verification email went out (limits "resend")
   UNIQUE KEY uniq_users_student_no (student_no),
   UNIQUE KEY uniq_users_email (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

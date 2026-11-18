@@ -1,0 +1,45 @@
+<!-- CSPC WhereITis — views/myReports/checkEmail.ejs -->
+<%- include('../partials/head', { title: 'Verify your email' }) %>
+<%- include('../partials/nav', { hideAuthActions: true }) %>
+
+<main id="main" class="auth-main auth-main--compact">
+  <div class="auth-slides" aria-hidden="true">
+    <span class="auth-slide"></span>
+    <span class="auth-slide"></span>
+    <span class="auth-slide"></span>
+  </div>
+  <%- include('../partials/flash') %>
+
+  <div class="auth-card">
+    <aside class="auth-brand">
+      <div class="auth-brand__top">
+        <img class="auth-brand__seal" src="/img/logo.png" alt="" width="56" height="56" onerror="this.style.display='none';">
+        <p class="auth-brand__name">CSPC WhereITis<span>Lost &amp; Found</span></p>
+      </div>
+      <div class="auth-brand__copy">
+        <h2>One more step</h2>
+        <p>We need to confirm that this email address is yours before you can sign in.</p>
+      </div>
+      <p class="auth-brand__foot">Camarines Sur Polytechnic Colleges</p>
+    </aside>
+
+    <section class="auth-panel" aria-labelledby="auth-title">
+      <h1 id="auth-title">Check your email</h1>
+      <p class="auth-panel__sub muted">We sent a verification link to <strong><%= email %></strong>.</p>
+
+      <p>Open the email and click the <strong>Verify my email</strong> button. The link is valid for 24 hours. Then come back and sign in.</p>
+      <p class="muted">Can't find it? Check your spam or junk folder.</p>
+
+      <form method="post" action="/resend-verification" class="auth-form">
+        <input type="hidden" name="email" value="<%= email %>">
+        <button type="submit" class="btn btn--primary auth-submit">Resend verification email</button>
+      </form>
+
+      <p class="auth-help auth-links">
+        <a href="/sign-in">&larr; Back to sign in</a>
+      </p>
+    </section>
+  </div>
+</main>
+
+<%- include('../partials/foot') %>
