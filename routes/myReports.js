@@ -309,6 +309,8 @@ async function registerSubmitHandler(req, res, next) {
 
     if (!req.body.agree) errors.agree = 'Please accept the Terms and Privacy notice to continue.';
 
+    await userModel.purgeExpiredPending();
+
     // Friendly duplicate checks (only if the shape is otherwise fine).
     if (!errors.student_no && (await userModel.findByStudentNo(values.student_no))) {
       errors.student_no = 'An account with this student number already exists. Try signing in.';
@@ -319,9 +321,11 @@ async function registerSubmitHandler(req, res, next) {
 
     if (Object.keys(errors).length > 0) return renderRegister(res, 422, values, errors, nextPath);
 
-    let user;
+    // The account is NOT created yet. The details are held until the person clicks the link
+    // we email them; only then does a real account exist (see verifyEmailHandler).
+    let pending;
     try {
-      user = await userModel.create({
+      pending = await userModel.createPending({
         student_no: values.student_no,
         full_name: values.full_name,
         email: values.email,
@@ -340,15 +344,14 @@ async function registerSubmitHandler(req, res, next) {
       throw err;
     }
 
-    // Not signed in yet: they must click the verification link we email them first.
-    let flashMsg = 'ok:Account created. We sent a verification link to your email.';
+    let flashMsg = 'ok:Almost done! We sent a verification link to your email. Your account is created when you click it.';
     try {
-      await mailer.sendVerificationEmail(user, await userModel.issueVerificationToken(user.id));
+      await mailer.sendVerificationEmail(pending, pending.token);
     } catch (mailErr) {
       console.error('[register] could not send verification email:', mailErr.message);
-      flashMsg = 'err:Account created, but we could not send the verification email. Please press "Resend verification email".';
+      flashMsg = 'err:We could not send the verification email. Please press "Resend verification email".';
     }
-    res.redirect(303, '/check-email?email=' + encodeURIComponent(user.email) + '&flash=' + encodeURIComponent(flashMsg));
+    res.redirect(303, '/check-email?email=' + encodeURIComponent(pending.email) + '&flash=' + encodeURIComponent(flashMsg));
   } catch (err) {
     next(err);
   }
@@ -365,6 +368,19 @@ function checkEmailHandler(req, res) {
 async function verifyEmailHandler(req, res, next) {
   try {
     const token = typeof req.query.token === 'string' ? req.query.token : '';
+    // New sign-ups: the link creates the real account now.
+    const pending = /^[0-9a-f]{64}$/.test(token) ? await userModel.findPendingByToken(token) : null;
+    if (pending) {
+      if (new Date(pending.token_expires).getTime() < Date.now()) {
+        return res.redirect(303, '/sign-in?flash=err:' + encodeURIComponent('That verification link has expired. Please register again.'));
+      }
+      const made = await userModel.promotePending(pending);
+      if (!made.ok) {
+        return res.redirect(303, '/sign-in?flash=err:' + encodeURIComponent('An account with this student number or email already exists. Try signing in.'));
+      }
+      return res.redirect(303, '/sign-in?flash=ok:' + encodeURIComponent('Email verified! Your account is ready. You can now sign in.'));
+    }
+
     const row = /^[0-9a-f]{64}$/.test(token) ? await userModel.findByVerificationToken(token) : null;
     const invalid = '/sign-in?flash=err:' + encodeURIComponent('That verification link is invalid or has expired. Sign in to get a new one.');
 
@@ -392,6 +408,19 @@ async function resendVerificationHandler(req, res, next) {
     if (!REGISTER_EMAIL_RE.test(email)) return res.redirect(303, '/sign-in');
 
     let flashMsg = 'ok:If that account still needs verification, a new link is on its way.';
+    const pend = await userModel.findPendingByEmail(email);
+    if (pend) {
+      const lastSent = pend.sent_at ? new Date(pend.sent_at).getTime() : 0;
+      if (Date.now() - lastSent >= userModel.RESEND_COOLDOWN_MS) {
+        try {
+          await mailer.sendVerificationEmail(pend, await userModel.reissuePendingToken(pend.id));
+        } catch (mailErr) {
+          console.error('[resend] could not send verification email:', mailErr.message);
+          flashMsg = 'err:We could not send the email right now. Please try again later.';
+        }
+      }
+      return res.redirect(303, '/check-email?email=' + encodeURIComponent(email) + '&flash=' + encodeURIComponent(flashMsg));
+    }
     const user = await userModel.findByEmail(email);
     if (user && !user.email_verified_at) {
       const last = user.verify_sent_at ? new Date(user.verify_sent_at).getTime() : 0;

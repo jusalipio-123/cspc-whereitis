@@ -156,6 +156,76 @@ async function markEmailVerified(userId) {
   return result.affectedRows > 0;
 }
 
+// ---------------------------------------------------------------------
+// Pending registrations. A new sign-up is NOT an account yet: the details wait in
+// pending_registrations until the person clicks the emailed link. Only then is a
+// real row created in users (already marked verified). An invented email address
+// therefore never becomes an account, and never blocks a real student's email.
+// ---------------------------------------------------------------------
+async function purgeExpiredPending() {
+  await pool.execute('DELETE FROM pending_registrations WHERE token_expires < ?', [new Date()]);
+}
+
+// createPending: stores the sign-up (password already hashed) and returns the raw token to email.
+async function createPending(data) {
+  const passwordHash = await passwords.hash(data.password);
+  const token = crypto.randomBytes(32).toString('hex');
+  const now = new Date();
+  // Registering again with the same email or student number replaces the earlier pending attempt.
+  await pool.execute('DELETE FROM pending_registrations WHERE email = ? OR student_no = ?', [data.email, data.student_no]);
+  await pool.execute(
+    `INSERT INTO pending_registrations
+       (student_no, full_name, email, contact_no, password_hash, token_hash, token_expires, sent_at, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      data.student_no, data.full_name, data.email, data.contact_no || null, passwordHash,
+      hashToken(token), new Date(now.getTime() + VERIFY_TOKEN_TTL_MS), now, now,
+    ]
+  );
+  return { email: data.email, full_name: data.full_name, token };
+}
+
+async function findPendingByToken(token) {
+  const [rows] = await db.pool.query('SELECT * FROM pending_registrations WHERE token_hash = ?', [hashToken(token)]);
+  return rows[0] || null;
+}
+
+async function findPendingByEmail(email) {
+  const [rows] = await db.pool.query('SELECT * FROM pending_registrations WHERE email = ?', [email]);
+  return rows[0] || null;
+}
+
+// reissuePendingToken: new link for a pending sign-up (resend button). Returns the raw token.
+async function reissuePendingToken(id) {
+  const token = crypto.randomBytes(32).toString('hex');
+  const now = new Date();
+  await pool.execute(
+    'UPDATE pending_registrations SET token_hash = ?, token_expires = ?, sent_at = ? WHERE id = ?',
+    [hashToken(token), new Date(now.getTime() + VERIFY_TOKEN_TTL_MS), now, id]
+  );
+  return token;
+}
+
+// promotePending: the link was clicked. Creates the real, already-verified account.
+// Returns { ok: true } or { ok: false } if the student number or email was taken meanwhile.
+async function promotePending(row) {
+  try {
+    await pool.execute(
+      `INSERT INTO users (student_no, full_name, email, password_hash, contact_no, email_verified_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [row.student_no, row.full_name, row.email, row.password_hash, row.contact_no || null, new Date()]
+    );
+  } catch (err) {
+    if (err && err.code === 'ER_DUP_ENTRY') {
+      await pool.execute('DELETE FROM pending_registrations WHERE id = ?', [row.id]);
+      return { ok: false };
+    }
+    throw err;
+  }
+  await pool.execute('DELETE FROM pending_registrations WHERE id = ?', [row.id]);
+  return { ok: true };
+}
+
 module.exports = {
   RESEND_COOLDOWN_MS,
   issueVerificationToken,
@@ -168,4 +238,10 @@ module.exports = {
   setPassword,
   create,
   emailExists,
+  purgeExpiredPending,
+  createPending,
+  findPendingByToken,
+  findPendingByEmail,
+  reissuePendingToken,
+  promotePending,
 };
