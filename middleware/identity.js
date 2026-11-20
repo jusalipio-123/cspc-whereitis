@@ -64,18 +64,32 @@ function optionalIdentity(req, res, next) {
   if (raw && hmac) {
     try {
       const parts = raw.split('.');
-      if (parts.length === 4) {
+      // New cookies carry the role too: <userId>.<studentNo>.<role>.<expiry>.<sig>.
+      // Four-part cookies from before this update are still accepted; the role
+      // is then resolved from the database by every requireRole() guard, so an
+      // old cookie can never grant elevated access.
+      if (parts.length === 5) {
+        const [userIdStr, studentNo, role, expiryStr, signature] = parts;
+        const payload = `${userIdStr}.${studentNo}.${role}.${expiryStr}`;
+        const expiry = Number(expiryStr);
+
+        if (hmac.verify(payload, signature) && Number.isFinite(expiry) && expiry > Date.now()) {
+          req.identity = {
+            userId: Number(userIdStr),
+            studentNo,
+            role: ['user', 'staff', 'teacher', 'admin'].includes(role) ? role : 'user',
+          };
+        }
+      } else if (parts.length === 4) {
         const [userIdStr, studentNo, expiryStr, signature] = parts;
         const payload = `${userIdStr}.${studentNo}.${expiryStr}`;
         const expiry = Number(expiryStr);
 
-        const isSignatureValid = hmac.verify(payload, signature);
-        const isNotExpired = Number.isFinite(expiry) && expiry > Date.now();
-
-        if (isSignatureValid && isNotExpired) {
+        if (hmac.verify(payload, signature) && Number.isFinite(expiry) && expiry > Date.now()) {
           req.identity = {
             userId: Number(userIdStr),
             studentNo,
+            role: null, // resolved from the database by requireRole()
           };
         }
       }

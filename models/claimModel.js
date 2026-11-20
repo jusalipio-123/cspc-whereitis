@@ -185,6 +185,36 @@ async function reject(claimId, decidedBy, note = null) {
   }
 }
 
+// listPending: claims waiting for a staff/admin decision. Used by both the
+// staff dashboard and the admin "approvals" area.
+async function listPending() {
+  const [rows] = await pool.execute(
+    `SELECT cl.*, r.reference_no, r.title AS report_title, r.kind AS report_kind,
+            r.photo_url AS report_photo, r.status AS report_status,
+            u.full_name AS claimant_name, u.email AS claimant_email,
+            u.student_no AS claimant_student_no
+       FROM claims cl
+       JOIN reports r ON r.id = cl.report_id
+       JOIN users u ON u.id = cl.claimant_user_id
+      WHERE cl.status = 'pending'
+      ORDER BY cl.created_at ASC, cl.id ASC`
+  );
+  return rows;
+}
+
+// countPendingForOwner: claims on this user's reports that still need their
+// decision. Used by the nav badge via middleware/navInfo.js.
+async function countPendingForOwner(userId) {
+  const [rows] = await pool.execute(
+    `SELECT COUNT(*) AS n
+       FROM claims cl
+       JOIN reports r ON r.id = cl.report_id
+      WHERE r.user_id = ? AND cl.status = 'pending'`,
+    [userId]
+  );
+  return rows[0].n;
+}
+
 module.exports = {
   create,
   findById,
@@ -192,6 +222,8 @@ module.exports = {
   listByReport,
   listForOwner,
   listByUser,
+  listPending,
+  countPendingForOwner,
   approve,
   reject,
 };

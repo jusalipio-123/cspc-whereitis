@@ -6,10 +6,13 @@
 // PASSWORDS: new passwords are stored with scrypt (see lib/passwords.js) in
 // users.password_hash. Nothing recoverable is kept.
 //
-// OLD 4-DIGIT PINs: accounts created before this change still have only the
-// old SHA-256 pin_hash. They can sign in ONCE with their PIN, but the app then
-// forces them to choose a real password (setPassword below), which erases the
-// old PIN hash. After that the PIN no longer works.
+// SIGN-IN: the natural key is the EMAIL ADDRESS. Existing accounts are
+// preserved: their id, student_no (now shown as "ID number"), password hash,
+// PIN fallback, reports and role are untouched.
+//
+// ROLES: 'user' is the existing value for a Student account. 'staff',
+// 'teacher' and 'admin' areseparate roles. Registration can only create
+// 'user', 'staff' or 'teacher'; admin is never a self-assignable option.
 // -----------------------------------------------------------------------
 
 const crypto = require('crypto');
@@ -17,18 +20,26 @@ const db = require('../db');
 const passwords = require('../lib/passwords');
 const { pool } = db;
 
-// findByStudentNo: looks up a user by the natural key typed at /my-reports/sign-in.
+// Roles the public registration page is allowed to create. 'admin' is
+// deliberately absent and is enforced here as well as in the route.
+const PUBLIC_ROLES = ['user', 'staff', 'teacher'];
+
 async function findByStudentNo(studentNo) {
   const [rows] = await db.pool.query(
-    'SELECT id, student_no, full_name, email FROM users WHERE student_no = ?',
+    'SELECT id, student_no, full_name, email, role FROM users WHERE student_no = ?',
     [studentNo]
   );
   return rows[0] || null;
 }
 
+async function studentNoExists(studentNo) {
+  const [rows] = await db.pool.query('SELECT 1 FROM users WHERE student_no = ? LIMIT 1', [studentNo]);
+  return rows.length > 0;
+}
+
 async function findById(id) {
   const [rows] = await db.pool.query(
-    'SELECT id, student_no, full_name, email FROM users WHERE id = ?',
+    'SELECT id, student_no, full_name, email, role, contact_no, email_verified_at FROM users WHERE id = ?',
     [id]
   );
   return rows[0] || null;
@@ -45,14 +56,16 @@ function legacyPinMatches(row, pin) {
 }
 
 // verifyPassword: the sign-in check.
-// Returns null on ANY failure (no such student number, wrong password) so the
-// caller shows the SAME generic message either way. On success returns
+// Returns null on ANY failure (no such email, wrong password) so the caller
+// shows the SAME generic message either way. On success returns
 // { user, legacy } where legacy === true means "matched the old PIN: make them
 // set a new password before letting them in".
-async function verifyPassword(studentNo, password) {
+async function verifyPassword(email, password) {
   const [rows] = await db.pool.query(
-    'SELECT id, student_no, full_name, email, email_verified_at, password_hash, pin_salt, pin_hash FROM users WHERE student_no = ?',
-    [studentNo]
+    `SELECT id, student_no, full_name, email, role, email_verified_at,
+            password_hash, pin_salt, pin_hash
+       FROM users WHERE email = ?`,
+    [email]
   );
   const row = rows[0];
 
@@ -62,7 +75,11 @@ async function verifyPassword(studentNo, password) {
   }
 
   const user = {
-    id: row.id, student_no: row.student_no, full_name: row.full_name, email: row.email,
+    id: row.id,
+    student_no: row.student_no,
+    full_name: row.full_name,
+    email: row.email,
+    role: row.role || 'user',
     email_verified: !!row.email_verified_at,
   };
 
@@ -86,18 +103,22 @@ async function setPassword(userId, password) {
 }
 
 // create: registers a new account with a scrypt-hashed password.
+// `role` is sanitised by the caller AND here, so a crafted POST can never
+// create an administrator.
 async function create(data) {
   const passwordHash = await passwords.hash(data.password);
+  const role = PUBLIC_ROLES.includes(data.role) ? data.role : 'user';
 
   const [result] = await pool.execute(
-    `INSERT INTO users (student_no, full_name, email, password_hash, contact_no)
-     VALUES (?, ?, ?, ?, ?)`,
+    `INSERT INTO users (student_no, full_name, email, password_hash, contact_no, role)
+     VALUES (?, ?, ?, ?, ?, ?)`,
     [
       data.student_no,
       data.full_name,
       data.email,
       passwordHash,
       data.contact_no || null,
+      role,
     ]
   );
   return findById(result.insertId);
@@ -110,6 +131,28 @@ async function emailExists(email) {
   return rows.length > 0;
 }
 
+// Admin user management. Only public roles may be assigned; admin accounts
+// are created by a database administrator, never through this method.
+async function listUsers(limit = 200) {
+  const safe = Math.min(Math.max(Number(limit) || 200, 1), 500);
+  const [rows] = await pool.execute(
+    `SELECT id, student_no, full_name, email, role, contact_no,
+            email_verified_at, created_at
+       FROM users ORDER BY created_at DESC, id DESC LIMIT ?`,
+    [String(safe)]
+  );
+  return rows;
+}
+
+async function updateRole(userId, role) {
+  if (!PUBLIC_ROLES.includes(role)) return false;
+  const [result] = await pool.execute(
+    'UPDATE users SET role = ? WHERE id = ? AND role <> \'admin\'',
+    [role, userId]
+  );
+  return result.affectedRows > 0;
+}
+
 // ---------------------------------------------------------------------
 // Email verification. Only the SHA-256 of the token is stored, so a leaked
 // database cannot be used to verify accounts. The raw token exists only in
@@ -117,6 +160,8 @@ async function emailExists(email) {
 // ---------------------------------------------------------------------
 const VERIFY_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const RESEND_COOLDOWN_MS = 60 * 1000;            // 1 minute between emails
+const RESET_TOKEN_TTL_MS = 60 * 60 * 1000;       // 1 hour for password resets
+const RESET_RESEND_COOLDOWN_MS = 60 * 1000;
 
 function hashToken(token) {
   return crypto.createHash('sha256').update(String(token)).digest('hex');
@@ -132,9 +177,30 @@ async function issueVerificationToken(userId) {
   return token;
 }
 
+// issuePasswordResetToken: same pattern, separate fields, so a verification
+// link can never be used to change a password (or vice versa).
+async function issuePasswordResetToken(userId) {
+  const token = crypto.randomBytes(32).toString('hex');
+  await pool.execute(
+    `UPDATE users SET reset_token_hash = ?, reset_token_expires = ?, reset_sent_at = ?
+      WHERE id = ?`,
+    [hashToken(token), new Date(Date.now() + RESET_TOKEN_TTL_MS), new Date(), userId]
+  );
+  return token;
+}
+
+async function clearPasswordResetToken(userId) {
+  await pool.execute(
+    'UPDATE users SET reset_token_hash = NULL, reset_token_expires = NULL, reset_sent_at = NULL WHERE id = ?',
+    [userId]
+  );
+}
+
 async function findByEmail(email) {
   const [rows] = await db.pool.query(
-    'SELECT id, student_no, full_name, email, email_verified_at, verify_sent_at FROM users WHERE email = ?',
+    `SELECT id, student_no, full_name, email, role, email_verified_at, verify_sent_at,
+            reset_sent_at
+       FROM users WHERE email = ?`,
     [email]
   );
   return rows[0] || null;
@@ -143,6 +209,15 @@ async function findByEmail(email) {
 async function findByVerificationToken(token) {
   const [rows] = await db.pool.query(
     'SELECT id, email_verified_at, verify_token_expires FROM users WHERE verify_token_hash = ?',
+    [hashToken(token)]
+  );
+  return rows[0] || null;
+}
+
+async function findByPasswordResetToken(token) {
+  const [rows] = await db.pool.query(
+    `SELECT id, student_no, full_name, email, role, reset_token_expires
+       FROM users WHERE reset_token_hash = ?`,
     [hashToken(token)]
   );
   return rows[0] || null;
@@ -157,15 +232,23 @@ async function markEmailVerified(userId) {
 }
 
 module.exports = {
+  PUBLIC_ROLES,
   RESEND_COOLDOWN_MS,
+  RESET_RESEND_COOLDOWN_MS,
   issueVerificationToken,
+  issuePasswordResetToken,
+  clearPasswordResetToken,
   findByEmail,
   findByVerificationToken,
+  findByPasswordResetToken,
   markEmailVerified,
   findByStudentNo,
+  studentNoExists,
   findById,
   verifyPassword,
   setPassword,
   create,
   emailExists,
+  listUsers,
+  updateRole,
 };

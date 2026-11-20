@@ -457,6 +457,99 @@ async function expiringSoon(minDays = 60, limit = 4) {
   return attachTags(rows);
 }
 
+// listForModeration: guest-only review queue. `view` is already allow-listed
+// by the router; the database still receives it as a bound parameter.
+async function listForModeration(view = 'pending') {
+  const decision = ['pending', 'approved', 'rejected'].includes(view) ? view : 'pending';
+  const [rows] = await pool.execute(
+    `SELECT r.*,
+            CASE WHEN c.is_other = 1 AND r.category_other IS NOT NULL AND r.category_other <> '' THEN CONCAT('Other: ', r.category_other) ELSE c.name END AS category_name,
+            CASE WHEN l.is_other = 1 AND r.location_other IS NOT NULL AND r.location_other <> '' THEN CONCAT('Other: ', r.location_other) ELSE l.name END AS location_name,
+            m.full_name AS moderator_name,
+            (SELECT COUNT(*)
+               FROM reports r2
+              WHERE r2.submitter_ip_hash = r.submitter_ip_hash
+                AND r2.created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)) AS same_source_24h
+       FROM reports r
+       LEFT JOIN categories c ON c.id = r.category_id
+       LEFT JOIN locations l ON l.id = r.location_id
+       LEFT JOIN users m ON m.id = r.moderated_by
+      WHERE r.submitter_type = 'guest' AND r.moderation_status = ?
+      ORDER BY r.created_at ASC, r.id ASC`,
+    [decision]
+  );
+  return rows;
+}
+
+// moderate: approve or reject one guest report. A transaction keeps the
+// moderation fields and the audit entry in step.
+async function moderate(reportId, decision, moderatorId, note = null) {
+  const allowed = ['approved', 'rejected'];
+  if (!allowed.includes(decision)) throw new Error('Invalid moderation decision.');
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [result] = await conn.execute(
+      `UPDATE reports
+          SET moderation_status = ?, moderated_by = ?, moderated_at = NOW(), moderation_note = ?
+        WHERE id = ? AND submitter_type = 'guest'`,
+      [decision, moderatorId, note, reportId]
+    );
+    if (!result.affectedRows) throw new Error('Guest report not found.');
+    await conn.execute(
+      `INSERT INTO report_status_history (report_id, from_status, to_status, changed_by, note)
+       VALUES (?, 'open', ?, ?, ?)`,
+      [reportId, decision === 'approved' ? 'open' : 'archived', moderatorId,
+       note ? 'Guest report ' + decision + ': ' + note : 'Guest report ' + decision]
+    );
+    await conn.commit();
+    return true;
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
+}
+
+// listForAdmin: the admin "Lost & found reports" table includes pending and
+// rejected guest reports, which the public list() deliberately hides.
+async function listForAdmin(filters = {}) {
+  const { kind, status, moderation, q, page = 1, perPage = 50 } = filters;
+  const where = ['1 = 1'];
+  const params = [];
+
+  if (kind) { where.push('r.kind = ?'); params.push(kind); }
+  if (status) { where.push('r.status = ?'); params.push(status); }
+  if (moderation) { where.push('r.moderation_status = ?'); params.push(moderation); }
+  if (q) {
+    where.push('(r.title LIKE ? OR r.description LIKE ? OR r.reference_no LIKE ? OR u.full_name LIKE ? OR u.student_no LIKE ?)');
+    const like = `%${q}%`;
+    params.push(like, like, like, like, like);
+  }
+
+  const whereClause = `WHERE ${where.join(' AND ')}`;
+  const safePerPage = Math.min(Math.max(Number(perPage) || 50, 1), 100);
+  const safePage = Math.max(Number(page) || 1, 1);
+  const offset = (safePage - 1) * safePerPage;
+
+  const [countRows] = await pool.execute(
+    `SELECT COUNT(*) AS total
+       FROM reports r
+       LEFT JOIN users u ON u.id = r.user_id
+       ${whereClause}`,
+    params
+  );
+  const [rows] = await pool.execute(
+    `${DETAIL_SELECT} ${whereClause} ORDER BY r.created_at DESC, r.id DESC LIMIT ? OFFSET ?`,
+    [...params, String(safePerPage), String(offset)]
+  );
+  await attachTags(rows);
+
+  return { rows, total: countRows[0].total, page: safePage, perPage: safePerPage };
+}
+
 module.exports = {
   create,
   findByReference,
@@ -479,4 +572,7 @@ module.exports = {
   overview,
   facets,
   expiringSoon,
+  listForModeration,
+  moderate,
+  listForAdmin,
 };

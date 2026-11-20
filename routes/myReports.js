@@ -69,13 +69,30 @@ function readResetUserId(req) {
 
 function signInAs(res, user) {
   const expiresAt = Date.now() + COOKIE_MAX_AGE_MS;
-  res.cookie(COOKIE_NAME, buildCookieValue(user.id, user.student_no, expiresAt), cookieOptions(COOKIE_MAX_AGE_MS));
+  const role = user.role || 'user';
+  res.cookie(
+    COOKIE_NAME,
+    buildCookieValue(user.id, user.student_no, role, expiresAt),
+    cookieOptions(COOKIE_MAX_AGE_MS)
+  );
 }
 
-function buildCookieValue(userId, studentNo, expiresAtMs) {
-  const payload = `${userId}.${studentNo}.${expiresAtMs}`;
+function buildCookieValue(userId, studentNo, role, expiresAtMs) {
+  const payload = `${userId}.${studentNo}.${role}.${expiresAtMs}`;
   const sig = hmac.sign(payload);
   return `${payload}.${sig}`;
+}
+
+// dashboardFor: every signed-in role uses the same My Reports interface.
+function dashboardFor(role) {
+  return '/my-reports';
+}
+
+// A ?next= value is still honoured when it points at a same-site relative
+// path. There are no role-restricted areas any more.
+function allowedNext(path, role) {
+  if (!path || path.startsWith('//') || path.includes('://')) return false;
+  return true;
 }
 
 // isSafeRelativePath: accepts only same-site relative paths starting with
@@ -124,7 +141,7 @@ async function myReportsIndexHandler(req, res, next) {
 // GET /my-reports/sign-in, GET /sign-in
 function signInFormHandler(req, res) {
   if (req.identity) {
-    return res.redirect(303, '/my-reports');
+    return res.redirect(303, dashboardFor(req.identity.role));
   }
 
   const nextPath = isSafeRelativePath(req.query.next) ? req.query.next : '';
@@ -143,74 +160,74 @@ async function signInSubmitHandler(req, res, next) {
     const errors = {};
     const nextPath = isSafeRelativePath(req.body.next) ? req.body.next : '';
 
-    const studentNoResult = validate.compose(
-      validate.required('Student number'),
-      validate.maxLen(20, 'Student number')
-    )(req.body.student_no);
-    if (!studentNoResult.ok) errors.student_no = studentNoResult.error;
+    const emailResult = validate.compose(
+      validate.required('Email address'),
+      validate.maxLen(160, 'Email address'),
+      validate.isEmailLoose('Email address')
+    )(req.body.email);
+    const email = emailResult.ok ? emailResult.value.toLowerCase() : '';
+    if (!emailResult.ok) errors.email = emailResult.error;
 
     // Passwords are used exactly as typed (never trimmed), so spaces are allowed.
     const password = typeof req.body.password === 'string' ? req.body.password : '';
     if (!password) {
       errors.password = 'Please enter your password.';
     } else if (password.length > passwords.MAX_LENGTH) {
-      errors.password = 'Student number and password do not match our records.';
+      errors.password = 'Email address and password do not match our records.';
     }
 
+    const values = { email: typeof req.body.email === 'string' ? req.body.email : '' };
     if (Object.keys(errors).length > 0) {
       return res.status(422).render('myReports/signIn', {
         title: 'Sign in to My Reports',
-        values: { student_no: req.body.student_no },
+        values,
         errors,
         next: nextPath,
       });
     }
 
-    // Too many wrong guesses on this student number (or from this address)? Pause, without
-    // checking the password at all, so a guessing script gets nothing back while paused.
-    const gate = limiter.check(studentNoResult.value, req.ip);
+    // Too many wrong guesses on this email address (or from this address)?
+    const gate = limiter.check(email, req.ip);
     if (gate.limited) {
       return res.status(429).render('myReports/signIn', {
         title: 'Sign in to My Reports',
-        values: { student_no: req.body.student_no },
+        values,
         errors: { password: 'Too many failed attempts. Please try again in ' + limiter.minutesText(gate.retryAfterMs) + '.' },
         next: nextPath,
       });
     }
 
-    const result = await userModel.verifyPassword(studentNoResult.value, password);
+    const result = await userModel.verifyPassword(email, password);
 
-    // We deliberately do NOT reveal whether the student_no exists or the
-    // password was wrong — the same generic message either way prevents
-    // account enumeration.
+    // Deliberately generic: never reveal whether the email exists.
     if (!result) {
-      limiter.recordFailure(studentNoResult.value, req.ip);
+      limiter.recordFailure(email, req.ip);
       return res.status(401).render('myReports/signIn', {
         title: 'Sign in to My Reports',
-        values: { student_no: req.body.student_no },
-        errors: { password: 'Student number and password do not match our records.' },
+        values,
+        errors: { password: 'Email address and password do not match our records.' },
         next: nextPath,
       });
     }
 
-    limiter.recordSuccess(studentNoResult.value);
+    limiter.recordSuccess(email);
     const user = result.user;
+    const role = user.role || 'user';
 
     // Soft policy check (not authentication) — @cspc.edu.ph accounts only.
     if (!user.email || !SCHOOL_EMAIL_RE.test(user.email)) {
       return res.status(403).render('myReports/signIn', {
         title: 'Sign in to My Reports',
-        values: { student_no: req.body.student_no },
+        values,
         errors: {
-          student_no:
+          email:
             'Sign-in is limited to CSPC school email accounts. Contact the IT office if you believe this is a mistake.',
         },
         next: nextPath,
       });
     }
 
-    // Email not verified yet: the password was right, but they cannot sign in until they click
-    // the link we emailed them.
+    // Email verification stays enabled for every account.
     if (!user.email_verified) {
       return res.redirect(303, '/check-email?email=' + encodeURIComponent(user.email) +
         '&flash=err:' + encodeURIComponent('Please verify your email before signing in. Check your inbox for the verification link.'));
@@ -225,7 +242,7 @@ async function signInSubmitHandler(req, res, next) {
 
     signInAs(res, user);
 
-    const destination = nextPath || '/my-reports';
+    const destination = allowedNext(nextPath, role) ? nextPath : dashboardFor(role);
     const sep = destination.includes('?') ? '&' : '?';
     res.redirect(303, `${destination}${sep}flash=ok:Signed%20in`);
   } catch (err) {
@@ -235,15 +252,17 @@ async function signInSubmitHandler(req, res, next) {
 
 
 // ---------------------------------------------------------------------
-// Create an account (self-service registration). Every account is an
-// ordinary user: there are no staff or admin roles.
+// Create an account (self-service registration) — ONE page, all fields.
+// Roles available to the public are Student, Staff and Teacher only.
+// The stored values are user (the historical Student value), staff, teacher.
 // ---------------------------------------------------------------------
-// Student numbers: digits only, 7 to 10 long.
-const STUDENT_NO_RE = /^\d{7,10}$/;
+// ID number: student/staff/teacher IDs may contain digits, letters and hyphens.
+const ID_NO_RE = /^[A-Za-z0-9-]{5,20}$/;
 // Registration email: @cspc.edu.ph or @my.cspc.edu.ph (sign-in keeps the looser SCHOOL_EMAIL_RE so existing accounts still work).
 const REGISTER_EMAIL_RE = /^[^@\s]+@(my\.)?cspc\.edu\.ph$/i;
 // School emails: my.cspc.edu.ph or cspc.edu.ph.
 const SCHOOL_EMAIL_RE = /^[^@\s]+@(my\.)?cspc\.edu\.ph$/i;
+const PUBLIC_ROLE_MAP = { student: 'user', staff: 'staff', teacher: 'teacher' };
 
 function renderRegister(res, status, values, errors, nextPath) {
   return res.status(status).render('myReports/register', {
@@ -256,7 +275,7 @@ function renderRegister(res, status, values, errors, nextPath) {
 
 // GET /register, GET /my-reports/register
 function registerFormHandler(req, res) {
-  if (req.identity) return res.redirect(303, '/my-reports');
+  if (req.identity) return res.redirect(303, dashboardFor(req.identity.role));
   const nextPath = isSafeRelativePath(req.query.next) ? req.query.next : '';
   renderRegister(res, 200, {}, {}, nextPath);
 }
@@ -276,26 +295,27 @@ async function registerSubmitHandler(req, res, next) {
     values.full_name = nameR.value;
     if (!nameR.ok) errors.full_name = nameR.error;
 
-    const noR = validate.required('Student number')(req.body.student_no);
+    // Role is an allow-list. 'admin' is never accepted from a browser.
+    const roleKey = String(req.body.role || '').toLowerCase();
+    values.role = PUBLIC_ROLE_MAP[roleKey] ? roleKey : '';
+    if (!values.role) errors.role = 'Please choose Student, Staff or Teacher.';
+
+    const noR = validate.compose(
+      validate.required('ID number'),
+      validate.maxLen(20, 'ID number')
+    )(req.body.student_no);
     values.student_no = noR.value;
     if (!noR.ok) errors.student_no = noR.error;
-    else if (!STUDENT_NO_RE.test(noR.value)) errors.student_no = 'Please enter a valid student number.';
+    else if (!ID_NO_RE.test(noR.value)) errors.student_no = 'Use 5-20 letters, numbers or hyphens (no spaces).';
 
     const emailR = validate.compose(
-      validate.required('Email'),
-      validate.maxLen(160, 'Email'),
-      validate.isEmailLoose('Email')
+      validate.required('Email address'),
+      validate.maxLen(160, 'Email address'),
+      validate.isEmailLoose('Email address')
     )(req.body.email);
     values.email = emailR.value.toLowerCase();
     if (!emailR.ok) errors.email = emailR.error;
     else if (!REGISTER_EMAIL_RE.test(values.email)) errors.email = 'Please use your CSPC school email (e.g. name@my.cspc.edu.ph).';
-
-    const contactR = validate.optional(validate.maxLen(20, 'Contact number'))(req.body.contact_no);
-    values.contact_no = contactR.value;
-    if (!contactR.ok) errors.contact_no = contactR.error;
-    else if (values.contact_no && !/^[0-9+()\-\s]{7,20}$/.test(values.contact_no)) {
-      errors.contact_no = 'Enter a valid contact number, or leave it blank.';
-    }
 
     const password = typeof req.body.password === 'string' ? req.body.password : '';
     const password2 = typeof req.body.password_confirm === 'string' ? req.body.password_confirm : '';
@@ -310,8 +330,8 @@ async function registerSubmitHandler(req, res, next) {
     if (!req.body.agree) errors.agree = 'Please accept the Terms and Privacy notice to continue.';
 
     // Friendly duplicate checks (only if the shape is otherwise fine).
-    if (!errors.student_no && (await userModel.findByStudentNo(values.student_no))) {
-      errors.student_no = 'An account with this student number already exists. Try signing in.';
+    if (!errors.student_no && (await userModel.studentNoExists(values.student_no))) {
+      errors.student_no = 'An account with this ID number already exists. Try signing in.';
     }
     if (!errors.email && (await userModel.emailExists(values.email))) {
       errors.email = 'An account with this email already exists. Try signing in.';
@@ -325,7 +345,7 @@ async function registerSubmitHandler(req, res, next) {
         student_no: values.student_no,
         full_name: values.full_name,
         email: values.email,
-        contact_no: values.contact_no || null,
+        role: PUBLIC_ROLE_MAP[values.role],
         password,
       });
     } catch (err) {
@@ -334,7 +354,7 @@ async function registerSubmitHandler(req, res, next) {
         const field = /email/i.test(err.message) ? 'email' : 'student_no';
         errors[field] = field === 'email'
           ? 'An account with this email already exists. Try signing in.'
-          : 'An account with this student number already exists. Try signing in.';
+          : 'An account with this ID number already exists. Try signing in.';
         return renderRegister(res, 422, values, errors, nextPath);
       }
       throw err;
@@ -411,6 +431,111 @@ async function resendVerificationHandler(req, res, next) {
 }
 
 // ---------------------------------------------------------------------
+// Forgot password. The public reply is identical whether or not the email
+// exists, so this endpoint cannot be used to enumerate accounts.
+// ---------------------------------------------------------------------
+function forgotPasswordFormHandler(req, res) {
+  res.render('myReports/forgotPassword', {
+    title: 'Forgot your password?',
+    values: {},
+    errors: {},
+  });
+}
+
+async function forgotPasswordSubmitHandler(req, res, next) {
+  try {
+    const emailResult = validate.compose(
+      validate.required('Email address'),
+      validate.maxLen(160, 'Email address'),
+      validate.isEmailLoose('Email address')
+    )(req.body.email);
+    const values = { email: typeof req.body.email === 'string' ? req.body.email : '' };
+
+    if (!emailResult.ok) {
+      return res.status(422).render('myReports/forgotPassword', {
+        title: 'Forgot your password?',
+        values,
+        errors: { email: emailResult.error },
+      });
+    }
+
+    const email = emailResult.value.toLowerCase();
+    const gate = limiter.check(email, req.ip);
+    if (gate.limited) {
+      return res.status(429).render('myReports/forgotPassword', {
+        title: 'Forgot your password?',
+        values,
+        errors: { email: 'Too many requests. Please try again in ' + limiter.minutesText(gate.retryAfterMs) + '.' },
+      });
+    }
+
+    const user = await userModel.findByEmail(email);
+    if (user) {
+      const last = user.reset_sent_at ? new Date(user.reset_sent_at).getTime() : 0;
+      if (Date.now() - last >= userModel.RESET_RESEND_COOLDOWN_MS) {
+        try {
+          await mailer.sendPasswordResetEmail(user, await userModel.issuePasswordResetToken(user.id));
+          limiter.recordSuccess(email);
+        } catch (mailErr) {
+          console.error('[forgot-password] could not send reset email:', mailErr.message);
+        }
+      }
+    }
+
+    return res.redirect(303, '/forgot-password?flash=ok:' + encodeURIComponent(
+      'If that email belongs to an account, a reset link is on its way. Check your inbox and spam folder.'
+    ));
+  } catch (err) {
+    next(err);
+  }
+}
+
+function renderResetPassword(res, status, token, errors) {
+  return res.status(status).render('myReports/resetPassword', {
+    title: 'Choose a new password',
+    token,
+    errors: errors || {},
+  });
+}
+
+function resetPasswordFormHandler(req, res) {
+  const token = typeof req.query.token === 'string' ? req.query.token : '';
+  if (!/^[0-9a-f]{64}$/.test(token)) {
+    return res.redirect(303, '/forgot-password?flash=err:' + encodeURIComponent('That reset link is invalid or has expired.'));
+  }
+  renderResetPassword(res, 200, token, {});
+}
+
+async function resetPasswordSubmitHandler(req, res, next) {
+  try {
+    const token = typeof req.body.token === 'string' ? req.body.token : '';
+    const user = /^[0-9a-f]{64}$/.test(token)
+      ? await userModel.findByPasswordResetToken(token)
+      : null;
+
+    if (!user || !user.reset_token_expires || new Date(user.reset_token_expires).getTime() < Date.now()) {
+      return res.redirect(303, '/forgot-password?flash=err:' + encodeURIComponent('That reset link is invalid or has expired. Request a new one.'));
+    }
+
+    const password = typeof req.body.password === 'string' ? req.body.password : '';
+    const password2 = typeof req.body.password_confirm === 'string' ? req.body.password_confirm : '';
+    const errors = {};
+    const passwordError = passwords.validate(password, user);
+    if (passwordError) errors.password = passwordError;
+    else if (password !== password2) errors.password_confirm = 'The two passwords do not match.';
+
+    if (Object.keys(errors).length > 0) return renderResetPassword(res, 422, token, errors);
+
+    await userModel.setPassword(user.id, password);
+    await userModel.clearPasswordResetToken(user.id);
+
+    return res.redirect(303, '/sign-in?flash=ok:' + encodeURIComponent('Password updated. Please sign in with your new password.'));
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ---------------------------------------------------------------------
 // Choose a new password. Only reachable right after an old 4-digit-PIN
 // sign-in (see the reset cookie above). Replaces the PIN for good.
 // ---------------------------------------------------------------------
@@ -459,7 +584,8 @@ async function setPasswordSubmitHandler(req, res, next) {
     res.clearCookie(RESET_COOKIE, { path: '/' });
     signInAs(res, user);
 
-    const destination = nextPath || '/my-reports';
+    const role = user.role || 'user';
+    const destination = allowedNext(nextPath, role) ? nextPath : dashboardFor(role);
     const sep = destination.includes('?') ? '&' : '?';
     res.redirect(303, `${destination}${sep}flash=ok:Password%20updated.%20You%20are%20signed%20in.`);
   } catch (err) {
@@ -496,6 +622,11 @@ router.post('/my-reports/register', registerSubmitHandler);
 router.get('/check-email', checkEmailHandler);
 router.get('/verify-email', verifyEmailHandler);
 router.post('/resend-verification', resendVerificationHandler);
+
+router.get('/forgot-password', forgotPasswordFormHandler);
+router.post('/forgot-password', forgotPasswordSubmitHandler);
+router.get('/reset-password', resetPasswordFormHandler);
+router.post('/reset-password', resetPasswordSubmitHandler);
 
 router.get('/set-password', setPasswordFormHandler);
 router.post('/set-password', setPasswordSubmitHandler);

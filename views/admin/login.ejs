@@ -1,0 +1,74 @@
+<!-- CSPC WhereITis — views/admin/login.ejs -->
+<!-- Temporary administrator sign-in. The admin interface is being rebuilt. -->
+<%
+  const _errors = errors || {};
+  const _values = values || {};
+  const _errorList = [_errors.email, _errors.password].filter(Boolean);
+%>
+<%- include('../partials/head', { title: 'Administrator sign in' }) %>
+<%- include('../partials/nav', { hideAuthActions: true }) %>
+
+<main id="main" class="auth-main auth-main--compact">
+  <div class="auth-slides" aria-hidden="true">
+    <span class="auth-slide"></span>
+    <span class="auth-slide"></span>
+    <span class="auth-slide"></span>
+  </div>
+  <%- include('../partials/flash') %>
+
+  <div class="auth-card">
+    <aside class="auth-brand" aria-hidden="false">
+      <div class="auth-brand__top">
+        <img class="auth-brand__seal" src="/img/logo.png" alt="" width="56" height="56" onerror="this.style.display='none';">
+        <p class="auth-brand__name">CSPC WhereITis<span>Lost &amp; Found</span></p>
+      </div>
+      <div class="auth-brand__copy">
+        <h2>Administrator</h2>
+        <p>This sign-in is reserved for accounts whose database role is Administrator. Student, staff and teacher accounts cannot enter here.</p>
+      </div>
+      <p class="auth-brand__foot">Camarines Sur Polytechnic Colleges</p>
+    </aside>
+
+    <section class="auth-panel" aria-labelledby="admin-auth-title">
+      <h1 id="admin-auth-title">Administrator sign in</h1>
+      <p class="auth-panel__sub muted">Use your CSPC email address and administrator password.</p>
+
+      <% if (_errorList.length) { %>
+        <div class="form-alert auth-alert" role="alert" id="auth-alert">
+          <%= _errorList[0] %>
+        </div>
+      <% } %>
+
+      <form method="post" action="/admin/login" class="auth-form" novalidate data-auth-form>
+        <div class="field">
+          <label for="email">Email address</label>
+          <input id="email" name="email" class="input input--lg" type="email" maxlength="160" required
+                 autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="name@cspc.edu.ph"
+                 value="<%= _values.email || '' %>"
+                 <%= _errors.email ? 'aria-invalid="true" aria-describedby="auth-alert"' : '' %>>
+        </div>
+
+        <div class="field">
+          <div class="field-label-row">
+            <label for="password">Password</label>
+            <a class="field-link" href="/forgot-password">Forgot password?</a>
+          </div>
+          <div class="pin-wrap pin-wrap--password">
+            <input id="password" name="password" class="input input--lg" type="password"
+                   maxlength="128" required autocomplete="current-password" placeholder="Your password"
+                   <%= _errors.password ? 'aria-invalid="true" aria-describedby="auth-alert"' : '' %>>
+            <button type="button" class="pin-toggle" data-toggle-password aria-controls="password" aria-pressed="false">Show</button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn--primary auth-submit" data-submit>Sign in</button>
+      </form>
+
+      <p class="auth-help auth-links">
+        <a href="/sign-in">&larr; Regular sign in</a>
+        <span aria-hidden="true">&middot;</span>
+        <a href="/">&larr; Back to home</a>
+      </p>
+    </section>
+  </div>
+</main>

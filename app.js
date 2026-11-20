@@ -122,6 +122,26 @@ try {
   console.warn('[app.js] Warning: routes/myReports not available yet (' + err.message + ')');
 }
 
+// Administrator sign-in is a separate form. The admin interface itself is
+// being rebuilt, so /admin currently shows only a temporary landing page.
+// Mount the sign-in first so a signed-out admin can still reach the form.
+try {
+  app.use('/admin/login', require('./routes/adminAuth'));
+} catch (err) {
+  console.warn('[app.js] Warning: routes/adminAuth not available yet (' + err.message + ')');
+}
+try {
+  const adminAuth = require('./routes/adminAuth');
+  app.get('/admin', adminAuth.requireAdminDb, (req, res) => {
+    res.render('admin/placeholder', {
+      title: 'Administrator',
+      adminUser: req.adminUser,
+    });
+  });
+} catch (err) {
+  console.warn('[app.js] Warning: admin placeholder not available yet (' + err.message + ')');
+}
+
 // Registered-user features: notifications and direct messages.
 try {
   app.use('/notifications', require('./routes/notifications'));

@@ -1,0 +1,25 @@
+<!-- CSPC WhereITis — views/admin/placeholder.ejs -->
+<!-- Temporary landing page after administrator sign-in. The real admin
+     interface is being rebuilt and will replace this page. -->
+<%
+  const _name = (adminUser && adminUser.full_name) ? adminUser.full_name : 'Administrator';
+%>
+<%- include('../partials/head', { title: 'Administrator' }) %>
+<%- include('../partials/nav') %>
+
+<main id="main" class="container">
+  <%- include('../partials/flash') %>
+
+  <section class="card" aria-labelledby="admin-placeholder-title">
+    <h1 id="admin-placeholder-title">Administrator sign-in successful</h1>
+    <p class="muted">Signed in as <strong><%= _name %></strong>.</p>
+    <p>The administrator interface is being updated and will be available tomorrow. For now, all registered roles share the regular <a href="/my-reports">My Reports</a> page.</p>
+    <p class="auth-links">
+      <a class="btn btn--ghost" href="/my-reports">Go to My Reports</a>
+      <form method="post" action="/sign-out" class="profile-menu__form">
+        <input type="hidden" name="next" value="/admin/login">
+        <button class="btn btn--ghost" type="submit">Sign out</button>
+      </form>
+    </p>
+  </section>
+</main>

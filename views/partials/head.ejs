@@ -106,8 +106,12 @@
   <script type="speculationrules">
   {"prerender":[{"where":{"and":[
     {"href_matches":"/*"},
-    {"not":{"href_matches":[{"pathname":"/sign-in"},{"pathname":"/sign-out"},{"pathname":"/my-reports*"},
-      {"pathname":"/claims*"},{"pathname":"/reports/new"},{"pathname":"/reports/*/*"},{"pathname":"/health"}]}},
+    {"not":{"href_matches":[{"pathname":"/sign-in"},{"pathname":"/sign-out"},{"pathname":"/register"},
+      {"pathname":"/forgot-password"},{"pathname":"/reset-password"},{"pathname":"/set-password"},
+      {"pathname":"/check-email"},{"pathname":"/verify-email"},{"pathname":"/my-reports*"},
+      {"pathname":"/claims*"},{"pathname":"/admin*"},
+      {"pathname":"/notifications*"},{"pathname":"/messages*"},{"pathname":"/reports/new"},
+      {"pathname":"/reports/*/*"},{"pathname":"/health"}]}},
     {"not":{"selector_matches":"[download], [target=_blank], [rel~=nofollow]"}}
   ]},"eagerness":"moderate"}]}
   </script>

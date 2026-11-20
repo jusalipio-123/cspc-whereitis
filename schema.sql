@@ -114,12 +114,19 @@ CREATE TABLE users (
   password_hash VARCHAR(255) NULL,       -- scrypt$N$r$p$salt$hash (see lib/passwords.js); NULL until an old PIN account upgrades
   pin_salt    CHAR(32)     NULL,         -- LEGACY 4-digit PIN (old accounts only); erased once the user sets a password
   pin_hash    CHAR(64)     NULL,         -- LEGACY hex SHA-256(salt || pin); erased once the user sets a password
-  contact_no  VARCHAR(20)  NULL,         -- optional; only collected because the student may want to be called
+  contact_no  VARCHAR(20)  NULL,         -- optional; kept for existing accounts
+  -- 'user' is the existing value for a Student account. Admin accounts are
+  -- created directly in the database; registration can never set this column.
+  role        ENUM('user','staff','teacher','admin') NOT NULL DEFAULT 'user',
   created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   email_verified_at    DATETIME NULL,    -- NULL until the student clicks the link we email them; sign-in is blocked until set
   verify_token_hash    CHAR(64) NULL,    -- SHA-256 of the emailed verification token (the token itself is never stored)
   verify_token_expires DATETIME NULL,
   verify_sent_at       DATETIME NULL,    -- when the last verification email went out (limits "resend")
+  -- Forgot-password links use their own single-use token fields (SHA-256 of the token is stored).
+  reset_token_hash     CHAR(64) NULL,
+  reset_token_expires  DATETIME NULL,
+  reset_sent_at        DATETIME NULL,
   UNIQUE KEY uniq_users_student_no (student_no),
   UNIQUE KEY uniq_users_email (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -1,3 +1,7 @@
+-- WARNING: the admin side now uses users.role (user / staff / admin).
+-- Running this file DROPS that column and removes every staff and admin.
+-- Only run it if you are deliberately abandoning the admin side.
+--
 -- remove-staff-role.sql
 -- Run ONCE against an existing database to match the "users only" model:
 --   * every account becomes an ordinary user (users.role is dropped);

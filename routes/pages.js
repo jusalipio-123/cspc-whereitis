@@ -1,6 +1,6 @@
 // routes/pages.js
 // Static content routes — About, Privacy, Terms, Cookies, Accessibility, Help.
-// Each renders a view under views/pages/ with a unique title.
+// Each renders a vierw under views/pages/ with a unique title.
 
 const express = require('express');
 const router = express.Router();

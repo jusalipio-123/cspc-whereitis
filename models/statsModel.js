@@ -75,10 +75,31 @@ async function agingOver(days) {
   return rows[0].n;
 }
 
+// sourceBreakdown: registered vs guest reports by moderation state, for the
+// admin analytics dashboard and the "waiting for review" badge.
+async function sourceBreakdown() {
+  const [rows] = await pool.execute(
+    `SELECT CASE WHEN submitter_type = 'guest' THEN 'guest' ELSE 'registered' END AS source,
+            moderation_status, COUNT(*) AS n
+       FROM reports
+      GROUP BY source, moderation_status`
+  );
+  const out = {
+    registered: { approved: 0, pending: 0, rejected: 0 },
+    guest: { approved: 0, pending: 0, rejected: 0 },
+  };
+  rows.forEach((row) => {
+    if (!out[row.source] || !(row.moderation_status in out[row.source])) return;
+    out[row.source][row.moderation_status] = Number(row.n);
+  });
+  return out;
+}
+
 module.exports = {
   monthlyCounts,
   categoryDistribution,
   topLocations,
   returnedThisMonth,
   agingOver,
+  sourceBreakdown,
 };

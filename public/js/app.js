@@ -5,7 +5,7 @@
 // more:
 //   1. Confirm before submitting a destructive form
 //   2. Auto-dismiss the flash banner
-//   3. Remember the My Reports student number (localStorage ONLY, never the password)
+//   3. Remember the sign-in email address (localStorage ONLY, never the password)
 //   4. Character counter under textareas
 //   5. Show/hide the holding_location field based on kind (Lost vs Found)
 //   6. Dark / light mode toggle (stores 'light' or 'dark' in localStorage; nothing else)
@@ -56,19 +56,19 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   // -------------------------------------------------------------------
-  // 3. Remember me (My Reports student number) — localStorage ONLY,
+  // 3. Remember me (sign-in email address) — localStorage ONLY,
   // NEVER the password. The password field is never stored by this file.
   // -------------------------------------------------------------------
-  const STUDENT_NO_KEY = 'whereitis_student_no';
-  const studentNoField = document.querySelector('#student_no');
-  const rememberCheckbox = document.querySelector('input[data-remember-student-no]');
+  const EMAIL_KEY = 'whereitis_remember_email';
   const signInForm = document.querySelector('form[action="/sign-in"], form[action="/my-reports/sign-in"]');
+  const emailField = signInForm ? signInForm.querySelector('#email') : null;
+  const rememberCheckbox = signInForm ? signInForm.querySelector('[data-remember-email]') : null;
 
-  if (studentNoField) {
+  if (emailField) {
     try {
-      const savedStudentNo = localStorage.getItem(STUDENT_NO_KEY);
-      if (savedStudentNo && !studentNoField.value) {
-        studentNoField.value = savedStudentNo;
+      const savedEmail = localStorage.getItem(EMAIL_KEY);
+      if (savedEmail && !emailField.value) {
+        emailField.value = savedEmail;
         if (rememberCheckbox) {
           rememberCheckbox.checked = true;
         }
@@ -79,13 +79,13 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-  if (signInForm && studentNoField && rememberCheckbox) {
+  if (signInForm && emailField && rememberCheckbox) {
     signInForm.addEventListener('submit', function () {
       try {
         if (rememberCheckbox.checked) {
-          localStorage.setItem(STUDENT_NO_KEY, studentNoField.value);
+          localStorage.setItem(EMAIL_KEY, emailField.value.trim());
         } else {
-          localStorage.removeItem(STUDENT_NO_KEY);
+          localStorage.removeItem(EMAIL_KEY);
         }
       } catch (err) {
         // Same as above — never let storage failures block submission.
@@ -310,10 +310,14 @@ document.addEventListener('DOMContentLoaded', function () {
     else if (pw && !authForm.querySelector('.field-error')) { pw.focus(); }
 
     const btn = authForm.querySelector('[data-submit]');
+    const action = authForm.getAttribute('action') || '';
     authForm.addEventListener('submit', function (e) {
       if (pw2) { pw2.setCustomValidity(pw.value !== pw2.value ? 'The two passwords do not match.' : ''); }
       if (!authForm.checkValidity()) { e.preventDefault(); authForm.reportValidity(); return; }
-      if (btn) { btn.disabled = true; btn.textContent = pw2 ? (fullName ? 'Creating account\u2026' : 'Saving\u2026') : 'Signing in\u2026'; }
+      let label = 'Signing in\u2026';
+      if (action.indexOf('forgot-password') !== -1) { label = 'Sending\u2026'; }
+      else if (pw2) { label = fullName ? 'Creating account\u2026' : 'Saving\u2026'; }
+      if (btn) { btn.disabled = true; btn.textContent = label; }
     });
   }
 

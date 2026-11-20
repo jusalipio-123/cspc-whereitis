@@ -1,4 +1,4 @@
-<!-- CSPC WhereITis — views/myReports/register.ejs -->
+<!-- CSPC WhereITis — views/myReports/register.ejs — single-page registration -->
 <%
   const _errors = errors || {};
   const _values = values || {};
@@ -25,14 +25,14 @@
       </div>
       <div class="auth-brand__copy">
         <h2>Join WhereITis</h2>
-        <p>Create your account to report lost and found items, file claims, and track everything in one place.</p>
+        <p>Create one account to report lost and found items, file claims and follow every update in one place.</p>
       </div>
       <p class="auth-brand__foot">Camarines Sur Polytechnic Colleges</p>
     </aside>
 
     <section class="auth-panel" aria-labelledby="auth-title">
       <h1 id="auth-title">Create an account</h1>
-      <p class="auth-panel__sub muted">Use your student number and CSPC school email.</p>
+      <p class="auth-panel__sub muted">Complete all fields. Administrator accounts are not created here.</p>
 
       <% if (_errorList.length) { %>
         <div class="form-alert auth-alert" role="alert" id="form-alert" tabindex="-1">
@@ -44,7 +44,7 @@
       <form method="post" action="/register" class="auth-form auth-form--grid" novalidate data-auth-form>
         <% if (_next) { %><input type="hidden" name="next" value="<%= _next %>"><% } %>
 
-        <div class="field">
+        <div class="field field--wide">
           <label for="full_name">Full name</label>
           <input id="full_name" name="full_name" class="input input--lg" type="text" maxlength="120" required
                  autocomplete="name" placeholder="e.g. Juan Dela Cruz" value="<%= _values.full_name || '' %>" <%- _bad('full_name') %>>
@@ -52,26 +52,31 @@
         </div>
 
         <div class="field">
-          <label for="student_no">Student number</label>
-          <input id="student_no" name="student_no" class="input input--lg" type="text" inputmode="numeric" maxlength="10" pattern="\d{7,10}" title="Student number" required
-                 autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="Your student number"
+          <label for="role">Role</label>
+          <select id="role" name="role" class="select input--lg" required <%- _bad('role') %>>
+            <option value="">Choose your role</option>
+            <option value="student"<%- _values.role === 'student' ? ' selected' : '' %>>Student</option>
+            <option value="staff"<%- _values.role === 'staff' ? ' selected' : '' %>>Staff</option>
+            <option value="teacher"<%- _values.role === 'teacher' ? ' selected' : '' %>>Teacher</option>
+          </select>
+          <% if (_errors.role) { %><p class="field-error" id="err-role"><%= _errors.role %></p><% } %>
+        </div>
+
+        <div class="field">
+          <label for="student_no">Student / Staff ID number</label>
+          <input id="student_no" name="student_no" class="input input--lg" type="text" maxlength="20"
+                 pattern="[A-Za-z0-9-]{5,20}" title="5-20 letters, numbers or hyphens" required
+                 autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="e.g. 2024-00123 or STF-00045"
                  value="<%= _values.student_no || '' %>" <%- _bad('student_no') %>>
           <% if (_errors.student_no) { %><p class="field-error" id="err-student_no"><%= _errors.student_no %></p><% } %>
         </div>
 
-        <div class="field">
-          <label for="email">School email</label>
-          <input id="email" name="email" class="input input--lg" type="email" maxlength="160" pattern="[^@\s]+@(my\.)?cspc\.edu\.ph" title="Use your CSPC email, e.g. name@my.cspc.edu.ph" required
+        <div class="field field--wide">
+          <label for="email">Email address</label>
+          <input id="email" name="email" class="input input--lg" type="email" maxlength="160" pattern="[^@\s]+@(my\.)?cspc\.edu\.ph"
+                 title="Use your CSPC email, e.g. name@my.cspc.edu.ph" required
                  autocomplete="email" placeholder="name@my.cspc.edu.ph" value="<%= _values.email || '' %>" <%- _bad('email') %>>
           <% if (_errors.email) { %><p class="field-error" id="err-email"><%= _errors.email %></p><% } %>
-        </div>
-
-        <div class="field">
-          <label for="contact_no">Contact number <span class="optional">(optional)</span></label>
-          <input id="contact_no" name="contact_no" class="input input--lg" type="tel" maxlength="20"
-                 autocomplete="tel" placeholder="Optional, e.g. 0917 123 4567" value="<%= _values.contact_no || '' %>" <%- _bad('contact_no', 'contact-hint') %>>
-          <% if (_errors.contact_no) { %><p class="field-error" id="err-contact_no"><%= _errors.contact_no %></p><% } %>
-          <p class="field-hint visually-hidden" id="contact-hint">Only used so other users can reach you about an item.</p>
         </div>
 
         <div class="field">
@@ -83,7 +88,7 @@
           </div>
           <%- include('../partials/passwordMeter') %>
           <% if (_errors.password) { %><p class="field-error" id="err-password"><%= _errors.password %></p><% } %>
-          <p class="field-hint" id="pw-help">Tip: a few random words with a number, like "blue mango river 42", is strong and easy to remember. Do not use your name, student number or common words.</p>
+          <p class="field-hint" id="pw-help">Use 10+ characters with letters and numbers or symbols. Avoid your name, ID number or common words.</p>
         </div>
 
         <div class="field">

@@ -63,4 +63,20 @@ async function markLinkRead(userId, link) {
   );
 }
 
-module.exports = { create, listByUser, unreadCount, markRead, markAllRead, markLinkRead };
+// listAll: read-only admin view of in-app notifications (no user content is
+// changed here). Used by the admin dashboard's Notifications section.
+async function listAll(limit = 100) {
+  const safe = Math.min(Math.max(Number(limit) || 100, 1), 200);
+  const [rows] = await pool.execute(
+    `SELECT n.id, n.type, n.report_id, n.body, n.link, n.is_read, n.created_at,
+            u.full_name AS recipient_name, u.email AS recipient_email
+       FROM notifications n
+       JOIN users u ON u.id = n.user_id
+      ORDER BY n.created_at DESC, n.id DESC
+      LIMIT ?`,
+    [String(safe)]
+  );
+  return rows;
+}
+
+module.exports = { create, listByUser, listAll, unreadCount, markRead, markAllRead, markLinkRead };
