@@ -456,7 +456,7 @@ async function verifyEmailHandler(req, res, next) {
     }
 
     await userModel.markEmailVerified(row.id);
-    res.redirect(303, '/sign-in?flash=ok:' + encodeURIComponent('Email verified! You can now sign in.'));
+    res.redirect(303, '/sign-in?flash=ok:' + encodeURIComponent('Account verified successfully! Please sign in.'));
   } catch (err) {
     next(err);
   }

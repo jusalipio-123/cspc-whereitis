@@ -16,9 +16,14 @@
 
   function goToSignIn() {
     done = true;
+    stop();
     note.hidden = false;
-    note.textContent = 'Email verified! Taking you to sign in\u2026';
-    window.location.replace('/sign-in?flash=ok:' + encodeURIComponent('Email verified! You can now sign in.'));
+    note.style.fontWeight = '600';
+    note.textContent = 'Account verified successfully! Taking you to sign in\u2026';
+    // Leave the message on screen for a moment so it can be read, then continue.
+    setTimeout(function () {
+      window.location.replace('/sign-in?flash=ok:' + encodeURIComponent('Account verified successfully! Please sign in.'));
+    }, 1500);
   }
 
   function check() {
