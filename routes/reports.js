@@ -16,9 +16,12 @@ const matching = require('../lib/matching');
 const validate = require('../middleware/validate');
 const { requireIdentity } = require('../middleware/identity');
 const upload = require('../middleware/upload');
+const userModel = require('../models/userModel');
+const antispam = require('../lib/antispam');
 
 const MATCH_WINDOW_DAYS = Number(process.env.MATCH_WINDOW_DAYS) || 30;
 const MAX_TAGS = 3;
+const GUEST_REF_RE = /^LF-\d{4}-\d{4}$/;
 
 // validateTags: checkboxes arrive as undefined, a single string, or an
 // array. Coerce to an array, then check every id against the tags table
@@ -223,12 +226,31 @@ router.get('/', async (req, res, next) => {
 });
 
 // GET /new
+// Signed-in users get the full form. Guests get the short found-item form;
+// a guest asking for ?kind=lost is sent to sign-in (the owner of a lost
+// item needs an account to receive claims and messages).
 router.get('/new', async (req, res, next) => {
   try {
-    // Reporting needs an account: the uploader is the person who later
-    // approves or rejects claims on the report.
     if (!req.identity) {
-      return res.redirect(303, '/sign-in?next=' + encodeURIComponent('/reports/new'));
+      if (req.query.kind === 'lost') {
+        return res.redirect(303, '/sign-in?next=' + encodeURIComponent('/reports/new?kind=lost'));
+      }
+      const [categories, locations] = await Promise.all([
+        categoryModel.list(),
+        locationModel.listPublic(),
+      ]);
+      return res.render('reports/newGuest', {
+        title: 'Report a found item',
+        categories,
+        locations,
+        formToken: antispam.issueFormToken(),
+        values: {
+          kind: 'found',
+          category_id: req.query.category_id || '',
+          location_id: req.query.location_id || '',
+        },
+        errors: {},
+      });
     }
 
     const [categories, locations, allTags] = await Promise.all([
@@ -251,6 +273,105 @@ router.get('/new', async (req, res, next) => {
       },
       errors: {},
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /guest/thanks — echoes a well-formed reference only; no DB lookup,
+// so a made-up number cannot be used to probe for someone else's report.
+router.get('/guest/thanks', (req, res) => {
+  const ref = typeof req.query.ref === 'string' && GUEST_REF_RE.test(req.query.ref) ? req.query.ref : '';
+  const kind = req.query.kind === 'lost' ? 'lost' : 'found';
+  res.render('reports/guestThanks', { title: 'Report received', ref, kind });
+});
+
+// POST /guest — public found-item report. Layered spam checks run first;
+// the report is stored as 'pending' and stays invisible until staff approve.
+router.post('/guest', upload.parsePhoto, async (req, res, next) => {
+  async function renderErrors(errors) {
+    const [categories, locations] = await Promise.all([
+      categoryModel.list(),
+      locationModel.listPublic(),
+    ]);
+    return res.status(422).render('reports/newGuest', {
+      title: 'Report a found item',
+      categories,
+      locations,
+      formToken: antispam.issueFormToken(),
+      values: req.body,
+      errors,
+    });
+  }
+
+  try {
+    // Honeypot: a filled trap stores nothing and reveals nothing.
+    if (String(req.body[antispam.HONEYPOT_FIELD] || '').trim()) {
+      return renderErrors({ form: 'We could not submit your report. Please try again.' });
+    }
+
+    // Signed timestamp: rejects instant bot posts, stale tabs and forgeries.
+    const token = antispam.checkFormToken(req.body.form_token);
+    if (!token.ok) {
+      return renderErrors({ form: 'This form has expired. Please reload the page and try again.' });
+    }
+
+    const [categories, locations] = await Promise.all([
+      categoryModel.list(),
+      locationModel.listPublic(),
+    ]);
+    const validated = validateReportFields(req.body, [], { categories, locations });
+    const { values, errors } = validated;
+    let ok = validated.ok;
+
+    // Optional staff-only contact details must still be usable if supplied.
+    const contactName = validate.optional(validate.maxLen(120, 'Name'))(req.body.contact_name);
+    if (!contactName.ok) errors.contact_name = contactName.error;
+    const contactEmail = validate.optional(
+      validate.compose(validate.maxLen(160, 'Email address'), validate.isEmailLoose('Email address'))
+    )(req.body.contact_email);
+    if (!contactEmail.ok) errors.contact_email = contactEmail.error;
+    const contactPhone = validate.optional(validate.maxLen(20, 'Phone'))(req.body.contact_phone);
+    if (!contactPhone.ok) errors.contact_phone = contactPhone.error;
+
+    const photoErr = upload.checkPhoto(req);
+    if (photoErr) {
+      errors.photo = photoErr;
+      ok = false;
+    }
+
+    if (antispam.containsLink(values.title) || antispam.containsLink(values.description)) {
+      errors.description = 'Please remove links or web addresses from your report.';
+      ok = false;
+    }
+
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const sourceHash = antispam.hashSource(req.ip);
+    if ((await reportModel.countRecentGuestByIp(sourceHash, since)) >= antispam.MAX_PER_SOURCE_PER_DAY) {
+      errors.form = 'Too many guest reports from this connection. Please try again later.';
+      ok = false;
+    }
+    if (await reportModel.findDuplicateGuestTitle(values.title, since)) {
+      errors.title = 'A report with this item name was submitted recently. Please check before sending another.';
+      ok = false;
+    }
+
+    if (!ok) return renderErrors(errors);
+
+    const created = await reportModel.createGuest({
+      ...values,
+      photo_url: upload.hasPhoto(req) ? await upload.savePhoto(req.file) : null,
+      guest_contact_name: contactName.value || null,
+      guest_contact_email: contactEmail.value ? contactEmail.value.toLowerCase() : null,
+      guest_contact_phone: contactPhone.value || null,
+      submitter_ip_hash: sourceHash,
+    });
+
+    return res.redirect(
+      303,
+      '/reports/guest/thanks?ref=' + encodeURIComponent(created.reference_no) +
+        '&kind=' + encodeURIComponent(values.kind)
+    );
   } catch (err) {
     next(err);
   }
@@ -317,9 +438,22 @@ router.post('/', requireIdentity, upload.parsePhoto, async (req, res, next) => {
 router.get('/:reference', async (req, res, next) => {
   try {
     const report = await reportModel.findByReference(req.params.reference);
-    // A report its uploader withdrew is visible to the uploader only; everyone
-    // else gets the same 404 as a report that never existed.
-    if (!report || !reportModel.canView(report, req.identity)) {
+    if (!report) {
+      return res.status(404).render('errors/404', { title: 'Not found' });
+    }
+
+    // A pending/rejected guest report is staff-only. Everyone else gets the
+    // same 404 as a report that never existed, including its reference.
+    if (report.moderation_status && report.moderation_status !== 'approved') {
+      const viewer = req.identity ? await userModel.findById(req.identity.userId) : null;
+      const isStaff = viewer && (viewer.role === 'staff' || viewer.role === 'admin');
+      if (!isStaff) {
+        return res.status(404).render('errors/404', { title: 'Not found' });
+      }
+    }
+
+    // A report its uploader withdrew is visible to the uploader only.
+    if (!reportModel.canView(report, req.identity)) {
       return res.status(404).render('errors/404', { title: 'Not found' });
     }
 

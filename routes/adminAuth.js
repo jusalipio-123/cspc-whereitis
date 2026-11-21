@@ -1,11 +1,11 @@
 // routes/adminAuth.js
-// Dedicated administrator sign-in. Mounted at /admin/login BEFORE the
-// protected /admin placeholder, so a signed-out admin can reach the form.
+// Dedicated administrator sign-in. Mounted at /admin/login before the
+// protected /admin router, so a signed-out admin can reach the form.
 // It uses the same scrypt check and signed cookie as ordinary sign-in, but
 // only accepts accounts whose database role is 'admin'.
 //
-// The admin interface itself is being rebuilt; this router intentionally
-// serves only a sign-in form and a small placeholder landing page for now.
+// The signed cookie is only a UI hint: every protected route re-checks the
+// role in the users table (middleware/roles.js, adminAuth.requireAdminDb).
 
 const express = require('express');
 const router = express.Router();

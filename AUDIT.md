@@ -1,6 +1,16 @@
 # AUDIT.md
 
-This document is CSPC WhereITis's honest, self-conducted audit against the requirements of the midterm brief: privacy (RA 10173), terms of use, cookies, accessibility (WCAG 2.2 AA preview), the claims flow, common failure modes, and basic HTTP hygiene. It was run on **2026-09-24**, against the state of the codebase at the end of Deliverable 10b, by the project team itself — not by an external reviewer. The intent of this document is to list every gap we found, not to hide them; several rows below end in "not yet" or "manual only," and that is deliberate honesty, not an oversight to be cleaned up before submission.
+This document is CSPC WhereITis's honest, self-conducted audit against the requirements of the midterm brief: privacy (RA 10173), terms of use, cookies, accessibility (WCAG 2.2 AA preview), the claims flow, common failure modes, and basic HTTP hygiene. It was first run on **2026-09-24**, by the project team itself — not by an external reviewer. The intent is to list every gap found, not to hide them.
+
+> **Currency note (2026-11-21):** the original audit predates registration, passwords, email verification, roles, the admin/moderation routers and guest reporting. The detailed tables below are kept for their privacy/accessibility analysis, but the following points now supersede them:
+>
+> - The app has real accounts (scrypt passwords, Brevo verification email and password reset), `users.role` (`user`/`staff`/`teacher`/`admin`), and DB-backed role guards in `middleware/roles.js`. The "honour system" and "no mail sender" findings below are historical.
+> - `routes/admin.js` and `routes/moderation.js` are mounted in `app.js`; `/admin`, `/admin/staff`, `/admin/moderation` and the lookup-management screens are live.
+> - Guest found-item reports go to `POST /reports/guest`, are kept pending by `lib/antispam.js` checks, and are approved/rejected at `/admin/moderation`.
+> - Three cookies are set (`whereitis_id`, `whereitis_pwreset`, `whereitis_verifywait`), all `HttpOnly`, `SameSite=Lax`, `Secure` in production, path `/`, short-lived. Identity is available site-wide, not only on `/my-reports`.
+> - Cross-origin form posts are rejected by a same-origin check; per-form CSRF tokens, helmet/CSP, automated tests and an external accessibility audit are still outstanding.
+>
+> `README.md` is the current source of truth for routes and configuration.
 
 ## Summary
 
@@ -10,9 +20,9 @@ This document is CSPC WhereITis's honest, self-conducted audit against the requi
 | Terms of Use | Compliant | None found — every clause traced and readable | Re-review after any new feature that changes acceptable use |
 | Cookie Notice | Compliant | `Secure` flag only applies in production, by design | None — this is correct behaviour, documented as such |
 | Accessibility (WCAG 2.2 AA) | Self-tested pass | No external audit; no full screen-reader test matrix | Schedule an external WCAG 2.2 AA audit (Week 13) |
-| Claims flow | Compliant, exceptions handled | Some exception paths (role enforcement) are honour-system only | Add `requireRole()` in Week 11 |
-| Possible errors | Handled for every case tested | No automated regression tests yet | Add Vitest/SuperTest coverage (Week 15) |
-| Headers and hygiene | Baseline only | No helmet, no CSP, no CSRF, no rate limiting | Add helmet + CSRF + rate limiting (Week 12) |
+| Claims flow | Compliant, exceptions handled | Role enforcement is now DB-backed; owner-only claim decisions remain | Re-check after future role changes |
+| Possible errors | Handled for every case tested | No automated regression tests yet | Add Vitest/SuperTest coverage |
+| Headers and hygiene | Improved baseline | Same-origin check + login rate limiting + guest spam safeguards; still no helmet, CSP or per-form CSRF tokens | Add helmet + CSP + CSRF tokens |
 
 ## 1. PRIVACY AUDIT (RA 10173 — Week 3)
 
@@ -22,8 +32,8 @@ This document is CSPC WhereITis's honest, self-conducted audit against the requi
 |---|---|---|---|
 | users | student_no | Sign-in form, My Reports, claim/report ownership checks | Traceable |
 | users | full_name | Comments, claim detail (claimant name), print receipt | Traceable |
-| users | email | Stored only; not yet surfaced anywhere (email notifications are Week 11+ WON'T-list territory) | Traceable to purpose, unused by UI — flagged below |
-| users | role | Route honour-system checks, admin user list | Traceable |
+| users | email | Sign-in (natural key), verification and password-reset emails, claim detail | Traceable |
+| users | role | DB-backed staff/admin guards (`middleware/roles.js`), admin screens | Traceable |
 | users | pin_salt | Sign-in PIN verification (`userModel.verifyPin`) | Traceable |
 | users | pin_hash | Sign-in PIN verification | Traceable |
 | users | contact_no | Optional; intended for staff to call a reporter directly | Traceable, low usage — kept as optional |
@@ -47,7 +57,7 @@ This document is CSPC WhereITis's honest, self-conducted audit against the requi
 | bookmarks | user_id, report_id, created_at | My Reports bookmarks section | Traceable |
 | counter_sequence | year, last_value | Internal to `lib/refs.js` only, never displayed | Traceable to purpose (reference number generation) |
 
-**Flagged for review:** `users.email` is collected and stored but is not read by any current screen (email notifications are explicitly out of scope this term). We are **not** proposing to delete it, because it has a clear stated future purpose (Week 11+ notifications) documented on `/privacy`, and RA 10173's proportionality test is about collecting only what is needed for a *stated* purpose — not only what is *currently rendered*. If email notifications are dropped from the roadmap entirely, this column should be revisited.
+**Resolved:** the original flag on `users.email` no longer applies. It is now the sign-in key and is used by the verification and password-reset mailer. The original reasoning (proportionality is about stated purpose, not merely what is rendered on screen) is retained because it remains a useful test for future fields.
 
 ### The three principles
 
@@ -65,7 +75,7 @@ Reports are kept for one academic year, then archived and purged of personal dat
 
 ### Cookie notice accuracy
 
-Confirmed: `/cookies` accurately describes the only cookie this system sets — `whereitis_id`, used only on `/my-reports`, holding no personal data (see Section 3 below for full flag detail).
+**Historical finding:** `/cookies` originally described only `whereitis_id`. The site now sets three short-lived cookies and identity is available site-wide; see the currency note above and Section 3. The cookie notice page should be reviewed against that list before the next audit.
 
 ## 2. TERMS OF USE AUDIT
 
@@ -83,19 +93,22 @@ Confirmed: `/cookies` accurately describes the only cookie this system sets — 
 
 ## 3. COOKIE AUDIT
 
-Exactly one cookie is set by this system: `whereitis_id`.
+Three cookies are set by the current build:
 
-| Name | HttpOnly | SameSite | Secure | Path | Max-Age |
+| Name | HttpOnly | SameSite | Secure | Path | Purpose / lifetime |
 |---|---|---|---|---|---|
-| `whereitis_id` | true | Lax | true in production only (`NODE_ENV === 'production'`), false in dev | `/` | 1800 seconds (30 minutes) |
+| `whereitis_id` | true | Lax | true in production only (`NODE_ENV === 'production'`), false in dev | `/` | Signed identity for the whole site. 1800 s (30 min), or an opaque session id when `SESSION_STORE=db`. |
+| `whereitis_pwreset` | true | Lax | as above | `/` | Short-lived, signed pointer to a pending password reset. |
+| `whereitis_verifywait` | true | Lax | as above | `/` | Short-lived helper for the "check your email" page. |
 
-**Confirmed:** the cookie's value (`<userId>.<studentNo>.<expiry>.<signature>`) contains no personal data beyond the student number the person themselves just typed in to sign in, and that value is meaningless to read without the server-held `PROCESS_SECRET` to verify it — it is not usable to derive anything about the user without also having server access.
+**Confirmed:** the signed cookie values contain no data that can be read or forged without the server-held `PROCESS_SECRET`; they carry an id, an expiry and an HMAC signature (the identity cookie may also carry a role for UI only — every privileged route re-checks the role in the database).
 
-**Confirmed:** `/cookies` accurately matches this reality — it names `whereitis_id` as the only cookie, states its scope (`/my-reports` only), and explicitly disclaims analytics, advertising, and third-party cookies, all of which is true of the current build.
+**Flagged:** `/cookies` still claims there is exactly one cookie scoped to `/my-reports`. It should be updated to list all three and to state that identity is available site-wide. It does correctly disclaim analytics, advertising and third-party cookies.
 
 **Flagged, with reasoning (not a bug):**
 - `Secure` is true only in production. This is correct, not a gap: local development runs over plain HTTP, and browsers silently refuse to set a `Secure` cookie over HTTP — enabling it unconditionally would break sign-in for every developer running `npm run dev` locally.
 - `SameSite=Lax`, not `Strict`. This is also intentional: `Strict` would strip the cookie on the top-level navigation that follows the sign-in POST's 303 redirect in some browser/flow combinations, breaking the very sign-in flow it's meant to protect. `Lax` still blocks the cookie being sent on cross-site POSTs (the main CSRF-adjacent risk) while allowing normal same-site redirect navigation to work.
+- A same-origin check in `app.js` now rejects state-changing requests whose `Origin` header names a different host. This closes the browser-driven CSRF case, but there is still no per-form token, and a compromised same-origin script would bypass both controls.
 
 ## 4. ACCESSIBILITY AUDIT (WCAG 2.2 AA preview — Week 13)
 

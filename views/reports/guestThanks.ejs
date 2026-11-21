@@ -10,10 +10,9 @@
     <% if (ref) { %>
       <p>Your reference number is <code class="thanks__ref"><%= ref %></code>. Please write it down; it is how staff will identify your report.</p>
     <% } %>
-    <% if (kind === 'lost') { %>
-      <p>Your report is now live under <a href="/reports?kind=lost">Lost items</a><% if (ref) { %> (<a href="/reports/<%= ref %>">view it</a>)<% } %>. If someone finds it, staff will reach you through the contact details you left, so check the Found items list now and then too.</p>
-    <% } else { %>
-      <p>Your report is now live under <a href="/reports?kind=found">Found items</a><% if (ref) { %> (<a href="/reports/<%= ref %>">view it</a>)<% } %>. Please keep the item somewhere safe, or leave it with the office you named, until its owner comes for it.</p>
+    <p>Staff are reviewing your report now. It will appear in the public list once approved; rejected reports are not published. You cannot edit a guest report afterwards, so keep your reference number.</p>
+    <% if (kind === 'found') { %>
+      <p>Please keep the item somewhere safe, or leave it with the office you named, until its owner comes for it.</p>
     <% } %>
 
     <div class="card upgrade-card thanks__upgrade">

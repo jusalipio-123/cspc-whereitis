@@ -30,7 +30,7 @@ http://localhost:3000
 - **Vanilla CSS** (`public/css/style.css`) — one hand-written stylesheet, no framework.
 - **Vanilla JS** (`public/js/app.js`) — progressive enhancement only; every feature still works with JavaScript off.
 
-There is no frontend framework, no build step, and no single-page app here on purpose. This is a Week 1–8 project: the assignment is to demonstrate server-rendered fundamentals — Express routing, EJS templating, parameterised SQL, and Post/Redirect/Get — cleanly, not to reach for tools (React, Webpack, Tailwind) that would hide those fundamentals behind tooling the course hasn't covered yet.
+There is no frontend framework, no build step, and no single-page app here on purpose. The project demonstrates server-rendered fundamentals — Express routing, EJS templating, parameterised SQL, and Post/Redirect/Get — cleanly, rather than hiding them behind React/Webpack/Tailwind. Later weeks added accounts, roles, email and guest reporting on top of that same foundation.
 
 ## Setup from a clean clone
 
@@ -75,35 +75,40 @@ These demo accounts were created with a 4-digit PIN. Each one can sign in **once
 | `MATCH_WINDOW_DAYS` | No | `30` | Day window the matching engine (FR-09) searches for candidates. |
 | `GUEST_REPORTS_PER_DAY` | No | `3` | Most guest reports one connection may send in 24 hours. |
 | `HOLDING_PERIOD_DAYS` | No | `90` | Default days before a found item may be archived as unclaimed (FR-15). |
+| `APP_URL` | For email | `http://localhost:3000` | Public base URL used to build verification / password-reset links. |
+| `BREVO_API_KEY` | For email | _(empty)_ | Brevo API key. Leave empty in development to print verification links to the terminal instead of emailing them. |
+| `MAIL_FROM_EMAIL` | For email | _(empty)_ | Verified Brevo sender address. |
+| `MAIL_FROM_NAME` | No | `CSPC WhereITis` | Sender display name. |
+| `DB_SSL` | No | `true` (prod) | TLS to MySQL; set `false` for a local MySQL server. |
+| `DB_SSL_REJECT_UNAUTHORIZED` | No | `true` | Certificate verification. Keep `true` unless your provider requires otherwise. |
+| `SESSION_STORE` | No | _(unset)_ | Set to `db` to keep sign-in sessions in MySQL instead of the stateless signed cookie. |
 
 ## Database
 
-The schema has nine tables. `categories` and `locations` are small admin-managed lookup tables. `users` holds the pre-seeded demo accounts, including `password_hash` (a salted scrypt hash, see `lib/passwords.js`) and the legacy `pin_salt`/`pin_hash` pair that old accounts use for one last sign-in before they set a password. `reports` is the core table — every lost or found item, tied to the user who filed it, a category, and a location. `claims` records a student's assertion that a found report belongs to them, tied to both the report and the claimant. `report_comments` lets an owner add follow-up notes to their own report. `report_status_history` is an append-only audit trail — every status change writes a row here, satisfying NFR-08. `bookmarks` is a simple many-to-many join between users and reports. `counter_sequence` backs the transactional reference-number generator.
+The schema has fourteen tables:
 
-categories locations users
-| | |
-| category_id | location_id | user_id
-+------------------+--------------------+
-|
-reports <---------------------- report_status_history
-/ | \ (report_id, changed_by)
-/ |
-report_comments | bookmarks
-(report_id, | (report_id,
-user_id) \ user_id)
+| Table | Purpose |
+|---|---|
+| `categories`, `locations` | Admin-managed lookup lists. |
+| `users` | Accounts: scrypt `password_hash`, `role`, email-verification and password-reset tokens, plus the legacy `pin_salt`/`pin_hash` pair used for one final sign-in before setting a password. |
+| `reports` | The core table — every lost or found item, its category, location, submitter type, moderation state and staff-only guest contact details. |
+| `claims` | A student's assertion that a found report belongs to them. |
+| `report_comments`, `report_status_history` | Owner follow-up notes and the append-only status audit trail (NFR-08). |
+| `bookmarks` | Many-to-many join between users and reports. |
+| `tags`, `report_tags` | Fixed, seeded tag allow-list and its join table. |
+| `notifications` | In-app badges and inbox entries. |
+| `conversations`, `messages` | Direct messages between registered users about a report. |
+| `counter_sequence` | Row-locked counter that feeds the transactional reference-number generator. |
 
-claims
-(report_id, claimant_user_id,
-decided_by)
-
-counter_sequence — standalone, keyed by year, feeds reports.reference_no
-
+`lib/migrate.js` runs on every boot and adds any columns/tables introduced after the original schema, so an old database is upgraded in place (including the guest-report columns). Fresh installs get everything from `schema.sql`.
 
 **ENUM values**
 
 - `reports.kind`: `lost` | `found`
 - `reports.status`: `open` | `matched` | `claimed` | `returned` | `archived`
-- Every account is an ordinary user (there is no role column)
+- `reports.submitter_type`: `registered` | `guest`
+- `reports.moderation_status`: `approved` | `pending` | `rejected`
+- `users.role`: `user` | `staff` | `teacher` | `admin`
 - `claims.status`: `pending` | `approved` | `rejected`
 
 **Retention rule:** reports are kept for one academic year, then archived and purged of personal data; the reference number and item description are retained for statistical purposes only.
@@ -119,6 +124,7 @@ counter_sequence — standalone, keyed by year, feeds reports.reference_no
 | GET | `/reports` | Public | List + filter reports |
 | GET | `/reports/new` | Public | Guests get the simple found-item form; signed-in users get the full form (`?kind=lost` needs sign-in) |
 | POST | `/reports` | Identity required | Create a report (registered users; published immediately) |
+| POST | `/reports/guest` | Public | Create a found-item report without an account (held for staff review) |
 | GET | `/reports/guest/thanks` | Public | Confirmation page with the reference number |
 | GET | `/reports/:reference` | Public | Report detail page |
 | GET | `/reports/:reference/edit` | Owner only | Edit form (status must be `open`) |
@@ -144,7 +150,24 @@ counter_sequence — standalone, keyed by year, feeds reports.reference_no
 | GET | `/my-reports/sign-in` | Public | Sign-in form |
 | POST | `/my-reports/sign-in` | Public | Verify password (rate-limited), set signed cookie |
 | GET, POST | `/set-password` | Old PIN accounts only | Choose a new password right after the one-time PIN sign-in |
-| POST | `/my-reports/sign-out` | Identity required | Clear the signed cookie |
+| POST | `/my-reports/sign-out` (`/sign-out`) | Identity required | Clear the signed cookie |
+| GET | `/register` | Public | Create an account (student, staff or teacher; admin is never self-assignable) |
+| POST | `/register` | Public | Register, then send a verification email |
+| GET | `/check-email`, `/check-email/status` | Public | "Check your inbox" page and its polling endpoint |
+| GET | `/verify-email` | Public | Verify an account from the emailed link |
+| POST | `/resend-verification` | Public | Send a fresh verification link |
+| GET, POST | `/forgot-password` | Public | Email a password-reset link |
+| GET, POST | `/reset-password` | Public | Choose a new password after the emailed link |
+| GET, POST | `/admin/login` | Public | Staff/admin sign-in |
+| GET | `/admin` | Admin only | Dashboard, CSV export link, bulk update and lookup management links |
+| GET | `/admin/staff` | Staff or admin | Pending claims and aging found items |
+| GET | `/admin/export.csv` | Admin only | CSV export of this month's reports |
+| GET, POST | `/admin/bulk` | Admin only | All-or-nothing bulk status update |
+| GET, POST | `/admin/categories` | Admin only | Add a category |
+| GET, POST | `/admin/locations` | Admin only | Add a location |
+| GET | `/admin/moderation` | Staff or admin | Guest-report review queue |
+| POST | `/admin/moderation/:reference/approve` | Staff or admin | Publish a guest report |
+| POST | `/admin/moderation/:reference/reject` | Staff or admin | Reject a guest report (reason required) |
 | GET | `/about` | Public | About page |
 | GET | `/privacy` | Public | Privacy Notice |
 | GET | `/terms` | Public | Terms of Use |
@@ -161,11 +184,15 @@ Spam safeguards on `POST /reports/guest` (`lib/antispam.js`): hidden honeypot fi
 
 Registered users keep everything they had (full form with photo and tags, edit while open, withdraw, claims, bookmarks, My Reports) and additionally get in-app notifications (claim filed on their report, status changed, their claim decided, new message) and direct messages with other registered users about a report. Existing databases: run `add-guest-reports.sql` once. Fresh installs get it from `schema.sql`.
 
-## Identification Without Sessions — Midterm Approach
+## Accounts, identity and roles
 
-This identity is now VISIBLE and usable site-wide, not just on /my-reports. Every request runs an `optionalIdentity` check that sets `req.identity` (and exposes it to every view) without ever redirecting — guest browsing and guest reporting are never interrupted. The top navigation shows "Hi, <student_no>" with a sign-out link when signed in, or a "Sign in" link when not; gated actions (like filing a claim) link to `/sign-in?next=<path>` so the person returns to what they were doing afterward. `/sign-in` and `/sign-out` are now available as short top-level aliases of `/my-reports/sign-in` and `/my-reports/sign-out`.
+Every request runs `optionalIdentity`, which sets `req.identity` and exposes it to all views without redirecting — guests can browse and file a found-item report uninterrupted. The nav shows the signed-in user's ID with a sign-out link, or a "Sign in" link; gated actions link to `/sign-in?next=<path>` so the user returns to what they were doing. `/sign-in` and `/sign-out` are short aliases of the longer `/my-reports/...` paths.
 
-None of this changes the underlying mechanism or its guarantees — the cookie name (`whereitis_id`), HMAC signing, and 30-minute lifetime are exactly as described above. Explicitly, this deliverable did NOT add: a registration/sign-up page, a "forgot PIN" flow, real passwords, or sessions. Signing in still means "type a seeded student number and 4-digit PIN," and reporting a lost or found item still never requires signing in first (FR-01/FR-02). All of that remains deliberate Week 11 scope.
+- **Passwords:** scrypt with a per-account salt (`lib/passwords.js`). New users choose a password at registration; legacy demo accounts can sign in once with their old PIN and must then set a password.
+- **Verification:** registration sends a link via Brevo (`lib/mailer.js`); with `BREVO_API_KEY` unset the link is printed to the terminal instead. Accounts that predate the feature were backfilled as verified.
+- **Password reset:** `/forgot-password` emails a link, `/reset-password` stores a new scrypt hash.
+- **Cookie:** the default login is still a stateless, HMAC-signed `whereitis_id` cookie with the role embedded for UI purposes. Role checks never trust it: `middleware/roles.js` and `routes/adminAuth.js` re-read `users.role` from the database on every protected request. Set `SESSION_STORE=db` for revocable MySQL-backed sessions.
+- **Roles:** `user` (default), `staff`, `teacher`, `admin`. Registration can only create `user`/`staff`/`teacher`; `admin` is seeded or promoted in the database. Staff see the claims queue and guest-review queue; admins additionally get the dashboard, CSV export, bulk updates and lookup management.
 
 ## Matching engine
 
@@ -238,7 +265,7 @@ WhereITis follows the Data Privacy Act of 2012 (RA 10173): transparency (every c
 
 ## Testing (manual, this midterm)
 
-No automated test suite exists yet (Week 15 territory — see Known issues). Manual test cases are tracked here and re-run before every merge to `main`.
+There is no full route/integration suite yet, but `npm run check` parses every `.js` file and compiles every EJS template without needing a database. Run it before every commit — it catches the "a router has a syntax error so the feature silently 404s" class of bug. The manual cases below are re-run before every merge to `main`.
 
 | # | Test case | Expected result |
 |---|---|---|
@@ -260,14 +287,12 @@ No automated test suite exists yet (Week 15 territory — see Known issues). Man
 
 ## Known issues
 
-- Guest reports are verified by staff approval, not by email: the system has no mail sender (see `/about`), so email verification is not implemented. Adding it needs a mailer and a token table; the approval queue would then be the fallback.
-- Notifications and messages are in-app only; nothing is emailed.
-- There are no staff or admin roles. The user who uploaded a report is the only one who can approve or reject claims on it (`POST /claims/:id/approve|reject`) and mark it returned (`POST /reports/:reference/returned`).
-
+- Guest reports are held for staff approval rather than email verification. Account verification and password reset **do** use email (`lib/mailer.js`, Brevo); in-app notifications and direct messages are never emailed.
+- Only the report owner can approve/reject claims on their own report and mark it returned. Staff/admin handle the separate guest-review and claims queues.
 - Passwords must be 10+ characters, are checked against common/guessable passwords and the person's own name, student number and email, and are stored with scrypt (`lib/passwords.js`).
-- Sign-in is rate-limited in memory (`lib/loginLimiter.js`): 5 wrong attempts pause that student number for 15 minutes, 20 from one IP pause that address. Counters reset when the server restarts.
-- There is no "forgot password" email flow or "change password" page yet.
-- No CSRF tokens on any form (Week 12 — `csurf`).
+- Sign-in is rate-limited in memory (`lib/loginLimiter.js`): 5 wrong attempts pause that student number for 15 minutes, 20 from one IP pause that address. Counters reset when the server restarts. Guest submissions use a DB-backed per-IP quota instead.
+- There is no "change password" page for a signed-in user yet (the reset flow covers forgotten passwords).
+- No CSRF tokens on forms. Cookies use `SameSite=Lax` and a same-origin check on state-changing requests, but a per-form token is still the recommended hardening (Week 12).
 - No external WCAG 2.2 AA audit has been performed (Week 13).
 - No automated test suite — Vitest/SuperTest are Week 15 additions.
 - Local-only deployment; nothing is hosted yet (Week 16).
@@ -300,25 +325,26 @@ No automated test suite exists yet (Week 15 territory — see Known issues). Man
 
 ## Week 11–16 handoff
 
-| Feature | Week | Why it is not here yet |
+| Feature | Status | Notes |
 |---|---|---|
-| express-session login | 11 | Replaces the signed-cookie approach (passwords are already scrypt-hashed) |
-| express-session | 11 | Replaces the whereitis_id cookie |
-| Shared rate limiting (Redis / database) | 12 | Sign-in limits are in memory today and reset on restart |
-| CSRF tokens on every POST form | 12 | Currently none |
-| helmet() + Content-Security-Policy | 12 | Currently no CSP |
-| Server-side HTML escaping audit | 12 | We escape, but there is no automated check yet |
-| WCAG 2.2 AA audit + fixes | 13 | Statement written, but no external audit |
-| Usability heuristic evaluation | 13 | Designed to Nielsen's heuristics, not yet reviewed by others |
-| Vitest unit tests | 15 | Manual test cases only this term |
-| SuperTest route tests | 15 | Manual only |
-| Mutation testing on the matching engine | 15 | Not yet |
-| Source code inspection report | 15 | Not yet |
-| Deployment (Fly.io or similar) | 16 | Local only this term |
-| Database-backed session store | 16 | In-memory not used, so nothing to migrate |
-| Managed MySQL + backups | 16 | Local MySQL only |
-| User guide on the deployed URL | 16 | Written, not hosted |
-| Turnover note | 16 | Not yet written |
+| Registration, scrypt passwords, email verification, password reset | **Done** | `routes/myReports.js`, `lib/passwords.js`, `lib/mailer.js` |
+| Roles and DB-backed staff/admin guards | **Done** | `middleware/roles.js`; admin/moderation routers are mounted in `app.js` |
+| Guest found-item reports with anti-spam and staff approval | **Done** | `POST /reports/guest`, `lib/antispam.js`, `/admin/moderation` |
+| Optional DB session store | **Done (opt-in)** | Set `SESSION_STORE=db`; default remains the signed cookie |
+| Same-origin check on state-changing requests | **Done** | Rejects cross-origin POSTs; not a replacement for per-form tokens |
+| Shared (Redis) sign-in rate limiting | Remaining | Sign-in limits are in memory today; guest quotas are already in MySQL |
+| CSRF tokens on every POST form | Remaining | Same-origin + `SameSite=Lax` today; a token is still preferable |
+| helmet() + Content-Security-Policy | Remaining | Currently no security-header middleware |
+| Automated HTML-escaping audit | Remaining | EJS auto-escapes, but there is no automated check |
+| External WCAG 2.2 AA audit | Remaining | Self-tested only |
+| Usability heuristic evaluation | Remaining | Designed to Nielsen's heuristics, not externally reviewed |
+| Automated tests (Vitest / SuperTest) | Remaining | Manual test table above |
+| Mutation testing on the matching engine | Remaining | Not yet |
+| Source code inspection report | Remaining | Not yet |
+| Deployment (Fly.io or similar) | Remaining | Local only this term |
+| Managed MySQL + backups | Remaining | Local MySQL only |
+| User guide on a deployed URL | Remaining | Written, not hosted |
+| Turnover note | Remaining | Not yet written |
 
 ## License
 

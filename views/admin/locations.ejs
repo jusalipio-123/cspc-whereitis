@@ -1,0 +1,61 @@
+<!-- CSPC WhereITis — views/admin/locations.ejs -->
+<%
+  const _errors = errors || {};
+  const _values = values || {};
+%>
+<%- include('../partials/head', { title: 'Manage locations' }) %>
+<%- include('../partials/nav') %>
+
+<main id="main" class="container">
+  <%- include('../partials/flash') %>
+
+  <h1>Manage locations</h1>
+  <p class="muted">Internal-only places are hidden from public report forms but can still be used as holding locations.</p>
+
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Name</th><th>Zone</th><th>Public</th></tr></thead>
+      <tbody>
+        <% locations.forEach(function (l) { %>
+          <tr>
+            <td><%= l.name %><% if (l.is_other) { %> <span class="pill pill--info">Other</span><% } %></td>
+            <td><%= l.zone || '—' %></td>
+            <td><%= l.is_public ? 'Yes' : 'Staff only' %></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Add a location</h2>
+  <form method="post" action="/admin/locations" class="form" novalidate>
+    <div class="field">
+      <label for="name">Name <span class="req" aria-hidden="true">*</span></label>
+      <input id="name" name="name" class="input" type="text" maxlength="120" required value="<%= _values.name || '' %>"
+             <%= _errors.name ? 'aria-invalid="true" aria-describedby="err-name"' : '' %>>
+      <% if (_errors.name) { %><p class="field-error" id="err-name"><%= _errors.name %></p><% } %>
+    </div>
+
+    <div class="field">
+      <label for="zone">Zone (optional)</label>
+      <input id="zone" name="zone" class="input" type="text" maxlength="60" value="<%= _values.zone || '' %>"
+             <%= _errors.zone ? 'aria-invalid="true" aria-describedby="err-zone"' : '' %>>
+      <% if (_errors.zone) { %><p class="field-error" id="err-zone"><%= _errors.zone %></p><% } %>
+    </div>
+
+    <div class="field">
+      <label class="check">
+        <input id="is_public" name="is_public" type="checkbox" value="1"
+               <%= _values.is_public ? 'checked' : '' %>>
+        Show this location on public report forms
+      </label>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn--primary">Add location</button>
+      <a href="/admin" class="btn btn--ghost">Cancel</a>
+    </div>
+  </form>
+</main>
+
+<%- include('../partials/foot') %>

@@ -4,8 +4,9 @@
 // idempotent. Client-side required attributes are convenience only, so every
 // field is validated again here.
 //
-// Mounted at /admin/moderation. Unlike the older admin routes (honour system),
-// every route here checks the caller's role in the users table.
+// Mounted at /admin/moderation. Every route checks the caller's role in the
+// users table via middleware/roles.js; the older /admin routes use the same
+// guards now.
 //
 // Guest contact details (name / email / phone) are shown ONLY on these
 // screens and on the staff-only block of the report page.

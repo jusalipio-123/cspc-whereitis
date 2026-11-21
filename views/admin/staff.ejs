@@ -1,0 +1,74 @@
+<!-- CSPC WhereITis — views/admin/staff.ejs -->
+<% const _notes = noteCounts || {}; %>
+<%- include('../partials/head', { title: 'Staff queue' }) %>
+<%- include('../partials/nav') %>
+
+<main id="main" class="container">
+  <%- include('../partials/flash') %>
+
+  <h1>Staff queue</h1>
+  <p class="muted">Claims waiting for a decision and found items held longer than 60 days.</p>
+
+  <section aria-labelledby="claims-h">
+    <h2 id="claims-h">Pending claims</h2>
+    <% if (!pendingClaims.length) { %>
+      <p>No claims are waiting for a decision.</p>
+    <% } else { %>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr><th>Report</th><th>Item</th><th>Claimant</th><th>Filed</th><th></th></tr>
+          </thead>
+          <tbody>
+            <% pendingClaims.forEach(function (c) { %>
+              <tr>
+                <td><code><%= c.reference_no %></code></td>
+                <td><%= c.report_title %></td>
+                <td><%= c.claimant_name %> (<%= c.claimant_student_no %>)</td>
+                <td><%= fmtDateTime(c.created_at) %></td>
+                <td><a href="/claims/<%= c.id %>">Review claim</a></td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </section>
+
+  <section aria-labelledby="aging-h">
+    <h2 id="aging-h">Aging found items</h2>
+    <% if (!aging.length) { %>
+      <p>No found items have been held for more than 60 days.</p>
+    <% } else { %>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr><th>Report</th><th>Item</th><th>Location</th><th>Days held</th><th>Status</th><th></th></tr>
+          </thead>
+          <tbody>
+            <% aging.forEach(function (r) { %>
+              <tr>
+                <td><code><%= r.reference_no %></code></td>
+                <td><%= r.title %></td>
+                <td><%= r.location_name %></td>
+                <td><%= r.days_held %></td>
+                <td><span class="pill pill--<%= r.status %>"><%= r.status %></span></td>
+                <td>
+                  <a href="/reports/<%= r.reference_no %>">Open</a>
+                  <% if (_notes[r.id]) { %> · <%= _notes[r.id] %> note<%= _notes[r.id] === 1 ? '' : 's' %><% } %>
+                </td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </section>
+
+  <p>
+    <a class="btn btn--primary" href="/admin/moderation">Review guest reports</a>
+    <a class="btn btn--ghost" href="/admin">Admin dashboard</a>
+  </p>
+</main>
+
+<%- include('../partials/foot') %>

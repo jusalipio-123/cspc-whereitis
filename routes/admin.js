@@ -4,18 +4,10 @@
 // can send this request with curl and skip the form entirely, so we always
 // validate on the server.
 //
-// NOTE: staff/admin routes are currently open on the honour system because
-// sessions and role middleware arrive in Week 11 (requireRole). This is
-// documented in AUDIT.md and on /about. The one exception is the staff
-// notes POST below, which looks the caller's role up in the users table.
-//
-// MOUNTING NOTE: app.js mounts this router twice, at '/admin' and at
-// '/staff'. Routes therefore exist in both forms where needed:
-//   - GET  '/'  serves the admin dashboard at /admin and the staff queue
-//                at /staff (decided by req.baseUrl).
-//   - the status and notes POST routes are registered under BOTH
-//     '/staff/reports/...' and '/reports/...' so that the public URL
-//     /staff/reports/<reference>/... works under either mount.
+// All routes here are now gated by real database-backed role checks from
+// middleware/roles.js — a signed-in student cannot reach staff or admin
+// actions. app.js mounts this router at '/admin' (exactly once) and the
+// guest-review router at '/admin/moderation'.
 
 const express = require('express');
 const phTime = require('./../lib/time');
@@ -26,11 +18,10 @@ const statsModel = require('../models/statsModel');
 const categoryModel = require('../models/categoryModel');
 const locationModel = require('../models/locationModel');
 const noteModel = require('../models/noteModel');
-const userModel = require('../models/userModel');
 const { pool } = require('../db');
 const status = require('../lib/status');
 const validate = require('../middleware/validate');
-const { requireIdentity } = require('../middleware/identity');
+const { requireStaff, requireAdmin } = require('../middleware/roles');
 const notificationModel = require('../models/notificationModel');
 
 // ---------------------------------------------------------------------
@@ -67,14 +58,14 @@ async function staffQueueHandler(req, res, next) {
 }
 
 // GET /staff (under the /admin mount this is /admin/staff)
-router.get('/staff', requireIdentity, staffQueueHandler);
+router.get('/staff', requireStaff, staffQueueHandler);
 
 // ---------------------------------------------------------------------
 // POST status change
 // ---------------------------------------------------------------------
 router.post(
   ['/staff/reports/:reference/status', '/reports/:reference/status'],
-  requireIdentity,
+  requireStaff,
   async (req, res, next) => {
     try {
       const toStatusResult = validate.oneOf(
@@ -175,17 +166,9 @@ router.post(
 // ---------------------------------------------------------------------
 router.post(
   ['/staff/reports/:reference/notes', '/reports/:reference/notes'],
-  requireIdentity,
+  requireStaff,
   async (req, res, next) => {
     try {
-      // Role lookup by DB query - no sessions yet (Week 11). A student who
-      // POSTs here with curl gets the same 404 as a missing report, so the
-      // route does not even confirm it exists.
-      const viewer = await userModel.findById(req.identity.userId);
-      if (!viewer || (viewer.role !== 'staff' && viewer.role !== 'admin')) {
-        return res.status(404).render('errors/404', { title: 'Not found' });
-      }
-
       const report = await reportModel.findByReference(req.params.reference);
       if (!report) {
         return res.status(404).render('errors/404', { title: 'Not found' });
@@ -255,7 +238,13 @@ async function dashboardHandler(req, res, next) {
   }
 }
 
-router.get('/', requireIdentity, (req, res, next) => {
+// At /admin the root is the admin dashboard; if this router is ever
+// mounted at /staff again, the same path serves the staff queue instead.
+function requireRootRole(req, res, next) {
+  return req.baseUrl === '/staff' ? requireStaff(req, res, next) : requireAdmin(req, res, next);
+}
+
+router.get('/', requireRootRole, (req, res, next) => {
   if (req.baseUrl === '/staff') {
     return staffQueueHandler(req, res, next);
   }
@@ -266,18 +255,22 @@ router.get('/', requireIdentity, (req, res, next) => {
    // Streams a CSV export of the current month's reports. For this volume
    // we buffer the full response in memory; for >10k rows we would switch
    // to a streaming writer.
-router.get('/export.csv', requireIdentity, async (req, res, next) => {
+router.get('/export.csv', requireAdmin, async (req, res, next) => {
   try {
     // No streaming needed for this volume; if the dataset grows past
     // about 10k rows, switch to a streaming CSV writer.
     const [rows] = await pool.execute(
-      'SELECT r.reference_no, r.kind, CASE WHEN c.is_other = 1 AND r.category_other IS NOT NULL AND r.category_other <> '' THEN CONCAT('Other: ', r.category_other) ELSE c.name END AS category, CASE WHEN l.is_other = 1 AND r.location_other IS NOT NULL AND r.location_other <> '' THEN CONCAT('Other: ', r.location_other) ELSE l.name END AS location, ' +
-      'r.title, r.status, r.occurred_on, r.created_at ' +
-      'FROM reports r ' +
-      'JOIN categories c ON c.id = r.category_id ' +
-      'JOIN locations l ON l.id = r.location_id ' +
-      'WHERE YEAR(r.created_at) = YEAR(NOW()) AND MONTH(r.created_at) = MONTH(NOW()) ' +
-      'ORDER BY r.created_at ASC'
+      `SELECT r.reference_no, r.kind,
+              CASE WHEN c.is_other = 1 AND r.category_other IS NOT NULL AND r.category_other <> ''
+                   THEN CONCAT('Other: ', r.category_other) ELSE c.name END AS category,
+              CASE WHEN l.is_other = 1 AND r.location_other IS NOT NULL AND r.location_other <> ''
+                   THEN CONCAT('Other: ', r.location_other) ELSE l.name END AS location,
+              r.title, r.status, r.occurred_on, r.created_at
+         FROM reports r
+         JOIN categories c ON c.id = r.category_id
+         JOIN locations l ON l.id = r.location_id
+        WHERE YEAR(r.created_at) = YEAR(NOW()) AND MONTH(r.created_at) = MONTH(NOW())
+        ORDER BY r.created_at ASC`
     );
 
     const escapeCsv = (value) => {
@@ -316,7 +309,7 @@ router.get('/export.csv', requireIdentity, async (req, res, next) => {
 });
 
 // GET /admin/bulk
-router.get('/bulk', requireIdentity, async (req, res, next) => {
+router.get('/bulk', requireAdmin, async (req, res, next) => {
   try {
     const { rows } = await reportModel.list({ page: 1, perPage: 100 });
 
@@ -330,7 +323,7 @@ router.get('/bulk', requireIdentity, async (req, res, next) => {
 });
 
 // POST /admin/bulk
-router.post('/bulk', requireIdentity, async (req, res, next) => {
+router.post('/bulk', requireAdmin, async (req, res, next) => {
   let conn;
   try {
     let referenceNos = req.body.report_ids;
@@ -420,7 +413,7 @@ router.post('/bulk', requireIdentity, async (req, res, next) => {
 });
 
 // GET /admin/categories
-router.get('/categories', requireIdentity, async (req, res, next) => {
+router.get('/categories', requireAdmin, async (req, res, next) => {
   try {
     const categories = await categoryModel.list();
     res.render('admin/categories', {
@@ -435,7 +428,7 @@ router.get('/categories', requireIdentity, async (req, res, next) => {
 });
 
 // POST /admin/categories
-router.post('/categories', requireIdentity, async (req, res, next) => {
+router.post('/categories', requireAdmin, async (req, res, next) => {
   try {
     const errors = {};
 
@@ -501,7 +494,7 @@ router.post('/categories', requireIdentity, async (req, res, next) => {
 });
 
 // GET /admin/locations
-router.get('/locations', requireIdentity, async (req, res, next) => {
+router.get('/locations', requireAdmin, async (req, res, next) => {
   try {
     const locations = await locationModel.list();
     res.render('admin/locations', {
@@ -516,7 +509,7 @@ router.get('/locations', requireIdentity, async (req, res, next) => {
 });
 
 // POST /admin/locations
-router.post('/locations', requireIdentity, async (req, res, next) => {
+router.post('/locations', requireAdmin, async (req, res, next) => {
   try {
     const errors = {};
 

@@ -550,6 +550,66 @@ async function listForAdmin(filters = {}) {
   return { rows, total: countRows[0].total, page: safePage, perPage: safePerPage };
 }
 
+// ---------------------------------------------------------------------
+// Guest reports. They have no owner (user_id is NULL) and start as
+// 'pending', so every public query in this file — which filters on
+// r.moderation_status = 'approved' — hides them until staff decide.
+// ---------------------------------------------------------------------
+
+// countRecentGuestByIp: per-source quota for lib/antispam.js. The source is
+// an HMAC of the IP, never the raw address.
+async function countRecentGuestByIp(sourceHash, since) {
+  const [rows] = await pool.execute(
+    `SELECT COUNT(*) AS n FROM reports
+      WHERE submitter_type = 'guest' AND submitter_ip_hash = ? AND created_at >= ?`,
+    [sourceHash, since]
+  );
+  return Number(rows[0].n);
+}
+
+// findDuplicateGuestTitle: cheap duplicate check for a recent guest report.
+async function findDuplicateGuestTitle(title, since) {
+  const [rows] = await pool.execute(
+    `SELECT reference_no FROM reports
+      WHERE submitter_type = 'guest' AND title = ? AND created_at >= ? LIMIT 1`,
+    [title, since]
+  );
+  return rows[0] || null;
+}
+
+// createGuest: generates the reference number in the same transaction-safe
+// way as registered reports, then stores the report as pending. Contact
+// details are staff-only and are never selected by public queries.
+async function createGuest(data) {
+  const referenceNo = await nextReference(data.kind);
+  await pool.query(
+    `INSERT INTO reports (
+       reference_no, user_id, kind, category_id, category_other, location_id, location_other,
+       title, description, occurred_on, holding_location, photo_url,
+       submitter_type, moderation_status, guest_contact_name, guest_contact_email,
+       guest_contact_phone, submitter_ip_hash
+     ) VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'guest', 'pending', ?, ?, ?, ?)`,
+    [
+      referenceNo,
+      data.kind,
+      data.category_id,
+      data.category_other || null,
+      data.location_id,
+      data.location_other || null,
+      data.title,
+      data.description,
+      data.occurred_on,
+      data.holding_location || null,
+      data.photo_url || null,
+      data.guest_contact_name || null,
+      data.guest_contact_email || null,
+      data.guest_contact_phone || null,
+      data.submitter_ip_hash,
+    ]
+  );
+  return findByReference(referenceNo);
+}
+
 module.exports = {
   create,
   findByReference,
@@ -575,4 +635,7 @@ module.exports = {
   listForModeration,
   moderate,
   listForAdmin,
+  countRecentGuestByIp,
+  findDuplicateGuestTitle,
+  createGuest,
 };

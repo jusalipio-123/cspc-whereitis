@@ -6,14 +6,9 @@
 //   submission never leaves an orphan file behind.
 // - The file type is decided by its first bytes (magic numbers), never by the
 //   browser-supplied filename or MIME type, and the stored name is random.
-let multer = null;
-try {
-  multer = require('multer');
-} catch (err) {
-  // Without this guard a missing package would make app.js skip the whole
-  // /reports router and every report page would show "page not found".
-  console.warn('[upload] multer is not installed — run "npm install". Photo upload is disabled until then.');
-}
+// Fail loud on a missing dependency: a silent fallback would accept report
+// submissions with photos quietly disabled, which is worse than a boot error.
+const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
@@ -22,21 +17,17 @@ const UPLOAD_DIR = path.join(__dirname, '..', 'public', 'uploads');
 const URL_PREFIX = '/uploads/';
 const MAX_BYTES = 5 * 1024 * 1024;
 
-const parser = multer
-  ? multer({
-      storage: multer.memoryStorage(),
-      limits: { fileSize: MAX_BYTES, files: 1, fields: 40 },
-    }).single('photo')
-  : function (req, res, cb) { cb(new Error('MULTER_MISSING')); };
+const parser = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_BYTES, files: 1, fields: 40 },
+}).single('photo');
 
 // Express middleware. Never fails the request itself: a bad upload is recorded
 // on req.uploadError so the route can re-render the form with a friendly message.
 function parsePhoto(req, res, next) {
   parser(req, res, function (err) {
     if (err) {
-      req.uploadError = err.message === 'MULTER_MISSING'
-        ? 'Photo upload is not set up on this server yet (run "npm install", then restart).'
-        : err.code === 'LIMIT_FILE_SIZE'
+      req.uploadError = err.code === 'LIMIT_FILE_SIZE'
         ? 'That photo is larger than 5 MB. Choose a smaller image.'
         : 'We could not read that file. Try a different image.';
     }

@@ -448,60 +448,6 @@ INSERT IGNORE INTO tags (slug, label, sort_order) VALUES
   ('clothing',    'Clothing',    4),
   ('accessories', 'Accessories', 5);
 
--- =====================================================================
--- schema.sql -- ADDITIONS (append to the END of the existing schema.sql)
--- Feature 2: tags (many-to-many).  
--- Every statement is idempotent (IF NOT EXISTS / INSERT IGNORE), so this
--- block can be run once against an existing database without a reset.
--- =====================================================================
-
-USE whereitis;
-
--- ---------------------------------------------------------------------
--- tags + report_tags
---
--- WHY a tags table + a join table (many-to-many) instead of a
--- comma-separated column on reports: a report can carry several tags and
--- a tag can sit on many reports. With a join table the database can
--- index and filter it (WHERE tg.slug = ?), enforce that only real tags
--- are attached (foreign keys), and count usage with a plain GROUP BY. A
--- comma-separated string would force LIKE '%urgent%' scans that cannot
--- use an index and would also match partial words.
---
--- WHY the tag list is FIXED (five seeded rows, no "create a tag" page):
--- a fixed allow-list keeps the filter dropdown short and predictable and
--- avoids near-duplicate tags ("urgent", "Urgent!", "urgnt"). A
--- tag-management screen is out of scope this term (Weeks 1-8).
---
--- Composite PK (report_id, tag_id) doubles as the "no duplicate tag on
--- one report" rule. ON DELETE CASCADE on both sides: a tag link has no
--- meaning once either the report or the tag is gone. idx_report_tags_tag
--- serves the reverse lookup "all reports carrying this tag".
--- ---------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS tags (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  slug VARCHAR(40) NOT NULL UNIQUE,
-  label VARCHAR(60) NOT NULL,
-  sort_order INT NOT NULL DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS report_tags (
-  report_id INT NOT NULL,
-  tag_id INT NOT NULL,
-  PRIMARY KEY (report_id, tag_id),
-  FOREIGN KEY (report_id) REFERENCES reports(id) ON DELETE CASCADE,
-  FOREIGN KEY (tag_id)    REFERENCES tags(id)    ON DELETE CASCADE,
-  INDEX idx_report_tags_tag (tag_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Seed the allow-list. These five are fixed.
-INSERT IGNORE INTO tags (slug, label, sort_order) VALUES
-  ('urgent',      'Urgent',      1),
-  ('electronics', 'Electronics', 2),
-  ('documents',   'Documents',   3),
-  ('clothing',    'Clothing',    4),
-  ('accessories', 'Accessories', 5);
-
 
 -- =====================================================================
 -- schema.sql -- ADDITIONS: registered-user features
@@ -511,7 +457,7 @@ INSERT IGNORE INTO tags (slug, label, sort_order) VALUES
 
 -- ---------------------------------------------------------------------
 -- notifications
--- In-app only (this system sends no email). One row per thing a
+-- In-app only (the mailer sends verification and reset emails, but not notifications). One row per thing a
 -- registered user should hear about: someone filed a claim on their
 -- report, staff changed its status, a claim was decided, a new direct
 -- message arrived. `link` is a same-site path so the list can deep-link.

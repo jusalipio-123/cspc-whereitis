@@ -8,28 +8,42 @@
   <header class="doc-hero">
     <p class="page-head__eyebrow">Legal</p>
     <h1>Cookie Notice</h1>
-    <p class="lead">WhereITis sets exactly one cookie. This page tells you what it is, why, and how to remove it.</p>
+    <p class="lead">WhereITis sets three short-lived cookies, all needed to sign you in and keep account actions secure. This page tells you what they are and how to remove them.</p>
   </header>
   <%- include('../partials/docNav', { current: 'cookies' }) %>
 
   <div class="doc-layout">
     <aside class="doc-toc" aria-label="On this page">
       <p class="doc-toc__title">On this page</p>
-      <ol><li><a href="#s-1">The one cookie we set</a></li><li><a href="#s-2">What we do NOT set</a></li><li><a href="#s-3">How to clear the cookie</a></li><li><a href="#s-4">What happens if we add cookies later</a></li></ol>
+      <ol><li><a href="#s-1">The cookies we set</a></li><li><a href="#s-2">What we do NOT set</a></li><li><a href="#s-3">How to clear the cookies</a></li><li><a href="#s-4">What happens if we add cookies later</a></li></ol>
     </aside>
     <article class="doc-body">
 
-  <h2 id="s-1">The one cookie we set</h2>
+  <h2 id="s-1">The cookies we set</h2>
   <div class="table-wrap">
     <table class="table">
       <thead><tr><th>Name</th><th>Where it is used</th><th>What it holds</th><th>Lifetime</th><th>Flags</th></tr></thead>
       <tbody>
         <tr>
           <td><code>whereitis_id</code></td>
-          <td>Only on /my-reports</td>
-          <td>A signed number that points at your row in the users table. No
-          personal data is inside the cookie itself.</td>
+          <td>Across the whole site, to show your account and allow signed-in actions</td>
+          <td>A signed value that points at your row in the users table. No
+          personal data can be read from the cookie itself.</td>
           <td>30 minutes</td>
+          <td>HttpOnly, SameSite=Lax, Secure in production</td>
+        </tr>
+        <tr>
+          <td><code>whereitis_pwreset</code></td>
+          <td>Only while you are resetting a forgotten password</td>
+          <td>A signed, short-lived pointer to the pending reset</td>
+          <td>10 minutes</td>
+          <td>HttpOnly, SameSite=Lax, Secure in production</td>
+        </tr>
+        <tr>
+          <td><code>whereitis_verifywait</code></td>
+          <td>Only on the "check your email" page after registering</td>
+          <td>A signed, short-lived helper so the page knows which account you just created</td>
+          <td>24 hours</td>
           <td>HttpOnly, SameSite=Lax, Secure in production</td>
         </tr>
       </tbody>

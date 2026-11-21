@@ -1,0 +1,71 @@
+<!-- CSPC WhereITis — views/admin/categories.ejs -->
+<%
+  const _errors = errors || {};
+  const _values = values || {};
+%>
+<%- include('../partials/head', { title: 'Manage categories' }) %>
+<%- include('../partials/nav') %>
+
+<main id="main" class="container">
+  <%- include('../partials/flash') %>
+
+  <h1>Manage categories</h1>
+  <p class="muted">Categories appear in report forms and filters. Adding one here makes it available immediately.</p>
+
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Name</th><th>Slug</th><th>Icon key</th><th>Order</th></tr></thead>
+      <tbody>
+        <% categories.forEach(function (c) { %>
+          <tr>
+            <td><%= c.name %><% if (c.is_other) { %> <span class="pill pill--info">Other</span><% } %></td>
+            <td><code><%= c.slug %></code></td>
+            <td><%= c.icon_key || '—' %></td>
+            <td><%= c.sort_order %></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Add a category</h2>
+  <form method="post" action="/admin/categories" class="form" novalidate>
+    <div class="field">
+      <label for="name">Name <span class="req" aria-hidden="true">*</span></label>
+      <input id="name" name="name" class="input" type="text" maxlength="60" required value="<%= _values.name || '' %>"
+             <%= _errors.name ? 'aria-invalid="true" aria-describedby="err-name"' : '' %>>
+      <% if (_errors.name) { %><p class="field-error" id="err-name"><%= _errors.name %></p><% } %>
+    </div>
+
+    <div class="field">
+      <label for="slug">Slug <span class="req" aria-hidden="true">*</span></label>
+      <input id="slug" name="slug" class="input" type="text" maxlength="60" required
+             placeholder="e.g. lab-equipment" value="<%= _values.slug || '' %>"
+             <%= _errors.slug ? 'aria-invalid="true" aria-describedby="err-slug"' : 'aria-describedby="hint-slug"' %>>
+      <% if (_errors.slug) { %><p class="field-error" id="err-slug"><%= _errors.slug %></p><% } %>
+      <p class="field-hint" id="hint-slug">Lowercase letters, numbers and hyphens only.</p>
+    </div>
+
+    <div class="field">
+      <label for="icon_key">Icon key (optional)</label>
+      <input id="icon_key" name="icon_key" class="input" type="text" maxlength="40" value="<%= _values.icon_key || '' %>"
+             <%= _errors.icon_key ? 'aria-invalid="true" aria-describedby="err-icon"' : '' %>>
+      <% if (_errors.icon_key) { %><p class="field-error" id="err-icon"><%= _errors.icon_key %></p><% } %>
+    </div>
+
+    <div class="field">
+      <label for="sort_order">Sort order</label>
+      <input id="sort_order" name="sort_order" class="input" type="number" min="0" max="999"
+             value="<%= _values.sort_order === undefined || _values.sort_order === '' ? 0 : _values.sort_order %>"
+             <%= _errors.sort_order ? 'aria-invalid="true" aria-describedby="err-order"' : '' %>>
+      <% if (_errors.sort_order) { %><p class="field-error" id="err-order"><%= _errors.sort_order %></p><% } %>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn--primary">Add category</button>
+      <a href="/admin" class="btn btn--ghost">Cancel</a>
+    </div>
+  </form>
+</main>
+
+<%- include('../partials/foot') %>

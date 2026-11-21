@@ -15,21 +15,20 @@ const db = require('./db');
 
 const app = express();
 
-// ---------------------------------------------------------------------
-// View engine
-// ---------------------------------------------------------------------
 // Behind the host's reverse proxy: trust 1 hop so req.ip is the visitor and
 // req.protocol reflects HTTPS (needed by the login limiter, anti-spam, Secure cookies).
 app.set('trust proxy', 1);
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.locals.icons = require('./views/partials/icons.js');
+
 // Date helpers for every view (Philippine Standard Time).
 const phTime = require('./lib/time');
 app.locals.fmtDate = phTime.fmtDate;
 app.locals.fmtDateTime = phTime.fmtDateTime;
 app.locals.todayISO = phTime.todayISO;
 app.locals.isoDate = phTime.isoDate;
+
 // ---------------------------------------------------------------------
 // Body parsing + static assets
 // ---------------------------------------------------------------------
@@ -38,127 +37,66 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ---------------------------------------------------------------------
-// Project middleware (logger, flash, identity) — built in Deliverable
-// 3a. Each require is guarded so this file can already boot and be
-// smoke-tested before those files exist; once they land, they load
-// automatically with no change needed here.
+// Global middleware — logger, flash, identity, unread badge.
+//
+// These requires are deliberately NOT guarded. A missing or broken module
+// must stop the boot: silently skipping identity would turn every protected
+// route into a public one, and silently skipping a router would leave the
+// app looking healthy while whole features 404.
 // ---------------------------------------------------------------------
-function safeRequire(modPath, label) {
-  try {
-    return require(modPath);
-  } catch (err) {
-    console.warn(`[app.js] Warning: ${label} not available yet (${err.message})`);
-    return null;
-  }
-}
+app.use(require('./middleware/logger'));
+app.use(require('./middleware/flash'));
+app.use(require('./middleware/identity').optionalIdentity);
+app.use(require('./middleware/unread'));
 
-// app.js — relevant section only (middleware mounting)
-// -----------------------------------------------------------------------
-const logger = safeRequire('./middleware/logger', 'middleware/logger');
-const flash = safeRequire('./middleware/flash', 'middleware/flash');
-const identity = safeRequire('./middleware/identity', 'middleware/identity');
-const unread = safeRequire('./middleware/unread', 'middleware/unread');
-
-if (logger) app.use(logger);
-if (flash) app.use(flash);
-// app.js — exact lines to change
-// -----------------------------------------------------------------------
-
-// 1) The identity middleware mount: use optionalIdentity, mounted globally.
-//    BEFORE:
-//      if (identity) app.use(identity);
-//    AFTER:
-if (identity) app.use(identity.optionalIdentity);
-// Unread-notification count for the nav badge (signed-in users only).
-if (unread) app.use(unread);
-
-// 2) Expose req.identity to every view via res.locals, and compute the
-//    current path for the nav's sign-out "return here" hidden field.
-//    Add this immediately after the identity mount:
+// Expose req.identity to every view, plus the current path for the nav's
+// sign-out "return here" hidden field.
 app.use((req, res, next) => {
   res.locals.identity = req.identity;
   res.locals.currentPath = req.originalUrl;
   next();
 });
 
-// 3) routes/myReports.js now defines its own full paths (including
-//    /my-reports) and is mounted at root ONLY — remove the old
-//    '/my-reports' mount and mount at '/' instead.
-//    BEFORE:
-//      mountRouter('/my-reports', './routes/myReports', 'routes/myReports');
-//    AFTER:
-try {
-  const myReportsRouter = require('./routes/myReports');
-  app.use('/', myReportsRouter);
-} catch (err) {
-  console.warn('[app.js] Warning: routes/myReports not available yet (' + err.message + ')');
-}
 // ---------------------------------------------------------------------
-// Routes — each guarded so a missing router never blocks boot.
+// Same-origin guard for state-changing requests. Browsers send Origin on
+// form POSTs; a value from another host means a cross-site attempt to use
+// the visitor's cookie. Requests without Origin (curl, health checks,
+// server-to-server calls) are unaffected. This is defence in depth with
+// SameSite=Lax — a per-form CSRF token is still the stronger fix.
 // ---------------------------------------------------------------------
-try {
-  app.use('/', require('./routes/home'));
-} catch (err) {
-  console.warn('[app.js] Warning: routes/home not available yet (' + err.message + ')');
-}
+app.use((req, res, next) => {
+  if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return next();
+  const origin = req.get('origin');
+  if (!origin) return next();
 
-try {
-  app.use('/reports', require('./routes/reports'));
-} catch (err) {
-  console.warn('[app.js] Warning: routes/reports not available yet (' + err.message + ')');
-}
+  let sameOrigin = false;
+  try {
+    sameOrigin = new URL(origin).host.toLowerCase() === String(req.get('host') || '').toLowerCase();
+  } catch (err) {
+    sameOrigin = false;
+  }
+  if (!sameOrigin) return res.status(403).render('errors/403', { title: 'Forbidden' });
+  return next();
+});
 
-try {
-  app.use('/claims', require('./routes/claims'));
-} catch (err) {
-  console.warn('[app.js] Warning: routes/claims not available yet (' + err.message + ')');
-}
+// ---------------------------------------------------------------------
+// Routes — each router is mounted exactly once. The more specific
+// /admin/moderation mount comes before /admin so it wins on prefix match.
+// ---------------------------------------------------------------------
+app.use('/', require('./routes/home'));
+app.use('/reports', require('./routes/reports'));
+app.use('/claims', require('./routes/claims'));
+app.use('/', require('./routes/myReports'));
 
-// myReports.js defines its own full paths (/my-reports, /sign-in,
-// /sign-out), so it is mounted at root exactly once.
-try {
-  app.use('/', require('./routes/myReports'));
-} catch (err) {
-  console.warn('[app.js] Warning: routes/myReports not available yet (' + err.message + ')');
-}
+app.use('/admin/login', require('./routes/adminAuth'));
+app.use('/admin/moderation', require('./routes/moderation'));
+app.use('/admin', require('./routes/admin'));
 
-// Administrator sign-in is a separate form. The admin interface itself is
-// being rebuilt, so /admin currently shows only a temporary landing page.
-// Mount the sign-in first so a signed-out admin can still reach the form.
-try {
-  app.use('/admin/login', require('./routes/adminAuth'));
-} catch (err) {
-  console.warn('[app.js] Warning: routes/adminAuth not available yet (' + err.message + ')');
-}
-try {
-  const adminAuth = require('./routes/adminAuth');
-  app.get('/admin', adminAuth.requireAdminDb, (req, res) => {
-    res.render('admin/placeholder', {
-      title: 'Administrator',
-      adminUser: req.adminUser,
-    });
-  });
-} catch (err) {
-  console.warn('[app.js] Warning: admin placeholder not available yet (' + err.message + ')');
-}
+app.use('/notifications', require('./routes/notifications'));
+app.use('/messages', require('./routes/messages'));
+app.use('/', require('./routes/pages'));
 
-// Registered-user features: notifications and direct messages.
-try {
-  app.use('/notifications', require('./routes/notifications'));
-} catch (err) {
-  console.warn('[app.js] Warning: routes/notifications not available yet (' + err.message + ')');
-}
-try {
-  app.use('/messages', require('./routes/messages'));
-} catch (err) {
-  console.warn('[app.js] Warning: routes/messages not available yet (' + err.message + ')');
-}
-
-try {
-  app.use('/', require('./routes/pages'));
-} catch (err) {
-  console.warn('[app.js] Warning: routes/pages not available yet (' + err.message + ')');
-}
+// ---------------------------------------------------------------------
 // GET /health
 // Returns a small JSON status blob. Intentionally has NO auth/identity
 // requirement: uptime monitors, load balancers, and lab TAs checking
@@ -177,27 +115,18 @@ app.get('/health', async (req, res) => {
 });
 
 // ---------------------------------------------------------------------
-// 404 handler
-// Registered after all routers so it only catches requests nothing
-// above matched. Renders a real page, never a stack trace.
+// 404 handler — registered after all routers so it only catches requests
+// nothing above matched. Renders a real page, never a stack trace.
 // ---------------------------------------------------------------------
 app.use((req, res) => {
   res.status(404).render('errors/404', { title: 'Not found' });
 });
 
 // ---------------------------------------------------------------------
-// 4-argument error handler — MUST be registered last.
-// Express identifies an error-handling middleware purely by its arity
-// (exactly 4 parameters: err, req, res, next); it is only ever invoked
-// when something earlier calls next(err) or throws synchronously inside
-// a route. Registering it before other middleware/routers would mean
-// none of those routes are wrapped by it yet, so errors from them would
-// fall through to Express's default (unbranded, stack-trace-leaking)
-// handler instead of this one. It must therefore be the last app.use().
-//
-// The client NEVER receives err.stack or err.message directly — only a
-// generic message plus a short reference id they can quote to support
-// staff, who can then correlate it against the server-side log line.
+// 4-argument error handler — MUST be registered last. Express identifies
+// an error-handling middleware purely by its arity (err, req, res, next).
+// The client never receives err.stack or err.message directly — only a
+// generic message plus a short reference id for support.
 // ---------------------------------------------------------------------
 app.use((err, req, res, next) => {
   const refId = crypto.randomUUID();

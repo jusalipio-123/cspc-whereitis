@@ -181,4 +181,9 @@ Not tested: visual rendering in a browser (CSS reuses existing tokens and classe
 - **Email verification** (see section 3).
 - **Guests can't later claim their reports** when they sign up. A natural next step is to match on contact email.
 - **No automated tests.** The project plans Vitest/SuperTest for Week 15; the scenarios in section 7 are ready to turn into those.
-- **Existing problems found while working, left alone** (not part of this request): `/admin` was unreachable because the admin router was only mounted at `/` (fixed in `app.js`, since the dashboard needed it); the views `admin/staff`, `admin/categories` and `admin/locations` do not exist, so those pages error; `last_value` in `schema.sql` and `lib/refs.js` is a reserved word on MySQL 8 (works on MariaDB); and the `public/` folder contains stale copies of the whole project, which Express serves as static files.
+- **Status of the problems listed in the original draft (2026-11-21 update):**
+  - `/admin` was unreachable — **fixed**: `routes/admin.js` is mounted in `app.js`, with DB-backed staff/admin guards.
+  - The `admin/staff`, `admin/categories` and `admin/locations` views were missing — **fixed**: all three now exist in `views/admin/`.
+  - Duplicate static/view trees — **fixed**: `models/views/` and `models/public/` were removed from the repository. Express only serves `public/` and renders `views/`.
+  - `last_value` is a MySQL 8 reserved word — **still worth watching**: `lib/refs.js` uses it with backtick-free SQL; it works on MariaDB and on the MySQL 8 setup used here, but quoting it would be safer.
+  - The guest routes, anti-spam checks and moderation queue described in this document are now wired into `routes/reports.js`, `routes/moderation.js` and `app.js`, so the self-test scenarios above should be repeatable against the running app.

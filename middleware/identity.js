@@ -14,27 +14,17 @@
 //     optionalIdentity already put on req.identity and redirects (303)
 //     to the sign-in form if it's missing.
 //
-// Mechanism, cookie name, HMAC signing, and 30-minute lifetime are
-// UNCHANGED from the original design — see README "Identification
-// Without Sessions — Midterm Approach". This remains a deliberate
-// midterm compromise; real login, bcrypt, and express-session replace
-// this entire file in Week 11.
+// The default credential is still the HMAC-signed `whereitis_id` cookie
+// with a 30-minute lifetime (see README "Accounts, identity and roles").
+// Accounts use scrypt passwords; the optional MySQL session store can be
+// enabled with SESSION_STORE=db. Role checks never trust the cookie's
+// role field — they re-read users.role from the database.
 // -----------------------------------------------------------------------
 
-let hmac;
-try {
-  hmac = require('../lib/hmac');
-} catch (err) {
-  console.warn(`[middleware/identity] Warning: lib/hmac not available yet (${err.message})`);
-  hmac = null;
-}
-
-let sessionStore;
-try {
-  sessionStore = require('../lib/sessionStore');
-} catch (err) {
-  sessionStore = null;
-}
+// Fail loud: a missing hmac module would otherwise skip every cookie check
+// and leave req.identity null for everyone (including signed-in staff).
+const hmac = require('../lib/hmac');
+const sessionStore = require('../lib/sessionStore');
 
 const COOKIE_NAME = 'whereitis_id';
 

@@ -22,9 +22,9 @@
       <p class="page-head__eyebrow">No account needed</p>
       <h1><%= _lost ? 'Report a lost item' : 'Report a found item' %></h1>
       <% if (_lost) { %>
-        <p>Lost something on campus? Describe it and where you last had it. It takes about a minute, and your report goes live right away so others can spot it.</p>
+        <p>Lost something on campus? Please sign in so we can notify you when someone finds it.</p>
       <% } else { %>
-        <p>Found something on campus? Tell us what it is and where it is now. It takes about a minute, and your report goes live right away.</p>
+        <p>Found something on campus? Tell us what it is and where it is now. Staff review every guest report before it appears in the public list.</p>
       <% } %>
       <p class="kind-switch"><span class="seg" role="group" aria-label="Type of report">
         <a href="/reports/new?kind=lost" <%- _lost ? 'aria-current="true"' : '' %>>I lost something</a>
@@ -200,9 +200,9 @@
       <div class="card aside-card">
         <h2>What happens next</h2>
         <ol>
-          <li>You get a reference number.</li>
-          <li>It is listed right away, so the owner can find it.</li>
-          <li>Staff check any claim before the item is released.</li>
+          <li>You get a reference number straight away.</li>
+          <li>Staff review your report before it appears in the public list.</li>
+          <li>Once approved, the owner can find it and staff check any claim before the item is released.</li>
         </ol>
       </div>
 
