@@ -93,6 +93,36 @@ function buildCookieValue(userId, studentNo, role, expiresAtMs) {
   return `${payload}.${sig}`;
 }
 
+// ---------------------------------------------------------------------
+// "Waiting for verification" cookie. Lets the check-email page ask, every few
+// seconds, whether this browser's pending email has been verified (e.g. from the
+// phone). It is only handed out right after a successful registration or a
+// correct-password sign-in on an unverified account, so nobody can use it to
+// find out whether some other email address is registered or verified.
+// ---------------------------------------------------------------------
+const VERIFY_WAIT_COOKIE = 'whereitis_verifywait';
+const VERIFY_WAIT_MAX_AGE_MS = 24 * 60 * 60 * 1000; // same lifetime as the emailed link
+
+function setVerifyWaitCookie(res, email) {
+  const b64 = Buffer.from(String(email), 'utf8').toString('base64url');
+  const expires = Date.now() + VERIFY_WAIT_MAX_AGE_MS;
+  const sig = hmac.sign(`verifywait.${b64}.${expires}`);
+  res.cookie(VERIFY_WAIT_COOKIE, `${b64}.${expires}.${sig}`, cookieOptions(VERIFY_WAIT_MAX_AGE_MS));
+}
+
+// readVerifyWaitEmail: the email from a valid, unexpired cookie, or null.
+function readVerifyWaitEmail(req) {
+  const raw = req.cookies && req.cookies[VERIFY_WAIT_COOKIE];
+  if (!raw || typeof raw !== 'string') return null;
+  const parts = raw.split('.');
+  if (parts.length !== 3) return null;
+  const [b64, expStr, sig] = parts;
+  const expires = Number(expStr);
+  if (!/^[A-Za-z0-9_-]+$/.test(b64) || !Number.isFinite(expires) || expires <= Date.now()) return null;
+  if (!hmac.verify(`verifywait.${b64}.${expStr}`, sig)) return null;
+  return Buffer.from(b64, 'base64url').toString('utf8');
+}
+
 // dashboardFor: every signed-in role uses the same My Reports interface.
 function dashboardFor(role) {
   return '/my-reports';
@@ -239,6 +269,7 @@ async function signInSubmitHandler(req, res, next) {
 
     // Email verification stays enabled for every account.
     if (!user.email_verified) {
+      setVerifyWaitCookie(res, user.email);
       return res.redirect(303, '/check-email?email=' + encodeURIComponent(user.email) +
         '&flash=err:' + encodeURIComponent('Please verify your email before signing in. Check your inbox for the verification link.'));
     }
@@ -378,6 +409,7 @@ async function registerSubmitHandler(req, res, next) {
       console.error('[register] could not send verification email:', mailErr.message);
       flashMsg = 'err:Account created, but we could not send the verification email. Please press "Resend verification email".';
     }
+    setVerifyWaitCookie(res, user.email);
     res.redirect(303, '/check-email?email=' + encodeURIComponent(user.email) + '&flash=' + encodeURIComponent(flashMsg));
   } catch (err) {
     next(err);
@@ -389,6 +421,23 @@ function checkEmailHandler(req, res) {
   const email = typeof req.query.email === 'string' ? req.query.email.trim().toLowerCase() : '';
   if (!REGISTER_EMAIL_RE.test(email)) return res.redirect(303, '/sign-in');
   res.render('myReports/checkEmail', { title: 'Verify your email', email });
+}
+
+// GET /check-email/status — polled by the check-email page (public/js/verify-wait.js).
+// Answers only for the email in this browser's signed "waiting" cookie, never for an
+// email supplied in the URL, so it cannot be used to look up other people's accounts.
+async function verifyStatusHandler(req, res) {
+  res.set('Cache-Control', 'no-store');
+  const email = readVerifyWaitEmail(req);
+  if (!email) return res.json({ tracking: false, verified: false });
+  try {
+    const user = await userModel.findByEmail(email);
+    const verified = !!(user && user.email_verified_at);
+    if (verified) res.clearCookie(VERIFY_WAIT_COOKIE, { path: '/' });
+    return res.json({ tracking: true, verified });
+  } catch (err) {
+    return res.json({ tracking: true, verified: false });
+  }
 }
 
 // GET /verify-email?token=...  (the button in the email)
@@ -633,6 +682,7 @@ router.post('/register', registerSubmitHandler);
 router.post('/my-reports/register', registerSubmitHandler);
 
 router.get('/check-email', checkEmailHandler);
+router.get('/check-email/status', verifyStatusHandler);
 router.get('/verify-email', verifyEmailHandler);
 router.post('/resend-verification', resendVerificationHandler);
 

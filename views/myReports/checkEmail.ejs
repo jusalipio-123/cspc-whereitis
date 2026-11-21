@@ -30,6 +30,10 @@
       <p>Open the email and click the <strong>Verify my email</strong> button. The link is valid for 24 hours. Then come back and sign in.</p>
       <p class="muted">Can't find it? Check your spam or junk folder.</p>
 
+      <p id="verify-wait-status" class="muted" role="status" aria-live="polite" hidden>
+        Waiting for you to click the link&hellip; this page will move on by itself once your email is verified, even if you open the link on another device.
+      </p>
+
       <form method="post" action="/resend-verification" class="auth-form">
         <input type="hidden" name="email" value="<%= email %>">
         <button type="submit" class="btn btn--primary auth-submit">Resend verification email</button>
@@ -42,4 +46,5 @@
   </div>
 </main>
 
+<script src="/js/verify-wait.js" defer></script>
 <%- include('../partials/foot') %>
