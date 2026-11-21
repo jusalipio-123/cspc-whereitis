@@ -123,15 +123,17 @@ function readVerifyWaitEmail(req) {
   return Buffer.from(b64, 'base64url').toString('utf8');
 }
 
-// dashboardFor: every signed-in role uses the same My Reports interface.
+// dashboardFor: students/staff/teachers share the My Reports interface;
+// administrators land in the admin console after signing in.
 function dashboardFor(role) {
-  return '/my-reports';
+  return role === 'admin' ? '/admin' : '/my-reports';
 }
 
 // A ?next= value is still honoured when it points at a same-site relative
-// path. There are no role-restricted areas any more.
+// path, except admin-only areas which non-admins must not be sent to.
 function allowedNext(path, role) {
   if (!path || path.startsWith('//') || path.includes('://')) return false;
+  if (path === '/admin' || path.startsWith('/admin/')) return role === 'admin';
   return true;
 }
 
