@@ -30,6 +30,7 @@ const validate = require('../middleware/validate');
 const passwords = require('../lib/passwords');
 const limiter = require('../lib/loginLimiter');
 const mailer = require('../lib/mailer');
+const sessionStore = require('../lib/sessionStore');
 
 const COOKIE_NAME = 'whereitis_id';
 const COOKIE_MAX_AGE_MS = 30 * 60 * 1000; // 30 minutes
@@ -67,7 +68,16 @@ function readResetUserId(req) {
   return userId;
 }
 
-function signInAs(res, user) {
+async function signInAs(res, user) {
+  // Optional database-backed session (SESSION_STORE=db). If it is off, or the
+  // database save fails, fall through to the original signed cookie.
+  if (sessionStore.enabled()) {
+    const sid = await sessionStore.create(user, COOKIE_MAX_AGE_MS);
+    if (sid) {
+      res.cookie(COOKIE_NAME, sid, cookieOptions(COOKIE_MAX_AGE_MS));
+      return;
+    }
+  }
   const expiresAt = Date.now() + COOKIE_MAX_AGE_MS;
   const role = user.role || 'user';
   res.cookie(
@@ -240,7 +250,7 @@ async function signInSubmitHandler(req, res, next) {
       return res.redirect(303, '/set-password' + (nextPath ? '?next=' + encodeURIComponent(nextPath) : ''));
     }
 
-    signInAs(res, user);
+    await signInAs(res, user);
 
     const destination = allowedNext(nextPath, role) ? nextPath : dashboardFor(role);
     const sep = destination.includes('?') ? '&' : '?';
@@ -582,7 +592,7 @@ async function setPasswordSubmitHandler(req, res, next) {
     await userModel.setPassword(user.id, password);
 
     res.clearCookie(RESET_COOKIE, { path: '/' });
-    signInAs(res, user);
+    await signInAs(res, user);
 
     const role = user.role || 'user';
     const destination = allowedNext(nextPath, role) ? nextPath : dashboardFor(role);
@@ -594,7 +604,10 @@ async function setPasswordSubmitHandler(req, res, next) {
 }
 
 // POST /my-reports/sign-out, POST /sign-out
-function signOutHandler(req, res) {
+async function signOutHandler(req, res) {
+  if (sessionStore.enabled() && req.cookies && sessionStore.looksLikeSid(req.cookies[COOKIE_NAME])) {
+    await sessionStore.destroy(req.cookies[COOKIE_NAME]);
+  }
   res.clearCookie(COOKIE_NAME, { path: '/' });
   res.clearCookie(RESET_COOKIE, { path: '/' });
 

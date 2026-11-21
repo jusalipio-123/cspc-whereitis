@@ -29,6 +29,13 @@ try {
   hmac = null;
 }
 
+let sessionStore;
+try {
+  sessionStore = require('../lib/sessionStore');
+} catch (err) {
+  sessionStore = null;
+}
+
 const COOKIE_NAME = 'whereitis_id';
 
 function parseCookieHeader(header) {
@@ -98,6 +105,21 @@ function optionalIdentity(req, res, next) {
       // never throw here, a malformed cookie must not crash the request.
       req.identity = null;
     }
+  }
+
+  // Optional database-backed session (only when SESSION_STORE=db). The signed
+  // cookie above is still accepted, so nobody is signed out when it is switched on.
+  if (!req.identity && raw && sessionStore && sessionStore.enabled() && sessionStore.looksLikeSid(raw)) {
+    return sessionStore.get(raw).then(
+      (found) => {
+        req.identity = found || null;
+        next();
+      },
+      () => {
+        req.identity = null;
+        next();
+      }
+    );
   }
 
   next();
