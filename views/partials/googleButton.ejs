@@ -1,0 +1,20 @@
+<!-- CSPC WhereITis — views/partials/googleButton.ejs -->
+<%
+  // googleClientId comes from app.locals (empty until GOOGLE_CLIENT_ID is set).
+  // `next` is optional: the auth pages that need it pass it; others do not.
+  const _googleEnabled = typeof googleClientId !== 'undefined' && !!googleClientId;
+  const _googleNext = (typeof next !== 'undefined' && next) ? next : '';
+%>
+<% if (_googleEnabled) { %>
+  <div class="auth-google">
+    <div id="google-btn" class="auth-google__button" data-next="<%= _googleNext %>"></div>
+    <p class="field-hint auth-google__error" id="google-error" role="alert" hidden></p>
+  </div>
+  <!-- `defer` on both scripts keeps execution order: Google loads first, then our init. -->
+  <script src="https://accounts.google.com/gsi/client" defer></script>
+  <script src="/js/google-signin.js" defer></script>
+<% } else { %>
+  <p class="field-hint auth-google__unavailable">
+    Google sign-in is not configured on this server yet. Use your email and password above.
+  </p>
+<% } %>

@@ -605,6 +605,11 @@ main > .container > section:last-child { margin-bottom: 0; }
 .auth-google:focus-visible { outline: 2px solid var(--brand); outline-offset: 4px; }
 :root[data-theme="dark"] .auth-google__logo { background: rgba(255, 255, 255, .08); border-color: rgba(255, 255, 255, .2); box-shadow: none; }
 @media (prefers-reduced-motion: reduce) { .auth-google__logo { transition: none; } }
+/* Official Google Identity Services button mount (replaces the old fake link). */
+.auth-google__button { width: 100%; min-height: 44px; display: flex; align-items: center; justify-content: center; }
+.auth-google__button > div { max-width: 100%; }
+.auth-google__error { color: #b42318; text-align: center; margin-top: .5rem; }
+.auth-google__unavailable { max-width: 420px; margin: clamp(.85rem, 2.2vh, 1.25rem) auto 0; text-align: center; }
 .auth-help { margin: var(--s-4) auto var(--s-2); font-size: .9rem; color: var(--muted); max-width: 420px; text-align: center; }
 .auth-back { margin: 0 auto; font-size: .9rem; text-align: center; }
 /* Auth text links: bold, no underline. The Google logo stays visually separate. */

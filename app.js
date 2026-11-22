@@ -21,6 +21,9 @@ app.set('trust proxy', 1);
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.locals.icons = require('./views/partials/icons.js');
+// Exposed to every EJS template so the Google button only renders when a real
+// Client ID has been configured. Never treat this as a secret.
+app.locals.googleClientId = process.env.GOOGLE_CLIENT_ID || '';
 
 // Date helpers for every view (Philippine Standard Time).
 const phTime = require('./lib/time');
@@ -84,6 +87,7 @@ app.use((req, res, next) => {
 // /admin/moderation mount comes before /admin so it wins on prefix match.
 // ---------------------------------------------------------------------
 app.use('/', require('./routes/home'));
+app.use('/auth/google', require('./routes/googleAuth'));
 app.use('/reports', require('./routes/reports'));
 app.use('/claims', require('./routes/claims'));
 app.use('/', require('./routes/myReports'));

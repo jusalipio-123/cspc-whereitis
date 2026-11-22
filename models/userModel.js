@@ -131,6 +131,19 @@ async function emailExists(email) {
   return rows.length > 0;
 }
 
+// createGoogleUser: first-time Google sign-in. Google has already verified the
+// email address (checked in routes/googleAuth.js), so the account starts
+// verified and never needs a password. Password sign-in simply will not work
+// for these accounts — that is intentional; use "Continue with Google".
+async function createGoogleUser(data) {
+  const [result] = await pool.execute(
+    `INSERT INTO users (student_no, full_name, email, password_hash, role, email_verified_at)
+     VALUES (?, ?, ?, NULL, 'user', NOW())`,
+    [data.student_no, data.full_name, data.email]
+  );
+  return findById(result.insertId);
+}
+
 // Admin user management. Only public roles may be assigned; admin accounts
 // are created by a database administrator, never through this method.
 async function listUsers(limit = 200) {
@@ -248,6 +261,7 @@ module.exports = {
   verifyPassword,
   setPassword,
   create,
+  createGoogleUser,
   emailExists,
   listUsers,
   updateRole,

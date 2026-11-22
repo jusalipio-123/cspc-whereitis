@@ -6,6 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title><%= title %> | CSPC WhereITis</title>
   <meta name="description" content="<%= typeof description !== 'undefined' ? description : 'Lost & Found at Camarines Sur Polytechnic Colleges' %>">
+  <!-- Public OAuth client id (not a secret). Empty when Google Sign-In is not configured. -->
+  <meta name="google-client-id" content="<%= typeof googleClientId !== 'undefined' ? googleClientId : '' %>">
   <!-- Theme: runs before first paint so there is no light/dark flash. Saved choice wins, otherwise the device setting. -->
   <script>
   (function () {
