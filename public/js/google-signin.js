@@ -53,7 +53,7 @@
 
     var width = Math.min(Math.max(host.clientWidth || 320, 220), 400);
     google.accounts.id.renderButton(host, {
-      theme: 'outline',
+      theme: 'filled_blue',
       size: 'large',
       width: width,
       text: mode === 'signup' ? 'signup_with' : 'signin_with',
