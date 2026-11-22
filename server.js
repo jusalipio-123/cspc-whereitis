@@ -16,6 +16,12 @@ const db = require('./db');
 
 const PORT = process.env.PORT || 3000;
 
+// Heads-up in the logs (never the value): without GOOGLE_CLIENT_ID the sign-in
+// page shows a plain link to google.com instead of the real Google button.
+if (!process.env.GOOGLE_CLIENT_ID) {
+  console.warn('[config] GOOGLE_CLIENT_ID is not set — "Sign in with Google" will NOT work. Set it in .env (local) or in the Hostinger environment variables, then restart.');
+}
+
 async function start() {
   // Fail fast: if MySQL is unreachable at boot, we want a clear error in
   // the terminal immediately, not a server that "looks" up but 500s on

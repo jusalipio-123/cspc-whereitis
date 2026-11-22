@@ -16,6 +16,7 @@
     if (!clientId) return;
 
     var next = host.getAttribute('data-next') || '';
+    var mode = host.getAttribute('data-mode') || 'signin';
     var errorEl = document.getElementById('google-error');
 
     google.accounts.id.initialize({
@@ -52,10 +53,10 @@
 
     var width = Math.min(Math.max(host.clientWidth || 320, 220), 400);
     google.accounts.id.renderButton(host, {
-      theme: 'outline',
+      theme: 'filled_blue',
       size: 'large',
       width: width,
-      text: 'continue_with',
+      text: mode === 'signup' ? 'signup_with' : 'signin_with',
       shape: 'rectangular',
     });
     host.dataset.ready = '1';

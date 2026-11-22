@@ -113,7 +113,7 @@ app.use('/', require('./routes/pages'));
 app.get('/health', async (req, res) => {
   try {
     await db.ping();
-    res.status(200).json({ status: 'ok', uptime: process.uptime(), db: 'up' });
+    res.status(200).json({ status: 'ok', uptime: process.uptime(), db: 'up', google: process.env.GOOGLE_CLIENT_ID ? 'configured' : 'missing' });
   } catch (err) {
     res.status(503).json({ status: 'degraded', uptime: process.uptime(), db: 'down' });
   }

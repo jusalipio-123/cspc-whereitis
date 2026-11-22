@@ -106,7 +106,7 @@
         <button type="submit" class="btn btn--primary auth-submit field--wide" data-submit>Create account</button>
       </form>
 
-      <%- include('../partials/googleButton', { next: _next }) %>
+      <%- include('../partials/googleButton', { next: _next, mode: 'signup' }) %>
 
       <p class="auth-help auth-links">
         Already have an account? <a href="/sign-in<%= _next ? '?next=' + encodeURIComponent(_next) : '' %>">Sign in</a>
