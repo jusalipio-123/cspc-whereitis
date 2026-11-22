@@ -72,7 +72,7 @@ These demo accounts were created with a 4-digit PIN. Each one can sign in **once
 | `DB_PASSWORD` | Yes | `changeme` | MySQL password — never commit a real value. |
 | `DB_NAME` | Yes | `whereitis` | Database created by `schema.sql`. |
 | `PROCESS_SECRET` | Yes | `<64 random hex chars>` | HMAC key signing the `whereitis_id` cookie. Generate with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` and NEVER commit the real value. |
-| `GOOGLE_CLIENT_ID` | For Google sign-in | _(empty)_ | Google Cloud **OAuth 2.0 Client ID (Web application)**. Add `http://localhost:3000` and `https://whereitis.xyz` as Authorised JavaScript origins. Leave empty to hide the Google button. |
+| `GOOGLE_CLIENT_ID` | For real Google sign-in | _(empty)_ | Google Cloud **OAuth 2.0 Client ID (Web application)**. Add `http://localhost:3000` and `https://whereitis.xyz` as Authorised JavaScript origins. When empty, the Google button is still shown but simply opens Google in a new tab (no app sign-in). |
 | `MATCH_WINDOW_DAYS` | No | `30` | Day window the matching engine (FR-09) searches for candidates. |
 | `GUEST_REPORTS_PER_DAY` | No | `3` | Most guest reports one connection may send in 24 hours. |
 | `HOLDING_PERIOD_DAYS` | No | `90` | Default days before a found item may be archived as unclaimed (FR-15). |
@@ -190,7 +190,7 @@ Registered users keep everything they had (full form with photo and tags, edit w
 Every request runs `optionalIdentity`, which sets `req.identity` and exposes it to all views without redirecting — guests can browse and file a found-item report uninterrupted. The nav shows the signed-in user's ID with a sign-out link, or a "Sign in" link; gated actions link to `/sign-in?next=<path>` so the user returns to what they were doing. `/sign-in` and `/sign-out` are short aliases of the longer `/my-reports/...` paths.
 
 - **Passwords:** scrypt with a per-account salt (`lib/passwords.js`). New users choose a password at registration; legacy demo accounts can sign in once with their old PIN and must then set a password.
-- **Google sign-in:** with `GOOGLE_CLIENT_ID` set, the auth pages render the official Google Identity Services button. The ID token is verified server-side in `routes/googleAuth.js`; CSPC email accounts are linked to an existing user or created as verified, passwordless accounts. The usual `whereitis_id` cookie is then set, so every role guard works unchanged.
+- **Google sign-in:** with `GOOGLE_CLIENT_ID` set, the auth pages render the official Google Identity Services button. The ID token is verified server-side in `routes/googleAuth.js`; CSPC email accounts are linked to an existing user or created as verified, passwordless accounts. The usual `whereitis_id` cookie is then set, so every role guard works unchanged. Without a Client ID, the same-styled button opens Google in a new tab and never claims to have signed the user into WhereITis.
 - **Verification:** registration sends a link via Brevo (`lib/mailer.js`); with `BREVO_API_KEY` unset the link is printed to the terminal instead. Accounts that predate the feature were backfilled as verified.
 - **Password reset:** `/forgot-password` emails a link, `/reset-password` stores a new scrypt hash.
 - **Cookie:** the default login is still a stateless, HMAC-signed `whereitis_id` cookie with the role embedded for UI purposes. Role checks never trust it: `middleware/roles.js` and `routes/adminAuth.js` re-read `users.role` from the database on every protected request. Set `SESSION_STORE=db` for revocable MySQL-backed sessions.
