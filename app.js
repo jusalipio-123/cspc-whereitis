@@ -92,6 +92,7 @@ app.use('/reports', require('./routes/reports'));
 app.use('/claims', require('./routes/claims'));
 app.use('/', require('./routes/myReports'));
 
+app.use('/admin', require('./routes/adminManage'));
 app.use('/admin/login', require('./routes/adminAuth'));
 app.use('/admin/moderation', require('./routes/moderation'));
 app.use('/admin', require('./routes/admin'));

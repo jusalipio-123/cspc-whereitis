@@ -3,11 +3,7 @@
   const _errors = errors || {};
   const _values = values || {};
 %>
-<%- include('../partials/head', { title: 'Manage locations' }) %>
-<%- include('../partials/nav') %>
-
-<main id="main" class="container">
-  <%- include('../partials/flash') %>
+<%- include('../partials/adminOpen', { title: 'Manage locations', active: 'locations' }) %>
 
   <h1>Manage locations</h1>
   <p class="muted">Internal-only places are hidden from public report forms but can still be used as holding locations.</p>
@@ -56,6 +52,4 @@
       <a href="/admin" class="btn btn--ghost">Cancel</a>
     </div>
   </form>
-</main>
-
-<%- include('../partials/foot') %>
+<%- include('../partials/adminClose') %>

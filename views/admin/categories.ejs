@@ -3,11 +3,7 @@
   const _errors = errors || {};
   const _values = values || {};
 %>
-<%- include('../partials/head', { title: 'Manage categories' }) %>
-<%- include('../partials/nav') %>
-
-<main id="main" class="container">
-  <%- include('../partials/flash') %>
+<%- include('../partials/adminOpen', { title: 'Manage categories', active: 'categories' }) %>
 
   <h1>Manage categories</h1>
   <p class="muted">Categories appear in report forms and filters. Adding one here makes it available immediately.</p>
@@ -66,6 +62,4 @@
       <a href="/admin" class="btn btn--ghost">Cancel</a>
     </div>
   </form>
-</main>
-
-<%- include('../partials/foot') %>
+<%- include('../partials/adminClose') %>

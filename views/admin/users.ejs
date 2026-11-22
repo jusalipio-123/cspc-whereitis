@@ -1,0 +1,74 @@
+<!-- CSPC WhereITis — views/admin/users.ejs : admin user list and role changes -->
+<%
+  const totalPages = Math.max(Math.ceil(result.total / result.perPage), 1);
+  const page = result.page;
+  const _parts = [];
+  if (q) _parts.push('q=' + encodeURIComponent(q));
+  if (role) _parts.push('role=' + role);
+  const baseUrl = '/admin/users' + (_parts.length ? '?' + _parts.join('&') : '');
+  const _here = baseUrl + (page > 1 ? (baseUrl.indexOf('?') === -1 ? '?' : '&') + 'page=' + page : '');
+  const _label = { user: 'Student', staff: 'Staff', teacher: 'Teacher', admin: 'Admin' };
+%>
+<%- include('../partials/adminOpen', { title: title, active: 'users' }) %>
+  <header class="page-head">
+    <div>
+      <p class="page-head__eyebrow">Admin console</p>
+      <h1>Users</h1>
+      <p class="muted">Staff can review guest reports and handle claims. The Admin role is set only through <code>ADMIN_EMAILS</code> or the database.</p>
+    </div>
+  </header>
+
+  <form class="toolbar" method="get" action="/admin/users">
+    <div class="toolbar__field toolbar__field--grow">
+      <label for="f-q">Search</label>
+      <input id="f-q" type="search" name="q" class="input" placeholder="Name, email or ID number" value="<%= q %>">
+    </div>
+    <div class="toolbar__field">
+      <label for="f-role">Role</label>
+      <select id="f-role" name="role" class="select"><option value="">Any</option>
+        <% ['user', 'staff', 'teacher', 'admin'].forEach(function (r) { %><option value="<%= r %>"<%= role === r ? ' selected' : '' %>><%= _label[r] %></option><% }); %>
+      </select>
+    </div>
+    <div class="toolbar__actions">
+      <button class="btn btn--primary" type="submit">Apply</button>
+      <a class="btn btn--ghost" href="/admin/users">Reset</a>
+    </div>
+  </form>
+
+  <p class="result-count"><strong><%= result.total %></strong> account<%= result.total === 1 ? '' : 's' %> · page <%= page %> of <%= totalPages %></p>
+
+  <% if (!result.rows.length) { %>
+    <div class="empty-state"><h3>No users found</h3><p>Try a different search, or reset the filters.</p></div>
+  <% } else { %>
+    <div class="registry-wrap">
+      <table class="registry">
+        <thead><tr><th scope="col">Name</th><th scope="col">ID / email</th><th scope="col">Role</th><th scope="col">Reports</th><th scope="col">Joined</th><th scope="col">Change role</th></tr></thead>
+        <tbody>
+          <% result.rows.forEach(function (u) { %>
+            <tr>
+              <td data-label="Name"><strong><%= u.full_name %></strong><% if (!u.email_verified_at) { %><br><span class="adm-tag adm-tag--muted">Email not verified</span><% } %></td>
+              <td data-label="ID / email"><span class="adm-small"><%= u.student_no %></span><br><span class="muted adm-small"><%= u.email %></span></td>
+              <td data-label="Role"><span class="adm-tag<%= u.role === 'admin' ? ' adm-tag--strong' : '' %>"><%= _label[u.role] || u.role %></span></td>
+              <td data-label="Reports"><%= u.report_count %></td>
+              <td data-label="Joined"><%= fmtDate(u.created_at) %></td>
+              <td class="adm-col-actions">
+                <% if (u.role === 'admin' || u.id === meId) { %>
+                  <span class="muted adm-small"><%= u.id === meId ? 'This is you' : 'Protected' %></span>
+                <% } else { %>
+                  <form method="post" action="/admin/users/<%= u.id %>/role" class="adm-inline adm-rolefm" data-confirm="Change <%= u.full_name %>'s role?">
+                    <input type="hidden" name="return_to" value="<%= _here %>">
+                    <select class="select adm-select" name="role" aria-label="Role for <%= u.full_name %>">
+                      <% ['user', 'staff', 'teacher'].forEach(function (r) { %><option value="<%= r %>"<%= u.role === r ? ' selected' : '' %>><%= _label[r] %></option><% }); %>
+                    </select>
+                    <button class="btn btn--ghost btn--sm" type="submit">Save</button>
+                  </form>
+                <% } %>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+    <%- include('../partials/pagination', { page: page, totalPages: totalPages, baseUrl: baseUrl }) %>
+  <% } %>
+<%- include('../partials/adminClose') %>

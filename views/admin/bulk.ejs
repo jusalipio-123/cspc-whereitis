@@ -1,9 +1,5 @@
 <!-- CSPC WhereITis — views/admin/bulk.ejs -->
-<%- include('../partials/head', { title: 'Bulk status update' }) %>
-<%- include('../partials/nav') %>
-
-<main id="main" class="container">
-  <%- include('../partials/flash') %>
+<%- include('../partials/adminOpen', { title: 'Bulk status update', active: 'bulk' }) %>
 
   <h1>Bulk status update</h1>
   <p class="muted">Select up to 100 recent reports and apply one status change to all
@@ -53,6 +49,4 @@
       <a href="/admin" class="btn btn--ghost">Cancel</a>
     </div>
   </form>
-</main>
-
-<%- include('../partials/foot') %>
+<%- include('../partials/adminClose') %>

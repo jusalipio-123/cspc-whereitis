@@ -3,11 +3,7 @@
   const _fmt = function (d) { return d ? fmtDateTime(d, { year: undefined }) : ''; };
   const _tabs = [['pending', 'Pending'], ['approved', 'Approved'], ['rejected', 'Rejected']];
 %>
-<%- include('../partials/head', { title: title }) %>
-<%- include('../partials/nav') %>
-
-<main id="main" class="container">
-  <%- include('../partials/flash') %>
+<%- include('../partials/adminOpen', { title: title, active: 'moderation' }) %>
 
   <h1>Guest report review</h1>
   <p class="muted">Guest reports stay hidden from the public until a staff member approves them. Contact details below are for staff only.</p>
@@ -83,6 +79,4 @@
       </table>
     </div>
   <% } %>
-</main>
-
-<%- include('../partials/foot') %>
+<%- include('../partials/adminClose') %>
