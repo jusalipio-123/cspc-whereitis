@@ -2097,9 +2097,3 @@ main.container.my-page > ul.my-stats { max-width: none; }
 .pw-rules li.is-met { color: var(--green); }
 .pw-rules li.is-met::before { content: "\2713"; font-weight: 700; }
 @media (prefers-reduced-motion: reduce) { .pw-meter__bar { transition: none; } }
-
-/* Google sign-in placed ABOVE the email form (sign-in page): button first, then "or sign in with email". */
-.auth-google--top { margin: 0 0 var(--s-3); max-width: 420px; margin-left: 0; margin-right: 0; }
-.auth-google--top .auth-google__button { justify-content: flex-start; }
-.auth-google--top .auth-google__divider { margin-top: .25rem; }
-.auth-google--top .auth-google__error { text-align: left; }
