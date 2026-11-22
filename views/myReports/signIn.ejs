@@ -42,6 +42,8 @@
         </div>
       <% } %>
 
+      <%- include('../partials/googleButton', { next: _next, placement: 'top' }) %>
+
       <form method="post" action="/sign-in" class="auth-form" novalidate data-auth-form>
         <% if (_next) { %><input type="hidden" name="next" value="<%= _next %>"><% } %>
 
@@ -73,8 +75,6 @@
 
         <button type="submit" class="btn btn--primary auth-submit" data-submit>Sign in</button>
       </form>
-
-      <%- include('../partials/googleButton', { next: _next }) %>
 
       <p class="auth-help auth-links">
         New here? <a href="/register<%= _next ? '?next=' + encodeURIComponent(_next) : '' %>">Create an account</a>

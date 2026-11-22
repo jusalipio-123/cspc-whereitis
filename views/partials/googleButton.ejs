@@ -6,9 +6,15 @@
   const _googleNext = (typeof next !== 'undefined' && next) ? next : '';
   const _googleMode = (typeof mode !== 'undefined' && mode === 'signup') ? 'signup' : 'signin';
   const _googleLabel = _googleMode === 'signup' ? 'Sign up with Google' : 'Sign in with Google';
+  // placement: 'top' = Google button first, then an "or sign in with email" divider
+  // (used above the email form). Default = divider first, button below the form.
+  const _googleTop = (typeof placement !== 'undefined' && placement === 'top');
+  const _dividerText = _googleTop ? (_googleMode === 'signup' ? 'or sign up with email' : 'or sign in with email') : 'or';
 %>
-<div class="auth-google">
-  <div class="auth-google__divider" aria-hidden="true"><span>or</span></div>
+<div class="auth-google<%= _googleTop ? ' auth-google--top' : '' %>">
+  <% if (!_googleTop) { %>
+  <div class="auth-google__divider" aria-hidden="true"><span><%= _dividerText %></span></div>
+  <% } %>
 
   <% if (_googleEnabled) { %>
     <!-- Real Google Identity Services button, rendered by /js/google-signin.js. -->
@@ -31,6 +37,10 @@
   <% } %>
 
   <p class="field-hint auth-google__error" id="google-error" role="alert" hidden></p>
+
+  <% if (_googleTop) { %>
+  <div class="auth-google__divider" aria-hidden="true"><span><%= _dividerText %></span></div>
+  <% } %>
 </div>
 
 <% if (_googleEnabled) { %>
