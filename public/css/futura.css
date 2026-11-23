@@ -49,10 +49,19 @@
 }
 
 /* ===== NEXUS PAGE ===== */
-.nexus { position: relative; background: var(--bg); }
+body:has(.nexus) {
+  background-image: none !important;
+  background-color: var(--bg);
+}
+.nexus {
+  position: relative;
+  background: var(--bg) !important;
+  background-image: none !important;
+}
 .nexus-hero {
   position: relative; overflow: hidden; color: var(--ink);
-  background: var(--bg);
+  background: var(--bg) !important;
+  background-image: none !important;
   border-bottom: 1px solid var(--glass-border);
   padding: clamp(2rem, 5vw, 3.4rem) 0 clamp(1.6rem, 4vw, 2.4rem);
 }
@@ -100,7 +109,15 @@
 .nexus-hud dd { margin: .15rem 0 0; font-size: 1.45rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--brand); }
 .nexus-hud__time { font-size: .95rem !important; color: var(--ink) !important; opacity: 1; }
 
-.nexus-body { padding-block: var(--s-5) var(--s-6); }
+.nexus-body { padding-block: var(--s-5) var(--s-6); background: transparent; }
+.nexus .nexus-panel,
+.nexus .pulse a {
+  background: color-mix(in srgb, var(--card) 92%, transparent) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.nexus .pulse__title { color: var(--ink); font-weight: 650; }
+.nexus .pulse__meta { color: var(--muted); }
 .nexus-layout {
   display: grid; gap: 1.25rem; grid-template-columns: 1fr;
 }
@@ -665,6 +682,17 @@ main, .site-footer { position: relative; z-index: 1; }
   display: inline-block; padding: .2rem .7rem; border-radius: 999px;
   background: color-mix(in srgb, var(--card) 40%, transparent);
   backdrop-filter: blur(10px); border: 1px solid var(--glass-border);
+  color: var(--ink);
+}
+.hero__sub {
+  color: #102a44 !important;
+  opacity: 1 !important;
+  font-weight: 600;
+  text-shadow: 0 1px 8px rgba(255,255,255,.75);
+}
+:root[data-theme="dark"] .hero__sub {
+  color: #f2f8fc !important;
+  text-shadow: 0 1px 10px rgba(0,0,0,.45);
 }
 
 .suggest {
