@@ -777,8 +777,14 @@ img, svg, video { max-width: 100%; height: auto; }
   .glass-ambient { display: none; }
   .site-header--glass { padding: .4rem 0 .15rem; }
   .site-header--glass .nav-row {
+    grid-template-columns: 1fr auto;
     min-height: 56px; gap: .5rem; border-radius: 16px;
     padding: .3rem .5rem .3rem .65rem;
+  }
+  .site-header--glass .nav-actions {
+    justify-self: end;
+    margin-left: 0;
+    gap: .4rem;
   }
   .site-header--glass .brand__seal { width: 36px; height: 36px; }
   .site-header--glass .nav-link--glass { height: 36px; padding: 0 .8rem; font-size: .85rem; }
