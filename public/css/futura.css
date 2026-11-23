@@ -407,19 +407,46 @@
 }
 
 body {
-  background-color: #8ecff0;
-  background-image:
-    linear-gradient(180deg, rgba(94, 184, 234, .28) 0%, rgba(213, 238, 248, .78) 42%, rgba(213, 238, 248, .88) 100%),
-    url('/img/background.jpg');
-  background-size: cover;
-  background-position: center 42%;
-  background-attachment: fixed;
-  background-repeat: no-repeat;
+  background-color: #d5eef8;
+  background-image: linear-gradient(180deg, #c5e8f6 0%, #d5eef8 40%, #e8f5fb 100%);
+  background-attachment: scroll;
 }
 :root[data-theme="dark"] body {
-  background-image:
-    linear-gradient(180deg, rgba(10, 36, 56, .72) 0%, rgba(10, 36, 56, .82) 100%),
-    url('/img/background.jpg');
+  background-color: #0a2438;
+  background-image: linear-gradient(180deg, #0a2438, #0e2e46);
+}
+
+/* Home: sharp plaza in the hero, blurred continuation underneath so cards sit in it (not floating). */
+.home-below {
+  position: relative;
+  isolation: isolate;
+  padding-top: .25rem;
+  padding-bottom: var(--s-5);
+}
+.home-below::before {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  top: -72px;
+  z-index: -1;
+  background: url('/img/background.jpg') center 58% / cover no-repeat;
+  filter: blur(36px) saturate(1.15);
+  transform: scale(1.12);
+  opacity: .55;
+  pointer-events: none;
+}
+.home-below::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; top: -72px;
+  height: 140px;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgba(213, 238, 248, .95), rgba(213, 238, 248, .15) 70%, transparent);
+}
+:root[data-theme="dark"] .home-below::before { opacity: .35; }
+:root[data-theme="dark"] .home-below::after {
+  background: linear-gradient(to bottom, rgba(10, 36, 56, .95), rgba(10, 36, 56, .2) 70%, transparent);
 }
 
 .glass-ambient { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
