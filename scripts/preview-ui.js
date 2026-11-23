@@ -157,6 +157,14 @@ app.get('/nexus', (req, res) => {
   });
 });
 
+app.get('/api/nexus/suggest', (req, res) => {
+  const q = String(req.query.q || '').trim().toLowerCase();
+  if (q.length < 2) return res.json({ ok: true, items: [] });
+  const items = reports.filter((r) => (r.title + ' ' + r.description).toLowerCase().includes(q)).slice(0, 6)
+    .map((r) => ({ reference_no: r.reference_no, title: r.title, kind: r.kind, status: r.status, location_name: r.location_name }));
+  res.json({ ok: true, items });
+});
+
 app.get('/api/nexus/pulse', (req, res) => {
   res.json({ ok: true, generated_at: new Date().toISOString(), items: reports.map(publicReport) });
 });

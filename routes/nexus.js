@@ -108,6 +108,32 @@ router.get('/nexus', async (req, res, next) => {
   }
 });
 
+// GET /api/nexus/suggest — live typeahead for the home search (public fields only).
+router.get('/api/nexus/suggest', async (req, res, next) => {
+  try {
+    if (tooMany(req.ip, 60, 60 * 1000)) {
+      return res.status(429).json({ error: 'Too many requests. Try again in a minute.' });
+    }
+    const q = String(req.query.q || '').trim();
+    if (q.length < 2 || q.length > 80) {
+      return res.json({ ok: true, items: [] });
+    }
+    const result = await reportModel.list({ q, page: 1, perPage: 6, sort: 'newest' });
+    res.json({
+      ok: true,
+      items: (result.rows || []).map((row) => ({
+        reference_no: row.reference_no,
+        title: row.title,
+        kind: row.kind,
+        status: row.status,
+        location_name: row.location_name,
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /api/nexus/pulse — newest public reports for the live feed.
 router.get('/api/nexus/pulse', async (req, res, next) => {
   try {

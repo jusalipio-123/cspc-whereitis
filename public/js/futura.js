@@ -1,60 +1,20 @@
 // public/js/futura.js
 // Progressive enhancement: command palette, campus concierge, voice search,
-// and a three-way theme cycle (light → dark → nexus). Pages work without this file.
+// live suggestions, glass motion. Pages work without this file.
 
 (function () {
   'use strict';
 
   var Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   function $(sel, root) { return (root || document).querySelector(sel); }
   function $$(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
 
-  // -------------------------------------------------------------------
-  // Theme cycle: light → dark → nexus → light
-  // The original binary toggle in app.js still runs; we re-bind after it.
-  // -------------------------------------------------------------------
-  (function themeCycle() {
-    var btn = $('[data-theme-toggle]');
-    if (!btn) return;
-    var root = document.documentElement;
-    var KEY = 'whereitis_theme';
-    var ORDER = ['light', 'dark', 'nexus'];
-
-    function current() {
-      var t = root.getAttribute('data-theme');
-      return ORDER.indexOf(t) === -1 ? 'light' : t;
-    }
-    function label() {
-      var next = ORDER[(ORDER.indexOf(current()) + 1) % ORDER.length];
-      var text = next === 'nexus' ? 'Switch to Nexus mode' : next === 'dark' ? 'Switch to dark mode' : 'Switch to light mode';
-      btn.setAttribute('aria-label', text);
-      btn.setAttribute('title', text + ' (cycles light / dark / Nexus)');
-    }
-    function apply(theme) {
-      root.setAttribute('data-theme', theme);
-      try { localStorage.setItem(KEY, theme); } catch (e) {}
-      label();
-    }
-
-    btn.hidden = false;
-    label();
-
-    // Replace the binary click handler by capturing in bubble after app.js.
-    // We stop later clicks from flipping only light/dark by handling it here
-    // with our own listener that runs in the bubble phase last... actually
-    // app.js already bound a click. Clone the button to drop those listeners.
-    var fresh = btn.cloneNode(true);
-    btn.parentNode.replaceChild(fresh, btn);
-    btn = fresh;
-    btn.hidden = false;
-    label();
-
-    btn.addEventListener('click', function () {
-      var next = ORDER[(ORDER.indexOf(current()) + 1) % ORDER.length];
-      apply(next);
-    });
-  })();
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
 
   // -------------------------------------------------------------------
   // Voice search — fills the nearest search field, then optionally submits.
@@ -218,6 +178,7 @@
     { test: /match|scanner|score/i, say: 'Matching is a fixed rubric, not AI: same category, same location, close dates, overlapping words. Open Nexus to scan a description — every point comes with a reason.' },
     { test: /nexus|radar|pulse/i, say: 'Nexus is the campus command centre: a radar of open reports by zone, a match scanner, and a live pulse. Open it from the nav, or press Ctrl+K and type Nexus.' },
     { test: /sign ?in|account|password|google/i, say: 'Use Sign in with your student email, or Google if it is configured. Forgot a password? There is a reset link on the sign-in page.' },
+    { test: /theme|dark|light|glass/i, say: 'The site follows your device light/dark setting. Panels use frosted glass — there is no theme button.' },
     { test: /voice|mic|speak/i, say: 'If your browser supports it, the mic on the home search box and on the Nexus scanner will type what you say. Allow the microphone when asked.' },
     { test: /ctrl|command palette|shortcut|keyboard/i, say: 'Press Ctrl+K (Cmd+K on a Mac) from any page to jump, search, or send a description to the scanner.' },
     { test: /privacy|data|guest/i, say: 'Guest found-item reports are held for staff review. Contact details on guest reports are never shown on public pages. See Privacy in the footer.' },
@@ -355,4 +316,113 @@
       });
     }
   });
+
+  // -------------------------------------------------------------------
+  // Live search suggestions on the home search box
+  // -------------------------------------------------------------------
+  (function liveSearch() {
+    var form = $('[data-live-search]');
+    var input = form && form.querySelector('#hero-q');
+    var list = form && $('[data-suggest]', form);
+    if (!form || !input || !list) return;
+    var timer = null, last = '', active = -1, items = [];
+
+    function hide() {
+      list.hidden = true; list.innerHTML = ''; active = -1; items = [];
+      input.setAttribute('aria-expanded', 'false');
+    }
+    function render() {
+      if (!items.length) { hide(); return; }
+      list.hidden = false;
+      input.setAttribute('aria-expanded', 'true');
+      list.innerHTML = items.map(function (it, i) {
+        return '<li><a class="' + (i === active ? 'is-active' : '') + '" role="option" href="/reports/' + esc(it.reference_no) + '">' +
+          '<span class="suggest__kind suggest__kind--' + esc(it.kind) + '">' + esc(it.kind) + '</span>' +
+          '<span class="suggest__title">' + esc(it.title) + '</span>' +
+          '<span class="suggest__meta">' + esc(it.location_name || '') + ' · ' + esc(it.reference_no) + '</span></a></li>';
+      }).join('');
+    }
+    function query(q) {
+      fetch('/api/nexus/suggest?q=' + encodeURIComponent(q), { headers: { 'Accept': 'application/json' } })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) {
+          if (input.value.trim() !== q) return;
+          items = (data && data.items) || [];
+          active = -1;
+          render();
+        })
+        .catch(function () { hide(); });
+    }
+    input.addEventListener('input', function () {
+      var q = input.value.trim();
+      clearTimeout(timer);
+      if (q.length < 2) { hide(); return; }
+      if (q === last) return;
+      last = q;
+      timer = setTimeout(function () { query(q); }, 180);
+    });
+    input.addEventListener('keydown', function (e) {
+      if (list.hidden || !items.length) return;
+      if (e.key === 'ArrowDown') { e.preventDefault(); active = Math.min(active + 1, items.length - 1); render(); }
+      if (e.key === 'ArrowUp') { e.preventDefault(); active = Math.max(active - 1, 0); render(); }
+      if (e.key === 'Enter' && active >= 0 && items[active]) {
+        e.preventDefault();
+        window.location.href = '/reports/' + items[active].reference_no;
+      }
+      if (e.key === 'Escape') hide();
+    });
+    document.addEventListener('click', function (e) {
+      if (!form.contains(e.target)) hide();
+    });
+  })();
+
+  // -------------------------------------------------------------------
+  // Scroll progress + magnetic glass cards
+  // -------------------------------------------------------------------
+  (function motion() {
+    var bar = $('[data-scroll-progress]');
+    if (bar) {
+      var ticking = false;
+      function paint() {
+        var max = document.documentElement.scrollHeight - window.innerHeight;
+        var p = max > 0 ? Math.min(1, window.scrollY / max) : 0;
+        bar.style.width = (p * 100).toFixed(2) + '%';
+        ticking = false;
+      }
+      window.addEventListener('scroll', function () {
+        if (ticking) return;
+        ticking = true;
+        window.requestAnimationFrame(paint);
+      }, { passive: true });
+      paint();
+    }
+
+    var dock = $('.glass-dock');
+    if (dock) {
+      var path = location.pathname;
+      $$('.glass-dock a').forEach(function (a) {
+        var href = a.getAttribute('href');
+        if (href === path || (href !== '/' && path.indexOf(href) === 0)) a.setAttribute('aria-current', 'page');
+      });
+    }
+
+    if (reduce) return;
+    var fine = window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+    if (!fine) return;
+    var SEL = '.report-card, .nexus-tile, .how__steps li, .scan-hit';
+    document.addEventListener('pointermove', function (e) {
+      if (e.pointerType !== 'mouse' || !e.target.closest) return;
+      var card = e.target.closest(SEL);
+      if (!card) return;
+      var r = card.getBoundingClientRect();
+      var px = (e.clientX - r.left) / r.width - 0.5;
+      var py = (e.clientY - r.top) / r.height - 0.5;
+      card.style.setProperty('--ry', (px * 8).toFixed(2) + 'deg');
+      card.style.setProperty('--rx', (-py * 8).toFixed(2) + 'deg');
+    }, { passive: true });
+    document.addEventListener('pointerleave', function (e) {
+      var card = e.target && e.target.closest && e.target.closest(SEL);
+      if (card) { card.style.setProperty('--rx', '0deg'); card.style.setProperty('--ry', '0deg'); }
+    }, true);
+  })();
 })();
