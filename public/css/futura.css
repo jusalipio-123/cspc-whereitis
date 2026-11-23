@@ -489,7 +489,7 @@ main, .site-footer { position: relative; z-index: 1; }
   box-shadow:
     0 12px 40px -18px color-mix(in srgb, var(--brand) 40%, #000),
     inset 0 1px 0 rgba(255,255,255,.5);
-  overflow: hidden;
+  overflow: visible;
 }
 .site-header--glass .nav-row::before {
   content: ""; position: absolute; inset: 0 auto auto 0; width: 42%; height: 1px;
@@ -574,8 +574,16 @@ main, .site-footer { position: relative; z-index: 1; }
   border: 1px solid var(--glass-border) !important;
 }
 .site-header--glass .profile-chip {
+  display: flex; align-items: center; justify-content: center;
   background: color-mix(in srgb, var(--card) 40%, transparent);
   border-radius: 999px;
+}
+.site-header--glass .profile-menu { position: relative; z-index: 80; }
+.site-header--glass .profile-menu__panel {
+  z-index: 90;
+  background: var(--card);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 16px 40px -16px rgba(0,0,0,.45);
 }
 
 :root[data-theme="dark"] .site-header--glass .nav-row {
