@@ -89,28 +89,18 @@
   background: var(--glass); border: 1px solid var(--glass-border); color: var(--ink);
 }
 .nexus-hud {
-  width: 100%; max-width: 920px; margin: 0;
-  border-collapse: separate; border-spacing: 0;
-  border: 1px solid var(--glass-border); border-radius: 12px; overflow: hidden;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: .75rem; margin: 0; max-width: 920px;
+}
+.nexus-hud > div {
+  padding: .7rem .85rem; border: 1px solid var(--glass-border); border-radius: 12px;
   background: var(--glass);
   backdrop-filter: blur(16px) saturate(1.4);
   -webkit-backdrop-filter: blur(16px) saturate(1.4);
 }
-.nexus-hud th,
-.nexus-hud td {
-  padding: .7rem .95rem; text-align: left; border-right: 1px solid var(--glass-border);
-}
-.nexus-hud th:last-child,
-.nexus-hud td:last-child { border-right: 0; }
-.nexus-hud th {
-  font-size: .72rem; letter-spacing: .08em; text-transform: uppercase;
-  font-weight: 600; color: var(--ink); opacity: .7;
-  border-bottom: 1px solid var(--glass-border);
-}
-.nexus-hud td {
-  font-size: 1.45rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--brand);
-}
-.nexus-hud__time { font-size: .95rem !important; font-weight: 650; color: var(--ink) !important; }
+.nexus-hud dt { font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink); opacity: .7; }
+.nexus-hud dd { margin: .15rem 0 0; font-size: 1.45rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--brand); }
+.nexus-hud__time { font-size: .95rem !important; color: var(--ink) !important; opacity: 1; }
 
 .nexus-body { padding-block: var(--s-5) var(--s-6); background: transparent; }
 .nexus .nexus-panel,
@@ -833,8 +823,7 @@ img, svg, video { max-width: 100%; height: auto; }
 
   .nexus-hero { padding: 1.4rem 0 1.1rem; }
   .nexus-hero h1 { font-size: 2.1rem; }
-  .nexus-hud { display: block; overflow-x: auto; max-width: 100%; }
-  .nexus-hud thead, .nexus-hud tbody, .nexus-hud tr { display: table; width: 100%; table-layout: fixed; }
+  .nexus-hud { grid-template-columns: 1fr 1fr; }
   .nexus-layout, .scan-form__filters { grid-template-columns: 1fr !important; }
   .radar, .radar__nodes { min-height: 260px; }
   .radar__label { font-size: .65rem; max-width: 5.5rem; }

@@ -14,26 +14,28 @@
         with <kbd>Ctrl</kbd>+<kbd>K</kbd>. Every score still comes with a reason
         &mdash; no black box.
       </p>
-      <table class="nexus-hud" aria-label="Live system readout">
-        <thead>
-          <tr>
-            <th scope="col">Open lost</th>
-            <th scope="col">Open found</th>
-            <th scope="col">Matched</th>
-            <th scope="col">Returned</th>
-            <th scope="col">Last sweep</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td data-count><%= counts.openLost %></td>
-            <td data-count><%= counts.openFound %></td>
-            <td data-count><%= counts.matched %></td>
-            <td data-count><%= counts.returned %></td>
-            <td class="nexus-hud__time"><%= scannedAt %></td>
-          </tr>
-        </tbody>
-      </table>
+      <dl class="nexus-hud" aria-label="Live system readout">
+        <div>
+          <dt>Open lost</dt>
+          <dd data-count><%= counts.openLost %></dd>
+        </div>
+        <div>
+          <dt>Open found</dt>
+          <dd data-count><%= counts.openFound %></dd>
+        </div>
+        <div>
+          <dt>Matched</dt>
+          <dd data-count><%= counts.matched %></dd>
+        </div>
+        <div>
+          <dt>Returned</dt>
+          <dd data-count><%= counts.returned %></dd>
+        </div>
+        <div>
+          <dt>Last sweep</dt>
+          <dd class="nexus-hud__time"><%= scannedAt %></dd>
+        </div>
+      </dl>
     </div>
   </section>
 
