@@ -1,0 +1,40 @@
+<!-- CSPC WhereITis — command palette + concierge. Progressive enhancement only. -->
+<div class="cmdk" data-cmdk hidden>
+  <div class="cmdk__backdrop" data-cmdk-close tabindex="-1"></div>
+  <div class="cmdk__panel" role="dialog" aria-modal="true" aria-labelledby="cmdk-title">
+    <h2 id="cmdk-title" class="visually-hidden">Command palette</h2>
+    <label class="visually-hidden" for="cmdk-input">Jump or search</label>
+    <div class="cmdk__search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="cmdk-input" type="search" data-cmdk-input placeholder="Jump, search, or type an item…" autocomplete="off" spellcheck="false">
+      <kbd>esc</kbd>
+    </div>
+    <ul class="cmdk__list" data-cmdk-list></ul>
+    <p class="cmdk__hint">↑↓ to move · Enter to run · Esc to close</p>
+  </div>
+</div>
+
+<button type="button" class="concierge-fab" data-concierge-open hidden
+        aria-haspopup="dialog" aria-controls="concierge-panel" aria-expanded="false"
+        title="Ask WhereITis">
+  <span class="concierge-fab__pulse" aria-hidden="true"></span>
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a7 7 0 0 0-7 7v1.2A3.8 3.8 0 0 0 8.8 15H9v3l3.5-3H15a7 7 0 0 0 7-7 7 7 0 0 0-7-7h-3z"/><circle cx="9" cy="10" r="1"/><circle cx="12" cy="10" r="1"/><circle cx="15" cy="10" r="1"/></svg>
+  <span class="visually-hidden">Ask WhereITis</span>
+</button>
+
+<div class="concierge" id="concierge-panel" data-concierge hidden role="dialog" aria-modal="true" aria-labelledby="concierge-title">
+  <header class="concierge__head">
+    <div>
+      <p class="concierge__kicker">Campus concierge</p>
+      <h2 id="concierge-title">Ask WhereITis</h2>
+    </div>
+    <button type="button" class="concierge__close" data-concierge-close aria-label="Close concierge">×</button>
+  </header>
+  <ol class="concierge__log" data-concierge-log></ol>
+  <form class="concierge__form" data-concierge-form>
+    <label class="visually-hidden" for="concierge-q">Your question</label>
+    <input id="concierge-q" type="text" data-concierge-input maxlength="200" placeholder="Ask, or describe an item…" autocomplete="off">
+    <button type="submit">Send</button>
+  </form>
+  <p class="concierge__note">Guided helper — not a neural net. Matches always show their reasons.</p>
+</div>
