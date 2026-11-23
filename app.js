@@ -44,7 +44,7 @@ app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(self), geolocation=()');
   if (process.env.NODE_ENV === 'production') {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   }
@@ -116,6 +116,7 @@ app.use((req, res, next) => {
 // /admin/moderation mount comes before /admin so it wins on prefix match.
 // ---------------------------------------------------------------------
 app.use('/', require('./routes/home'));
+app.use('/', require('./routes/nexus'));
 app.use('/auth/google', require('./routes/googleAuth'));
 app.use('/reports', require('./routes/reports'));
 app.use('/claims', require('./routes/claims'));
@@ -153,6 +154,9 @@ app.get('/health', async (req, res) => {
 // nothing above matched. Renders a real page, never a stack trace.
 // ---------------------------------------------------------------------
 app.use((req, res) => {
+  if (String(req.originalUrl || '').startsWith('/api/')) {
+    return res.status(404).json({ error: 'Not found' });
+  }
   res.status(404).render('errors/404', { title: 'Not found' });
 });
 
@@ -165,6 +169,9 @@ app.use((req, res) => {
 app.use((err, req, res, next) => {
   const refId = crypto.randomUUID();
   console.error(`[error] ref=${refId} ${req.method} ${req.originalUrl}`, err.stack);
+  if (String(req.originalUrl || '').startsWith('/api/')) {
+    return res.status(500).json({ error: 'Something went wrong', refId });
+  }
   res.status(500).render('errors/500', {
     title: 'Something went wrong',
     refId,

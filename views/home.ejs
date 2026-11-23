@@ -34,6 +34,9 @@
           <svg class="hero__search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
           <input id="hero-q" class="hero__search-input" type="search" name="q"
                  placeholder="Search lost and found items">
+          <button type="button" class="hero__mic" data-voice-search hidden aria-label="Search by voice" title="Search by voice">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+          </button>
           <kbd class="hero__search-kbd" aria-hidden="true" title="Press / to search">/</kbd>
           <button class="hero__search-btn" type="submit">Search<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
         </form>
@@ -73,6 +76,33 @@
           <strong><%= counts.returnedThisMonth || 0 %></strong>
         </div>
       </div>
+    </section>
+
+    <section class="nexus-strip" aria-labelledby="nexus-strip-h">
+      <div class="nexus-strip__head">
+        <h2 id="nexus-strip-h">Nexus</h2>
+        <a class="section-header__link" href="/nexus">Open the command centre</a>
+      </div>
+      <ul class="nexus-strip__grid">
+        <li>
+          <a class="nexus-tile" href="/nexus">
+            <strong>Campus radar</strong>
+            <p>See which zones still have open lost and found reports, live.</p>
+          </a>
+        </li>
+        <li>
+          <a class="nexus-tile" href="/nexus">
+            <strong>Match scanner</strong>
+            <p>Describe an item. Every score comes with a human-readable reason.</p>
+          </a>
+        </li>
+        <li>
+          <a class="nexus-tile" href="/nexus">
+            <strong>Command palette</strong>
+            <p>Press <kbd>Ctrl</kbd>+<kbd>K</kbd> from any page to jump, search, or scan.</p>
+          </a>
+        </li>
+      </ul>
     </section>
 
     <section class="how" aria-labelledby="how-h">
