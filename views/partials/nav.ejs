@@ -1,5 +1,5 @@
 <!-- CSPC WhereITis — views/partials/nav.ejs -->
-<link rel="stylesheet" href="/css/chat.css?v=6">
+<link rel="stylesheet" href="/css/chat.css?v=7">
 <%
   const _path = (typeof currentPath !== 'undefined' ? currentPath : '/').split('#')[0];
   const _on = function (href) {
@@ -7,7 +7,7 @@
     return _path === href ? ' aria-current="page"' : '';
   };
 %>
-<header class="site-header" role="banner">
+<header class="site-header site-header--glass" role="banner">
   <div class="container nav-row">
     <a class="brand" href="/" aria-label="CSPC WhereITis home">
       <img class="brand__seal" src="/img/logo.png" alt="" width="52" height="52"
@@ -20,6 +20,7 @@
 
     <nav class="primary-nav" aria-label="Primary">
       <a href="/"<%- _on('/') %>>Home</a>
+      <a href="/nexus"<%- _on('/nexus') %>>Nexus</a>
       <a href="/reports"<%- _on('/reports') %>>Reports</a>
       <a href="/reports?kind=lost"<%- _on('/reports?kind=lost') %>>Lost</a>
       <a href="/reports?kind=found"<%- _on('/reports?kind=found') %>>Found</a>
@@ -72,7 +73,7 @@
           </div>
         </details>
       <% } else if (typeof hideAuthActions === 'undefined' || !hideAuthActions) { %>
-        <a class="nav-link" href="/sign-in">Sign in</a>
+        <a class="nav-link nav-link--glass" href="/sign-in">Sign in</a>
       <% } %>
     </div>
   </div>

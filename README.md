@@ -121,6 +121,10 @@ The schema has fourteen tables:
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
 | GET | `/` | Public | Home — hero, live counters, latest reports, quick search |
+| GET | `/nexus` | Public | Command centre — campus radar, match scanner, live pulse |
+| GET | `/api/nexus/pulse` | Public | JSON feed of the newest public reports |
+| GET | `/api/nexus/radar` | Public | JSON zone counts for the campus radar |
+| POST | `/api/nexus/scan` | Public | Explainable match scan against open reports (rate-limited) |
 | GET | `/health` | Public | JSON liveness/DB check |
 | GET | `/reports` | Public | List + filter reports |
 | GET | `/reports/new` | Public | Guests get the simple found-item form; signed-in users get the full form (`?kind=lost` needs sign-in) |

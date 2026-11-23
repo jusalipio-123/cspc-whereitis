@@ -610,6 +610,48 @@ async function createGuest(data) {
   return findByReference(referenceNo);
 }
 
+// scanCorpus: newest open/matched reports the Nexus scanner may score against.
+// Public fields only are selected via DETAIL_SELECT; guest contact columns
+// exist on the row but the API route must never send them to the client.
+async function scanCorpus(limit = 120) {
+  const safeN = Math.min(Math.max(Number(limit) || 120, 1), 200);
+  const [rows] = await pool.execute(
+    `${DETAIL_SELECT}
+     WHERE ${APPROVED} AND r.status IN ('open', 'matched')
+     ORDER BY r.created_at DESC
+     LIMIT ?`,
+    [String(safeN)]
+  );
+  return rows;
+}
+
+// radarByLocation: open/matched counts per public location, for the Nexus campus radar.
+async function radarByLocation() {
+  const [rows] = await pool.execute(
+    `SELECT
+       l.id AS location_id,
+       l.name,
+       COALESCE(NULLIF(l.zone, ''), 'Campus') AS zone,
+       SUM(CASE WHEN r.id IS NOT NULL AND r.kind = 'lost'  AND r.status IN ('open','matched') THEN 1 ELSE 0 END) AS lost_n,
+       SUM(CASE WHEN r.id IS NOT NULL AND r.kind = 'found' AND r.status IN ('open','matched') THEN 1 ELSE 0 END) AS found_n
+     FROM locations l
+     LEFT JOIN reports r
+       ON r.location_id = l.id
+      AND r.moderation_status = 'approved'
+      AND ${NOT_WITHDRAWN}
+     WHERE l.is_public = 1
+     GROUP BY l.id, l.name, l.zone
+     ORDER BY zone ASC, name ASC`
+  );
+  return rows.map((row) => ({
+    location_id: row.location_id,
+    name: row.name,
+    zone: row.zone,
+    lost_n: Number(row.lost_n) || 0,
+    found_n: Number(row.found_n) || 0,
+  }));
+}
+
 module.exports = {
   create,
   findByReference,
@@ -638,4 +680,6 @@ module.exports = {
   countRecentGuestByIp,
   findDuplicateGuestTitle,
   createGuest,
+  scanCorpus,
+  radarByLocation,
 };
