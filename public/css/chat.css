@@ -167,8 +167,8 @@
 }
 
 /* ---------- Profile dropdown (My reports + Sign out) ---------- */
-.profile-menu { position: relative; flex: none; }
-.profile-menu > summary { list-style: none; cursor: pointer; }
+.profile-menu { position: relative; flex: none; z-index: 80; overflow: visible; }
+.profile-menu > summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 .profile-menu > summary::-webkit-details-marker { display: none; }
 .profile-menu > summary::marker { content: ""; }
 .profile-menu[open] > summary .profile-chip__icon { border-color: var(--brand); background: var(--brand); color: var(--on-brand); }
