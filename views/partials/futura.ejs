@@ -1,4 +1,15 @@
-<!-- CSPC WhereITis — command palette + concierge. Progressive enhancement only. -->
+<!-- CSPC WhereITis — command palette + concierge + glass chrome. Progressive enhancement only. -->
+<div class="glass-ambient" aria-hidden="true"><span></span><span></span><span></span></div>
+<div class="scroll-progress" aria-hidden="true"><i data-scroll-progress></i></div>
+
+<nav class="glass-dock" aria-label="Quick jump">
+  <a href="/" title="Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5 12 4l8 7.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1z"/></svg><span>Home</span></a>
+  <a href="/reports" title="Reports"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Board</span></a>
+  <a class="glass-dock__plus" href="/reports/new" title="Report an item"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span class="visually-hidden">Report an item</span></a>
+  <a href="/nexus" title="Nexus"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/></svg><span>Nexus</span></a>
+  <a href="/help" title="Help"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.2 2.4c-.8.4-1.2.9-1.2 1.8"/><path d="M12 17h.01"/></svg><span>Help</span></a>
+</nav>
+
 <div class="cmdk" data-cmdk hidden>
   <div class="cmdk__backdrop" data-cmdk-close tabindex="-1"></div>
   <div class="cmdk__panel" role="dialog" aria-modal="true" aria-labelledby="cmdk-title">
