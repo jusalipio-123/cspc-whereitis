@@ -685,21 +685,29 @@ main, .site-footer { position: relative; z-index: 1; }
   backdrop-filter: blur(10px); border: 1px solid var(--glass-border);
   color: var(--ink);
 }
-.hero__sub {
-  display: inline-block;
-  max-width: 46ch;
-  margin: 0 0 1.25rem;
-  padding: .55rem .9rem;
-  border-radius: 12px;
-  color: #fff !important;
-  opacity: 1 !important;
-  font-weight: 600;
-  line-height: 1.45;
-  background: rgba(10, 32, 52, .48);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  text-shadow: 0 1px 2px rgba(0,0,0,.35);
+.hero__headline span { color: #171b21; }
+.hero__headline-accent {
+  font-style: italic;
+  color: #10427a !important;
 }
+:root[data-theme="dark"] .hero__headline span { color: #eceff3; }
+:root[data-theme="dark"] .hero__headline-accent { color: #8dbbf0 !important; }
+.hero__sub {
+  display: block;
+  max-width: 50ch;
+  margin: 0 0 1.25rem;
+  padding: 0;
+  border-radius: 0;
+  color: #171b21 !important;
+  opacity: .85 !important;
+  font-weight: 400;
+  line-height: 1.6;
+  background: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  text-shadow: none;
+}
+:root[data-theme="dark"] .hero__sub { color: #eceff3 !important; }
 
 .suggest {
   position: absolute; left: 0; right: 0; top: calc(100% + 8px); z-index: 20;
