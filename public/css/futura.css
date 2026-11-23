@@ -94,6 +94,10 @@
 }
 .nexus-panel__head h2 { margin: 0 0 .25rem; font-size: 1.25rem; color: var(--ink); }
 .nexus-panel__head p { margin: 0 0 1rem; color: var(--ink); opacity: .75; font-size: .92rem; }
+.nexus-panel--pulse {
+  margin-top: 2rem;
+  padding-top: 1.6rem;
+}
 
 /* Radar */
 .radar { position: relative; min-height: 340px; }
