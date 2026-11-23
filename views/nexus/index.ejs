@@ -1,179 +1,124 @@
-<!-- CSPC WhereITis — views/nexus/index.ejs — Campus command centre -->
+<!-- CSPC WhereITis — views/nexus/index.ejs — same chrome as Lost / Found boards -->
 <%- include('../partials/head', { title: 'Nexus' }) %>
 <%- include('../partials/nav') %>
 
-<main id="main" class="nexus">
-  <section class="nexus-hero">
-    <div class="nexus-hero__grid" aria-hidden="true"></div>
-    <div class="nexus-hero__scan" aria-hidden="true"></div>
-    <div class="container nexus-hero__inner">
-      <p class="nexus-kicker">CSPC Nabua · live command centre</p>
+<main id="main" class="container reports-page reports-page--nexus">
+  <%- include('../partials/flash') %>
+
+  <section class="board-hero board-hero--found">
+    <div>
+      <p class="page-head__eyebrow">Command centre</p>
       <h1>Nexus</h1>
-      <p class="nexus-lede">
-        Watch the campus pulse, scan for explainable matches, and jump anywhere
-        with <kbd>Ctrl</kbd>+<kbd>K</kbd>. Every score still comes with a reason
-        &mdash; no black box.
+      <p>
+        Scan for explainable matches and watch the campus pulse.
+        <strong><%= counts.openLost %></strong> open lost and
+        <strong><%= counts.openFound %></strong> open found right now.
+        Every score still comes with a reason.
       </p>
-      <dl class="nexus-hud" aria-label="Live system readout">
-        <div>
-          <dt>Open lost</dt>
-          <dd data-count><%= counts.openLost %></dd>
-        </div>
-        <div>
-          <dt>Open found</dt>
-          <dd data-count><%= counts.openFound %></dd>
-        </div>
-        <div>
-          <dt>Matched</dt>
-          <dd data-count><%= counts.matched %></dd>
-        </div>
-        <div>
-          <dt>Returned</dt>
-          <dd data-count><%= counts.returned %></dd>
-        </div>
-        <div>
-          <dt>Last sweep</dt>
-          <dd class="nexus-hud__time"><%= scannedAt %></dd>
-        </div>
-      </dl>
+      <div class="board-hero__cta">
+        <a class="btn btn--primary" href="/reports/new?kind=lost">I lost something</a>
+        <a class="btn btn--ghost" href="/reports/new?kind=found">I found something</a>
+      </div>
     </div>
+    <ol class="mode-steps">
+      <li><strong>Describe</strong><span>Type or speak the item — colour, brand, where it was.</span></li>
+      <li><strong>Scan</strong><span>The same rubric as report pages scores candidates and shows why.</span></li>
+      <li><strong>Open</strong><span>Jump to the report, then claim or message from there.</span></li>
+    </ol>
   </section>
 
-  <div class="container nexus-body">
-    <%- include('../partials/flash') %>
-
-    <div class="nexus-layout">
-      <section class="nexus-panel nexus-panel--radar" aria-labelledby="radar-h">
-        <header class="nexus-panel__head">
-          <h2 id="radar-h">Campus radar</h2>
-          <p>Open reports, grouped by zone. Brighter nodes are busier.</p>
-        </header>
-        <div class="radar" data-radar>
-          <div class="radar__field" aria-hidden="true">
-            <span class="radar__ring"></span>
-            <span class="radar__ring"></span>
-            <span class="radar__ring"></span>
-            <span class="radar__sweep"></span>
-          </div>
-          <ul class="radar__nodes">
-            <% if (!zones.length) { %>
-              <li class="radar__empty">No public locations yet. Radar is standing by.</li>
-            <% } %>
-            <% zones.forEach(function (z, i) { %>
-              <% const heat = Math.min(1, (z.lost + z.found) / 8); %>
-              <li class="radar__node" style="--i: <%= i %>; --heat: <%= heat.toFixed(2) %>"
-                  data-zone="<%= z.zone %>" data-lost="<%= z.lost %>" data-found="<%= z.found %>">
-                <button type="button" class="radar__pin" aria-expanded="false"
-                        aria-controls="radar-panel-<%= i %>">
-                  <span class="radar__blip"></span>
-                  <span class="radar__label"><%= z.zone %></span>
-                  <span class="radar__n"><%= z.lost + z.found %></span>
-                </button>
-                <div class="radar__pop" id="radar-panel-<%= i %>" hidden>
-                  <p><strong><%= z.zone %></strong></p>
-                  <p><%= z.lost %> lost · <%= z.found %> found still open</p>
-                  <ul>
-                    <% z.locations.filter(function (l) { return l.lost + l.found > 0; }).slice(0, 6).forEach(function (l) { %>
-                      <li>
-                        <a href="/reports?location_id=<%= l.id %>"><%= l.name %></a>
-                        <span><%= l.lost + l.found %></span>
-                      </li>
-                    <% }); %>
-                  </ul>
-                  <% if (z.locations.every(function (l) { return l.lost + l.found === 0; })) { %>
-                    <p class="muted">Quiet sector — nothing open here.</p>
-                  <% } %>
-                </div>
-              </li>
-            <% }); %>
-          </ul>
+  <div class="board-layout">
+    <aside class="side" aria-label="Scan and filter">
+      <form class="side__search scan-form" data-scan-form method="get" action="/reports" role="search">
+        <label class="visually-hidden" for="scan-q">Item description</label>
+        <div class="scan-form__row">
+          <textarea id="scan-q" name="q" class="input scan-form__q" rows="3" maxlength="200" required minlength="3"
+                    placeholder="e.g. black Nike umbrella, CCS hallway"></textarea>
+          <button type="button" class="scan-form__mic" data-voice-search hidden aria-label="Describe by voice">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+          </button>
         </div>
-        <ul class="radar__legend" aria-hidden="true">
-          <li><span class="radar__dot radar__dot--lost"></span> Lost</li>
-          <li><span class="radar__dot radar__dot--found"></span> Found</li>
-        </ul>
-      </section>
+        <label>
+          <span class="visually-hidden">Kind</span>
+          <select name="kind" id="scan-kind" class="select">
+            <option value="">Lost or found</option>
+            <option value="lost">I lost this</option>
+            <option value="found">I found this</option>
+          </select>
+        </label>
+        <label>
+          <span class="visually-hidden">Category</span>
+          <select name="category_id" id="scan-cat" class="select">
+            <option value="">Any category</option>
+            <% categories.forEach(function (c) { %>
+              <option value="<%= c.id %>"><%= c.name %></option>
+            <% }); %>
+          </select>
+        </label>
+        <label>
+          <span class="visually-hidden">Location</span>
+          <select name="location_id" id="scan-loc" class="select">
+            <option value="">Anywhere on campus</option>
+            <% locations.forEach(function (l) { %>
+              <option value="<%= l.id %>"><%= l.name %></option>
+            <% }); %>
+          </select>
+        </label>
+        <button class="btn btn--primary btn--sm" type="submit" data-scan-submit>Run scan</button>
+      </form>
 
-      <section class="nexus-panel nexus-panel--scan" aria-labelledby="scan-h">
-        <header class="nexus-panel__head">
-          <h2 id="scan-h">Match scanner</h2>
-          <p>Describe an item. The same rubric used on report pages scores candidates and shows why.</p>
-        </header>
-        <form class="scan-form" data-scan-form method="get" action="/reports" role="search">
-          <label for="scan-q" class="visually-hidden">Item description</label>
-          <div class="scan-form__row">
-            <textarea id="scan-q" name="q" class="scan-form__q" rows="3" maxlength="200" required minlength="3"
-                      placeholder="e.g. black Nike umbrella, CCS 2nd floor hallway"></textarea>
-            <button type="button" class="scan-form__mic" data-voice-search hidden aria-label="Describe by voice">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
-            </button>
-          </div>
-          <div class="scan-form__filters">
-            <label>
-              I
-              <select name="kind" id="scan-kind">
-                <option value="">lost or found</option>
-                <option value="lost">lost this</option>
-                <option value="found">found this</option>
-              </select>
-            </label>
-            <label>
-              Category
-              <select name="category_id" id="scan-cat">
-                <option value="">Any</option>
-                <% categories.forEach(function (c) { %>
-                  <option value="<%= c.id %>"><%= c.name %></option>
-                <% }); %>
-              </select>
-            </label>
-            <label>
-              Location
-              <select name="location_id" id="scan-loc">
-                <option value="">Anywhere on campus</option>
-                <% locations.forEach(function (l) { %>
-                  <option value="<%= l.id %>"><%= l.name %></option>
-                <% }); %>
-              </select>
-            </label>
-          </div>
-          <div class="scan-form__actions">
-            <button class="btn btn--primary" type="submit" data-scan-submit>Run scan</button>
-            <noscript><span class="muted">Without JavaScript this searches the reports list instead.</span></noscript>
-          </div>
-        </form>
-        <div class="scan-results" data-scan-results aria-live="polite"></div>
-      </section>
-    </div>
-
-    <section class="nexus-panel nexus-panel--pulse" aria-labelledby="pulse-h">
-      <header class="nexus-panel__head">
-        <h2 id="pulse-h">Campus pulse</h2>
-        <p>Newest reports as they land. Auto-refreshes every 30 seconds when JavaScript is on.</p>
-      </header>
-      <ol class="pulse" data-pulse>
-        <% latest.forEach(function (r) { %>
+      <h2 class="side__h">Open by zone</h2>
+      <ul class="facet">
+        <% if (!zones.length) { %>
+          <li><span class="muted">No public locations yet.</span></li>
+        <% } %>
+        <% zones.forEach(function (z) { %>
           <li>
-            <a href="/reports/<%= r.reference_no %>">
-              <span class="pulse__kind pulse__kind--<%= r.kind %>"><%= r.kind %></span>
-              <span class="pulse__title"><%= r.title %></span>
-              <span class="pulse__meta"><%= r.location_name %> · <%= r.reference_no %></span>
+            <a href="/reports?q=<%= encodeURIComponent(z.zone) %>">
+              <%= z.zone %>
+              <span><%= z.lost + z.found %></span>
             </a>
           </li>
         <% }); %>
-        <% if (!latest.length) { %>
-          <li class="pulse__empty">The board is quiet. File the first report?</li>
-        <% } %>
-      </ol>
-    </section>
-
-    <section class="nexus-shortcuts" aria-labelledby="fx-h">
-      <h2 id="fx-h">Futuristic controls</h2>
-      <ul>
-        <li><kbd>Ctrl</kbd>+<kbd>K</kbd> — command palette (jump, search, scan)</li>
-        <li>Type in the home search — live suggestions appear as you type</li>
-        <li>Mic on search — speak an item description (browser support required)</li>
-        <li>Ask WhereITis — the floating concierge in the corner</li>
       </ul>
+
+      <p class="side__foot">
+        <a href="/reports?kind=lost">Lost board</a><br>
+        <a href="/reports?kind=found">Found board</a>
+      </p>
+    </aside>
+
+    <section aria-label="Campus pulse">
+      <div class="list-bar">
+        <p class="result-count">
+          <strong><%= latest.length %></strong> latest report<%= latest.length === 1 ? '' : 's' %>
+          · <%= counts.matched %> matched · <%= counts.returned %> returned
+        </p>
+        <nav class="seg" aria-label="Boards">
+          <a href="/reports?kind=lost">Lost</a>
+          <a href="/reports?kind=found">Found</a>
+          <a href="/reports">All reports</a>
+        </nav>
+      </div>
+
+      <div class="scan-results" data-scan-results aria-live="polite"></div>
+
+      <% if (!latest.length) { %>
+        <div class="empty-state">
+          <h3>The board is quiet</h3>
+          <p>File the first report and it will land here.</p>
+          <div class="empty-state__actions">
+            <a class="btn btn--primary" href="/reports/new?kind=lost">Report lost item</a>
+            <a class="btn btn--ghost" href="/reports/new?kind=found">Report found item</a>
+          </div>
+        </div>
+      <% } else { %>
+        <ul class="board board--cards" data-pulse>
+          <% latest.forEach(function (r) { %>
+            <li><%- include('../partials/boardCard', { report: r }) %></li>
+          <% }); %>
+        </ul>
+      <% } %>
     </section>
   </div>
 </main>

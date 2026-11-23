@@ -855,3 +855,10 @@ img, svg, video { max-width: 100%; height: auto; }
   .site-header--glass .brand-text { display: none; }
   .hero__actions { grid-template-columns: 1fr; }
 }
+
+.reports-page--nexus .scan-form__row { position: relative; }
+.reports-page--nexus .scan-form__q {
+  min-height: 88px; width: 100%; padding: .7rem 2.8rem .7rem .75rem;
+  resize: vertical; font: inherit;
+}
+.reports-page--nexus .scan-results { margin-bottom: 1rem; }
