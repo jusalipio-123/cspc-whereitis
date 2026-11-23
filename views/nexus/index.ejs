@@ -3,12 +3,12 @@
 <%- include('../partials/nav') %>
 
 <main id="main" class="nexus">
-  <section class="nexus-hero">
-    <div class="nexus-hero__grid" aria-hidden="true"></div>
-    <div class="nexus-hero__scan" aria-hidden="true"></div>
-    <div class="container nexus-hero__inner">
+  <div class="container nexus-body">
+    <%- include('../partials/flash') %>
+
+    <section class="nexus-panel nexus-panel--hero" aria-labelledby="nexus-h">
       <p class="nexus-kicker">CSPC Nabua · live command centre</p>
-      <h1>Nexus</h1>
+      <h1 id="nexus-h">Nexus</h1>
       <p class="nexus-lede">
         Watch the campus pulse, scan for explainable matches, and jump anywhere
         with <kbd>Ctrl</kbd>+<kbd>K</kbd>. Every score still comes with a reason
@@ -36,11 +36,7 @@
           <dd class="nexus-hud__time"><%= scannedAt %></dd>
         </div>
       </dl>
-    </div>
-  </section>
-
-  <div class="container nexus-body">
-    <%- include('../partials/flash') %>
+    </section>
 
     <div class="nexus-layout">
       <section class="nexus-panel nexus-panel--radar" aria-labelledby="radar-h">
