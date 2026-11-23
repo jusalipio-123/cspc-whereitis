@@ -586,3 +586,10 @@ document.addEventListener('DOMContentLoaded', function () {
     sync();
   });
 })();
+
+// Register the PWA service worker (progressive enhancement).
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('/sw.js').catch(function () {});
+  });
+}

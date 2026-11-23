@@ -35,6 +35,35 @@ app.locals.isoDate = phTime.isoDate;
 // ---------------------------------------------------------------------
 // Body parsing + static assets
 // ---------------------------------------------------------------------
+// ---------------------------------------------------------------------
+// Security headers (helmet-style, dependency-free). CSP is permissive enough
+// for the inline scripts/styles the templates rely on, while still blocking
+// framing and MIME sniffing.
+// ---------------------------------------------------------------------
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  if (process.env.NODE_ENV === 'production') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+  const csp = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' https://accounts.google.com",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: https:",
+    "font-src 'self' data:",
+    "connect-src 'self' https://accounts.google.com",
+    "frame-src https://accounts.google.com",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join('; ');
+  res.setHeader('Content-Security-Policy', csp);
+  next();
+});
+
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
