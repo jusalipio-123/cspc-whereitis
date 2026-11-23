@@ -178,7 +178,7 @@
     { test: /match|scanner|score/i, say: 'Matching is a fixed rubric, not AI: same category, same location, close dates, overlapping words. Open Nexus to scan a description — every point comes with a reason.' },
     { test: /nexus|radar|pulse/i, say: 'Nexus is the campus command centre: a radar of open reports by zone, a match scanner, and a live pulse. Open it from the nav, or press Ctrl+K and type Nexus.' },
     { test: /sign ?in|account|password|google/i, say: 'Use Sign in with your student email, or Google if it is configured. Forgot a password? There is a reset link on the sign-in page.' },
-    { test: /theme|dark|light|glass/i, say: 'The site follows your device light/dark setting. Panels use frosted glass — there is no theme button.' },
+    { test: /theme|dark|light|glass/i, say: 'Use the sun/moon button in the header to switch light and dark. Frosted glass panels stay in both modes.' },
     { test: /voice|mic|speak/i, say: 'If your browser supports it, the mic on the home search box and on the Nexus scanner will type what you say. Allow the microphone when asked.' },
     { test: /ctrl|command palette|shortcut|keyboard/i, say: 'Press Ctrl+K (Cmd+K on a Mac) from any page to jump, search, or send a description to the scanner.' },
     { test: /privacy|data|guest/i, say: 'Guest found-item reports are held for staff review. Contact details on guest reports are never shown on public pages. See Privacy in the footer.' },

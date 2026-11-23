@@ -2,7 +2,12 @@
    Glassmorphism + motion overlay, Nexus, command palette, concierge, voice mic,
    handover beacon. Progressive enhancement; pages work without it. */
 
-.theme-toggle { display: none !important; }
+.theme-toggle {
+  background: var(--glass) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-color: var(--glass-border);
+}
 
 /* ===== HERO MIC ===== */
 .hero__mic {
@@ -428,13 +433,15 @@ body {
   box-shadow: 0 8px 30px -20px color-mix(in srgb, var(--brand) 40%, transparent);
 }
 .primary-nav a {
-  border-radius: 999px; padding: .4rem .85rem; border-bottom-color: transparent !important;
-  transition: background-color .25s var(--ease-out), color .2s, transform .25s var(--ease-out);
+  background: none !important;
+  border-radius: 0;
+  padding: .5rem 0;
+  transform: none !important;
 }
-.primary-nav a:hover { background: color-mix(in srgb, var(--brand) 12%, transparent); transform: translateY(-1px); }
+.primary-nav a:hover { background: none !important; color: var(--ink); }
 .primary-nav a[aria-current="page"] {
-  background: color-mix(in srgb, var(--brand) 16%, transparent);
-  color: var(--brand); border-bottom-color: transparent !important;
+  background: none !important;
+  color: var(--ink);
 }
 
 .btn {
