@@ -49,12 +49,10 @@
 }
 
 /* ===== NEXUS PAGE ===== */
-.nexus { position: relative; }
+.nexus { position: relative; background: var(--bg); }
 .nexus-hero {
   position: relative; overflow: hidden; color: var(--ink);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--bg) 28%, transparent), color-mix(in srgb, var(--bg) 78%, transparent)),
-    url('/img/background.jpg') center 38% / cover no-repeat;
+  background: var(--bg);
   border-bottom: 1px solid var(--glass-border);
   padding: clamp(2rem, 5vw, 3.4rem) 0 clamp(1.6rem, 4vw, 2.4rem);
 }
@@ -81,9 +79,9 @@
   margin: 0 0 .6rem; font-size: clamp(2.4rem, 6vw, 4.2rem); letter-spacing: .04em;
   font-family: ui-sans-serif, system-ui, sans-serif; font-weight: 800;
   color: var(--ink);
-  text-shadow: 0 0 24px color-mix(in srgb, var(--brand) 30%, transparent);
+  text-shadow: none;
 }
-.nexus-lede { max-width: 62ch; color: var(--muted); margin: 0 0 1.4rem; }
+.nexus-lede { max-width: 62ch; color: var(--ink); margin: 0 0 1.4rem; opacity: .82; }
 .nexus-lede kbd {
   padding: .05rem .4rem; border-radius: 4px; font: 600 .8rem ui-monospace, Menlo, Consolas, monospace;
   background: var(--glass); border: 1px solid var(--glass-border); color: var(--ink);
@@ -98,9 +96,9 @@
   backdrop-filter: blur(16px) saturate(1.4);
   -webkit-backdrop-filter: blur(16px) saturate(1.4);
 }
-.nexus-hud dt { font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.nexus-hud dt { font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink); opacity: .7; }
 .nexus-hud dd { margin: .15rem 0 0; font-size: 1.45rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--brand); }
-.nexus-hud__time { font-size: .95rem !important; color: var(--ink) !important; }
+.nexus-hud__time { font-size: .95rem !important; color: var(--ink) !important; opacity: 1; }
 
 .nexus-body { padding-block: var(--s-5) var(--s-6); }
 .nexus-layout {
@@ -111,8 +109,8 @@
   background: var(--card); border: 1px solid var(--border); border-radius: 16px;
   padding: 1.2rem 1.25rem 1.35rem; box-shadow: 0 10px 30px -22px rgba(0,0,0,.45);
 }
-.nexus-panel__head h2 { margin: 0 0 .25rem; font-size: 1.25rem; }
-.nexus-panel__head p { margin: 0 0 1rem; color: var(--muted); font-size: .92rem; }
+.nexus-panel__head h2 { margin: 0 0 .25rem; font-size: 1.25rem; color: var(--ink); }
+.nexus-panel__head p { margin: 0 0 1rem; color: var(--ink); opacity: .75; font-size: .92rem; }
 
 /* Radar */
 .radar { position: relative; min-height: 340px; }
@@ -166,7 +164,7 @@
 }
 @keyframes blip { 50% { transform: scale(1.18); opacity: .85; } }
 @media (prefers-reduced-motion: reduce) { .radar__blip { animation: none; } }
-.radar__label { font-size: .72rem; font-weight: 700; max-width: 9rem; text-align: center; line-height: 1.2; }
+.radar__label { font-size: .72rem; font-weight: 700; max-width: 9rem; text-align: center; line-height: 1.2; color: var(--ink); }
 .radar__n {
   font-size: .7rem; font-weight: 700; padding: 0 .35rem; border-radius: 4px;
   background: var(--brand-050); color: var(--brand);
@@ -471,6 +469,9 @@ main, .site-footer { position: relative; z-index: 1; }
 }
 .site-header--glass .nav-row {
   position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
   min-height: 64px;
   gap: 1rem;
   padding: .4rem .55rem .4rem .85rem;
@@ -495,7 +496,7 @@ main, .site-footer { position: relative; z-index: 1; }
     0 16px 48px -20px color-mix(in srgb, var(--brand) 50%, #000),
     inset 0 1px 0 rgba(255,255,255,.45);
 }
-.site-header--glass .brand { position: relative; z-index: 1; }
+.site-header--glass .brand { position: relative; z-index: 1; justify-self: start; }
 .site-header--glass .brand__seal {
   width: 42px; height: 42px;
   box-shadow: 0 0 0 2px color-mix(in srgb, #fff 55%, var(--border)), 0 0 18px color-mix(in srgb, var(--brand) 35%, transparent);
@@ -510,6 +511,7 @@ main, .site-footer { position: relative; z-index: 1; }
 .site-header--glass .primary-nav {
   position: relative; z-index: 1;
   gap: .15rem; margin-left: 0;
+  justify-self: center;
   padding: .2rem;
   border-radius: 999px;
   background: color-mix(in srgb, var(--bg) 40%, transparent);
@@ -540,7 +542,10 @@ main, .site-footer { position: relative; z-index: 1; }
               inset 0 1px 0 rgba(255,255,255,.35);
 }
 
-.site-header--glass .nav-actions { position: relative; z-index: 1; gap: .65rem; }
+.site-header--glass .nav-actions {
+  position: relative; z-index: 1; gap: .65rem;
+  margin-left: 0; justify-self: end;
+}
 .site-header--glass .nav-link--glass {
   display: inline-flex; align-items: center; height: 40px; padding: 0 1.05rem;
   border-radius: 999px; font-size: .9rem; font-weight: 650;
