@@ -115,7 +115,7 @@
   }
 
   function renderPulse(items) {
-    if (!pulse || !items || !items.length) return;
+    if (!pulse || pulse.classList.contains('board') || !items || !items.length) return;
     pulse.innerHTML = items.map(function (r) {
       return '<li><a href="/reports/' + esc(r.reference_no) + '">' +
         '<span class="pulse__kind pulse__kind--' + esc(r.kind) + '">' + esc(r.kind) + '</span>' +
