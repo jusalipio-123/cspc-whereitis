@@ -3,7 +3,7 @@
 <%- include('partials/head', { title: 'Home' }) %>
 <%- include('partials/nav') %>
 
-<main id="main">
+<main id="main" class="home-page">
   <section class="hero hero--campus">
     <div class="veil" aria-hidden="true">
       <span class="tint"></span><span class="b4"></span><span class="b3"></span><span class="b2"></span><span class="b1"></span>
@@ -46,6 +46,7 @@
     </div>
   </section>
 
+  <div class="home-below">
   <div class="container">
     <%- include('partials/flash') %>
 
@@ -143,6 +144,7 @@
         </ul>
       <% } %>
     </section>
+  </div>
   </div>
 </main>
 
