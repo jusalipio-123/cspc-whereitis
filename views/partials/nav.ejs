@@ -7,7 +7,7 @@
     return _path === href ? ' aria-current="page"' : '';
   };
 %>
-<header class="site-header" role="banner">
+<header class="site-header site-header--glass" role="banner">
   <div class="container nav-row">
     <a class="brand" href="/" aria-label="CSPC WhereITis home">
       <img class="brand__seal" src="/img/logo.png" alt="" width="52" height="52"
@@ -73,7 +73,7 @@
           </div>
         </details>
       <% } else if (typeof hideAuthActions === 'undefined' || !hideAuthActions) { %>
-        <a class="nav-link" href="/sign-in">Sign in</a>
+        <a class="nav-link nav-link--glass" href="/sign-in">Sign in</a>
       <% } %>
     </div>
   </div>
