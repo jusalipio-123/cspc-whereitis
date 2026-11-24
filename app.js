@@ -35,6 +35,35 @@ app.locals.isoDate = phTime.isoDate;
 // ---------------------------------------------------------------------
 // Body parsing + static assets
 // ---------------------------------------------------------------------
+// ---------------------------------------------------------------------
+// Security headers (helmet-style, dependency-free). CSP is permissive enough
+// for the inline scripts/styles the templates rely on, while still blocking
+// framing and MIME sniffing.
+// ---------------------------------------------------------------------
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(self), geolocation=()');
+  if (process.env.NODE_ENV === 'production') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+  const csp = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' https://accounts.google.com",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: https:",
+    "font-src 'self' data:",
+    "connect-src 'self' https://accounts.google.com",
+    "frame-src https://accounts.google.com",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join('; ');
+  res.setHeader('Content-Security-Policy', csp);
+  next();
+});
+
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -87,11 +116,13 @@ app.use((req, res, next) => {
 // /admin/moderation mount comes before /admin so it wins on prefix match.
 // ---------------------------------------------------------------------
 app.use('/', require('./routes/home'));
+app.use('/', require('./routes/nexus'));
 app.use('/auth/google', require('./routes/googleAuth'));
 app.use('/reports', require('./routes/reports'));
 app.use('/claims', require('./routes/claims'));
 app.use('/', require('./routes/myReports'));
 
+app.use('/admin', require('./routes/adminManage'));
 app.use('/admin/login', require('./routes/adminAuth'));
 app.use('/admin/moderation', require('./routes/moderation'));
 app.use('/admin', require('./routes/admin'));
@@ -123,6 +154,9 @@ app.get('/health', async (req, res) => {
 // nothing above matched. Renders a real page, never a stack trace.
 // ---------------------------------------------------------------------
 app.use((req, res) => {
+  if (String(req.originalUrl || '').startsWith('/api/')) {
+    return res.status(404).json({ error: 'Not found' });
+  }
   res.status(404).render('errors/404', { title: 'Not found' });
 });
 
@@ -135,6 +169,9 @@ app.use((req, res) => {
 app.use((err, req, res, next) => {
   const refId = crypto.randomUUID();
   console.error(`[error] ref=${refId} ${req.method} ${req.originalUrl}`, err.stack);
+  if (String(req.originalUrl || '').startsWith('/api/')) {
+    return res.status(500).json({ error: 'Something went wrong', refId });
+  }
   res.status(500).render('errors/500', {
     title: 'Something went wrong',
     refId,

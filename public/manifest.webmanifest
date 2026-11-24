@@ -1,0 +1,13 @@
+{
+  "name": "CSPC WhereITis",
+  "short_name": "WhereITis",
+  "description": "Lost & Found management system for Camarines Sur Polytechnic Colleges",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f8fa",
+  "theme_color": "#10427a",
+  "icons": [
+    { "src": "/img/logo.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/img/logo.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

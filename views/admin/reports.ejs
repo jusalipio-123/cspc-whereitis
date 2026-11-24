@@ -1,0 +1,117 @@
+<!-- CSPC WhereITis — views/admin/reports.ejs : admin report management (built from the public registry components) -->
+<%
+  const _f = filters;
+  const _qs = function (over) {
+    const p = Object.assign({}, { q: _f.q, kind: _f.kind, status: _f.status, moderation: _f.moderation }, over);
+    return Object.keys(p).filter(function (k) { return p[k]; }).map(function (k) { return k + '=' + encodeURIComponent(p[k]); }).join('&');
+  };
+  const totalPages = Math.max(Math.ceil(result.total / result.perPage), 1);
+  const page = result.page;
+  const baseUrl = '/admin/reports' + (_qs({}) ? '?' + _qs({}) : '');
+  const _here = baseUrl + (page > 1 ? (baseUrl.indexOf('?') === -1 ? '?' : '&') + 'page=' + page : '');
+%>
+<%- include('../partials/adminOpen', { title: title, active: 'reports' }) %>
+  <header class="page-head">
+    <div>
+      <p class="page-head__eyebrow">Admin console</p>
+      <h1>Reports</h1>
+      <p class="muted">Hide a post to take it off the public site, or delete it for good.</p>
+    </div>
+  </header>
+
+  <form class="toolbar" method="get" action="/admin/reports">
+    <div class="toolbar__field toolbar__field--grow">
+      <label for="f-q">Search</label>
+      <input id="f-q" type="search" name="q" class="input" placeholder="Title, reference no. or reporter" value="<%= _f.q %>">
+    </div>
+    <div class="toolbar__field">
+      <label for="f-kind">Type</label>
+      <select id="f-kind" name="kind" class="select"><option value="">Any</option>
+        <option value="lost"<%= _f.kind === 'lost' ? ' selected' : '' %>>Lost</option>
+        <option value="found"<%= _f.kind === 'found' ? ' selected' : '' %>>Found</option>
+      </select>
+    </div>
+    <div class="toolbar__field">
+      <label for="f-status">Status</label>
+      <select id="f-status" name="status" class="select"><option value="">Any</option>
+        <% statuses.forEach(function (s) { %><option value="<%= s %>"<%= _f.status === s ? ' selected' : '' %>><%= s.charAt(0).toUpperCase() + s.slice(1) %></option><% }); %>
+      </select>
+    </div>
+    <div class="toolbar__field">
+      <label for="f-mod">Visibility</label>
+      <select id="f-mod" name="moderation" class="select"><option value="">Any</option>
+        <option value="approved"<%= _f.moderation === 'approved' ? ' selected' : '' %>>Public</option>
+        <option value="pending"<%= _f.moderation === 'pending' ? ' selected' : '' %>>Awaiting review</option>
+        <option value="rejected"<%= _f.moderation === 'rejected' ? ' selected' : '' %>>Hidden / rejected</option>
+      </select>
+    </div>
+    <div class="toolbar__actions">
+      <button class="btn btn--primary" type="submit">Apply</button>
+      <a class="btn btn--ghost" href="/admin/reports">Reset</a>
+    </div>
+  </form>
+
+  <p class="result-count"><strong><%= result.total %></strong> report<%= result.total === 1 ? '' : 's' %> · page <%= page %> of <%= totalPages %></p>
+
+  <% if (!result.rows.length) { %>
+    <div class="empty-state">
+      <h3>No reports match</h3>
+      <p>Try a different search, or reset the filters.</p>
+      <a class="btn btn--ghost" href="/admin/reports">Reset filters</a>
+    </div>
+  <% } else { %>
+    <div class="registry-wrap">
+      <table class="registry">
+        <thead>
+          <tr>
+            <th scope="col">Item</th><th scope="col">Type</th><th scope="col">Posted by</th><th scope="col">Status</th>
+            <th scope="col">Visibility</th><th scope="col">Reported</th><th scope="col"><span class="visually-hidden">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% result.rows.forEach(function (r) { const href = '/reports/' + r.reference_no; %>
+            <tr>
+              <td class="registry__item">
+                <a class="registry__thumb" href="<%= href %>" tabindex="-1" aria-hidden="true"><img src="<%= r.photo_url || '/img/placeholder.svg' %>" alt="" loading="lazy" referrerpolicy="no-referrer"></a>
+                <div>
+                  <a class="registry__title" href="<%= href %>"><%= r.title %></a>
+                  <code class="registry__ref"><%= r.reference_no %></code>
+                </div>
+              </td>
+              <td data-label="Type"><span class="kind-badge kind-badge--<%= r.kind %>"><%= r.kind === 'lost' ? 'Lost' : 'Found' %></span></td>
+              <td data-label="Posted by"><%= r.submitter_type === 'guest' ? 'Guest' : (r.reporter_name || '—') %></td>
+              <td data-label="Status"><span class="status-pill status-pill--<%= r.status %>"><%= r.status.charAt(0).toUpperCase() + r.status.slice(1) %></span></td>
+              <td data-label="Visibility">
+                <% if (r.moderation_status === 'approved') { %><span class="adm-tag">Public</span>
+                <% } else if (r.moderation_status === 'pending') { %><span class="adm-tag adm-tag--strong">Awaiting review</span>
+                <% } else { %><span class="adm-tag adm-tag--muted">Hidden</span><% } %>
+              </td>
+              <td data-label="Reported"><%= fmtDate(r.created_at) %></td>
+              <td class="adm-col-actions">
+                <a class="btn btn--ghost btn--sm" href="<%= href %>">View</a>
+                <% if (r.moderation_status === 'pending') { %>
+                  <a class="btn btn--ghost btn--sm" href="/admin/moderation">Review</a>
+                <% } else if (r.moderation_status === 'approved') { %>
+                  <form method="post" action="/admin/reports/<%= r.id %>/hide" class="adm-inline" data-confirm="Hide <%= r.reference_no %> from the public site? You can show it again later.">
+                    <input type="hidden" name="return_to" value="<%= _here %>">
+                    <button class="btn btn--ghost btn--sm" type="submit">Hide</button>
+                  </form>
+                <% } else { %>
+                  <form method="post" action="/admin/reports/<%= r.id %>/unhide" class="adm-inline">
+                    <input type="hidden" name="return_to" value="<%= _here %>">
+                    <button class="btn btn--ghost btn--sm" type="submit">Show</button>
+                  </form>
+                <% } %>
+                <form method="post" action="/admin/reports/<%= r.id %>/delete" class="adm-inline" data-confirm="Permanently delete <%= r.reference_no %> with its claims, comments and messages? This cannot be undone.">
+                  <input type="hidden" name="return_to" value="<%= _here %>">
+                  <button class="btn btn--ghost btn--sm adm-del" type="submit">Delete</button>
+                </form>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+    <%- include('../partials/pagination', { page: page, totalPages: totalPages, baseUrl: baseUrl }) %>
+  <% } %>
+<%- include('../partials/adminClose') %>

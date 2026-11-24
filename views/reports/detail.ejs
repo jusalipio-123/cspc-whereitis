@@ -24,6 +24,19 @@
         <header class="detail__head">
           <p class="detail__ref">Reference: <code><%= report.reference_no %></code></p>
           <h1><%= report.title %></h1>
+          <aside class="beacon" data-beacon data-ref="<%= report.reference_no %>"
+                 data-title="<%= report.title %>"
+                 data-url="<%= (typeof currentPath !== 'undefined' ? currentPath : '/reports/' + report.reference_no) %>">
+            <div class="beacon__sigil" data-beacon-grid aria-hidden="true"></div>
+            <div class="beacon__copy">
+              <h3>Handover beacon</h3>
+              <p>Show <code><%= report.reference_no %></code> at pickup. The sigil is unique to this report.</p>
+            </div>
+            <div class="beacon__actions">
+              <button type="button" class="btn btn--ghost btn--sm" data-beacon-copy>Copy link</button>
+              <button type="button" class="btn btn--ghost btn--sm" data-beacon-share>Share</button>
+            </div>
+          </aside>
           <p class="detail__pills">
             <span class="pill pill--<%= report.kind %>"><%= report.kind === 'lost' ? 'Lost' : 'Found' %></span>
             <span class="pill pill--<%= report.status %>"><%= report.status %></span>

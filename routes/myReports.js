@@ -350,6 +350,7 @@ async function registerSubmitHandler(req, res, next) {
     values.student_no = noR.value;
     if (!noR.ok) errors.student_no = noR.error;
     else if (!ID_NO_RE.test(noR.value)) errors.student_no = 'Use 5-20 letters, numbers or hyphens (no spaces).';
+    else if (/^(ADM|STF|GOO)-/i.test(noR.value)) errors.student_no = 'That ID number format is reserved. Please enter your real ID number.';
 
     const emailR = validate.compose(
       validate.required('Email address'),

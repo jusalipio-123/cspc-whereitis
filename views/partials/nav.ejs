@@ -1,5 +1,5 @@
 <!-- CSPC WhereITis — views/partials/nav.ejs -->
-<link rel="stylesheet" href="/css/chat.css?v=6">
+<link rel="stylesheet" href="/css/chat.css?v=7">
 <%
   const _path = (typeof currentPath !== 'undefined' ? currentPath : '/').split('#')[0];
   const _on = function (href) {
@@ -7,7 +7,7 @@
     return _path === href ? ' aria-current="page"' : '';
   };
 %>
-<header class="site-header" role="banner">
+<header class="site-header site-header--glass" role="banner">
   <div class="container nav-row">
     <a class="brand" href="/" aria-label="CSPC WhereITis home">
       <img class="brand__seal" src="/img/logo.png" alt="" width="52" height="52"
@@ -20,6 +20,7 @@
 
     <nav class="primary-nav" aria-label="Primary">
       <a href="/"<%- _on('/') %>>Home</a>
+      <a href="/nexus"<%- _on('/nexus') %>>Nexus</a>
       <a href="/reports"<%- _on('/reports') %>>Reports</a>
       <a href="/reports?kind=lost"<%- _on('/reports?kind=lost') %>>Lost</a>
       <a href="/reports?kind=found"<%- _on('/reports?kind=found') %>>Found</a>
@@ -56,6 +57,12 @@
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg>
               My reports
             </a>
+            <% if (identity.role === 'admin' || identity.role === 'staff') { %>
+            <a class="profile-menu__item" href="<%= identity.role === 'admin' ? '/admin' : '/admin/staff' %>">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 4.4 3.2 7.6 8 9 4.8-1.4 8-4.6 8-9V6z"/></svg>
+              <%= identity.role === 'admin' ? 'Admin console' : 'Staff console' %>
+            </a>
+            <% } %>
             <form method="post" action="/sign-out" class="profile-menu__form">
               <input type="hidden" name="next" value="<%= typeof currentPath !== 'undefined' ? currentPath : '/' %>">
               <button class="profile-menu__item profile-menu__item--danger" type="submit">
@@ -66,7 +73,7 @@
           </div>
         </details>
       <% } else if (typeof hideAuthActions === 'undefined' || !hideAuthActions) { %>
-        <a class="nav-link" href="/sign-in">Sign in</a>
+        <a class="nav-link nav-link--glass" href="/sign-in">Sign in</a>
       <% } %>
     </div>
   </div>

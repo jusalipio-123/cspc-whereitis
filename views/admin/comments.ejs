@@ -1,0 +1,56 @@
+<!-- CSPC WhereITis — views/admin/comments.ejs : admin comment moderation -->
+<%
+  const totalPages = Math.max(Math.ceil(result.total / result.perPage), 1);
+  const page = result.page;
+  const baseUrl = '/admin/comments' + (q ? '?q=' + encodeURIComponent(q) : '');
+  const _here = baseUrl + (page > 1 ? (baseUrl.indexOf('?') === -1 ? '?' : '&') + 'page=' + page : '');
+%>
+<%- include('../partials/adminOpen', { title: title, active: 'comments' }) %>
+  <header class="page-head">
+    <div>
+      <p class="page-head__eyebrow">Admin console</p>
+      <h1>Comments</h1>
+      <p class="muted">Remove anything inappropriate or off-topic.</p>
+    </div>
+  </header>
+
+  <form class="toolbar" method="get" action="/admin/comments">
+    <div class="toolbar__field toolbar__field--grow">
+      <label for="f-q">Search</label>
+      <input id="f-q" type="search" name="q" class="input" placeholder="Comment text, author or reference no." value="<%= q %>">
+    </div>
+    <div class="toolbar__actions">
+      <button class="btn btn--primary" type="submit">Apply</button>
+      <a class="btn btn--ghost" href="/admin/comments">Reset</a>
+    </div>
+  </form>
+
+  <p class="result-count"><strong><%= result.total %></strong> comment<%= result.total === 1 ? '' : 's' %> · page <%= page %> of <%= totalPages %></p>
+
+  <% if (!result.rows.length) { %>
+    <div class="empty-state"><h3>No comments found</h3><p>Comments people post on reports will appear here.</p></div>
+  <% } else { %>
+    <div class="registry-wrap">
+      <table class="registry">
+        <thead><tr><th scope="col">Comment</th><th scope="col">Author</th><th scope="col">On report</th><th scope="col">Posted</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+        <tbody>
+          <% result.rows.forEach(function (c) { %>
+            <tr>
+              <td class="adm-wrap" data-label="Comment"><%= c.body %></td>
+              <td data-label="Author"><%= c.author_name %><br><span class="muted adm-small"><%= c.author_no %></span></td>
+              <td data-label="On report"><a href="/reports/<%= c.reference_no %>"><%= c.reference_no %></a><br><span class="muted adm-small"><%= c.report_title %></span></td>
+              <td data-label="Posted"><%= fmtDateTime(c.created_at) %></td>
+              <td class="adm-col-actions">
+                <form method="post" action="/admin/comments/<%= c.id %>/delete" class="adm-inline" data-confirm="Delete this comment permanently?">
+                  <input type="hidden" name="return_to" value="<%= _here %>">
+                  <button class="btn btn--ghost btn--sm adm-del" type="submit">Delete</button>
+                </form>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+    <%- include('../partials/pagination', { page: page, totalPages: totalPages, baseUrl: baseUrl }) %>
+  <% } %>
+<%- include('../partials/adminClose') %>

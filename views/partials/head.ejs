@@ -6,6 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title><%= title %> | CSPC WhereITis</title>
   <meta name="description" content="<%= typeof description !== 'undefined' ? description : 'Lost & Found at Camarines Sur Polytechnic Colleges' %>">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#10427a">
+<meta name="apple-mobile-web-app-capable" content="yes">
   <!-- Public OAuth client id (not a secret). Empty when Google Sign-In is not configured. -->
   <meta name="google-client-id" content="<%= typeof googleClientId !== 'undefined' ? googleClientId : '' %>">
   <!-- Theme: runs before first paint so there is no light/dark flash. Saved choice wins, otherwise the device setting. -->
@@ -18,6 +21,9 @@
   })();
   </script>
   <link rel="stylesheet" href="/css/style.css?v=20261122">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/admin.css">
+  <link rel="stylesheet" href="/css/futura.css?v=glass19">
   <!-- "Refining" detector: runs before first paint. When the page you are leaving is the SAME page (same path,
        e.g. /reports -> /reports?status=open: status tab, sort, filter, pagination), mark <html class="nav-refine">.
        The stylesheet then swaps the full page-change animation for a still, short cross-fade and app.js skips the

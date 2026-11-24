@@ -23,6 +23,7 @@ const status = require('../lib/status');
 const validate = require('../middleware/validate');
 const { requireStaff, requireAdmin } = require('../middleware/roles');
 const notificationModel = require('../models/notificationModel');
+const adminModel = require('../models/adminModel');
 
 // ---------------------------------------------------------------------
 // Staff queue (pending claims + aging found items + note counts)
@@ -213,6 +214,10 @@ async function dashboardHandler(req, res, next) {
       agingOver60,
       statusCounts,
       sourceBreakdown,
+      stats,
+      recentReports,
+      recentComments,
+      adminBadges,
     ] = await Promise.all([
       statsModel.monthlyCounts(12),
       statsModel.categoryDistribution(),
@@ -221,6 +226,10 @@ async function dashboardHandler(req, res, next) {
       statsModel.agingOver(60),
       reportModel.countByStatus(),
       statsModel.sourceBreakdown(),
+      adminModel.counts(),
+      reportModel.listForAdmin({ perPage: 8 }).then((r) => r.rows),
+      adminModel.listComments({ perPage: 6 }).then((r) => r.rows),
+      adminModel.badges(),
     ]);
 
     res.render('admin/dashboard', {
@@ -232,6 +241,10 @@ async function dashboardHandler(req, res, next) {
       agingOver60,
       statusCounts,
       sourceBreakdown,
+      stats,
+      recentReports,
+      recentComments,
+      adminBadges,
     });
   } catch (err) {
     next(err);

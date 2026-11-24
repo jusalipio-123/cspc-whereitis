@@ -6,18 +6,61 @@
   // shorthand names (monthly/categoryDist/aging60) so this view matches
   // what the route actually renders with.
 %>
-<%- include('../partials/head', { title: 'Admin dashboard' }) %>
-<%- include('../partials/nav') %>
+<% const _bd = (typeof adminBadges !== 'undefined' && adminBadges) || { guestPending: 0, claimsPending: 0 }; %>
+<%- include('../partials/adminOpen', { title: 'Admin dashboard', active: 'overview' }) %>
 
-<main id="main" class="container">
-  <%- include('../partials/flash') %>
+  <header class="page-head">
+    <div>
+      <p class="page-head__eyebrow">Admin console</p>
+      <h1>Overview</h1>
+      <p class="muted">What needs your attention, and what is happening on the site.</p>
+    </div>
+  </header>
 
-  <h1>Admin dashboard</h1>
+  <ul class="my-stats" aria-label="Summary">
+    <li><a href="/admin/moderation"><strong><%= _bd.guestPending %></strong><span>Guest reports to review<% if (_bd.guestPending) { %> <em>Needs review</em><% } %></span></a></li>
+    <li><a href="/admin/staff"><strong><%= _bd.claimsPending %></strong><span>Claims waiting<% if (_bd.claimsPending) { %> <em>Needs a decision</em><% } %></span></a></li>
+    <li><a href="/admin/reports"><strong><%= stats.reportsTotal %></strong><span>Total reports (<%= stats.reportsOpen %> open)</span></a></li>
+    <li><a href="/admin/reports?moderation=rejected"><strong><%= stats.reportsHidden %></strong><span>Hidden or rejected</span></a></li>
+    <li><a href="/admin/comments"><strong><%= stats.commentsTotal %></strong><span>Comments</span></a></li>
+    <li><a href="/admin/users"><strong><%= stats.usersTotal %></strong><span>Users</span></a></li>
+    <li><a href="/admin/reports?status=returned"><strong><%= returnedThisMonth %></strong><span>Returned this month</span></a></li>
+    <li><a href="/admin/staff"><strong><%= agingOver60 %></strong><span>Held over 60 days</span></a></li>
+  </ul>
 
-  <section class="counters counters--admin" aria-label="Summary">
-    <div class="counter"><strong><%= returnedThisMonth %></strong> <span>Returned this month</span></div>
-    <div class="counter"><strong><%= agingOver60 %></strong> <span>Aging over 60 days</span></div>
-  </section>
+  <div class="adm-cols">
+    <section aria-labelledby="recent-r-h">
+      <div class="my-section__head"><h2 id="recent-r-h">Latest reports</h2><a class="btn btn--ghost btn--sm" href="/admin/reports">Manage all</a></div>
+      <div class="registry-wrap"><table class="registry">
+        <thead><tr><th scope="col">Report</th><th scope="col">Visibility</th><th scope="col">Reported</th></tr></thead>
+        <tbody>
+          <% recentReports.forEach(function (r) { %>
+            <tr>
+              <td><a class="registry__title" href="/reports/<%= r.reference_no %>"><%= r.title %></a> <code class="registry__ref"><%= r.reference_no %></code></td>
+              <td><span class="adm-tag<%= r.moderation_status === 'pending' ? ' adm-tag--strong' : (r.moderation_status === 'rejected' ? ' adm-tag--muted' : '') %>"><%= r.moderation_status === 'approved' ? 'Public' : (r.moderation_status === 'pending' ? 'Awaiting review' : 'Hidden') %></span></td>
+              <td><%= fmtDate(r.created_at) %></td>
+            </tr>
+          <% }); %>
+          <% if (!recentReports.length) { %><tr><td colspan="3" class="muted">No reports yet.</td></tr><% } %>
+        </tbody>
+      </table></div>
+    </section>
+    <section aria-labelledby="recent-c-h">
+      <div class="my-section__head"><h2 id="recent-c-h">Latest comments</h2><a class="btn btn--ghost btn--sm" href="/admin/comments">Manage all</a></div>
+      <div class="registry-wrap"><table class="registry">
+        <thead><tr><th scope="col">Comment</th><th scope="col">By</th></tr></thead>
+        <tbody>
+          <% recentComments.forEach(function (c) { %>
+            <tr>
+              <td class="adm-wrap"><%= c.body.length > 90 ? c.body.slice(0, 90) + '…' : c.body %> <a class="adm-small" href="/reports/<%= c.reference_no %>"><%= c.reference_no %></a></td>
+              <td><%= c.author_name %></td>
+            </tr>
+          <% }); %>
+          <% if (!recentComments.length) { %><tr><td colspan="2" class="muted">No comments yet.</td></tr><% } %>
+        </tbody>
+      </table></div>
+    </section>
+  </div>
 
   <section aria-labelledby="source-h">
     <h2 id="source-h">Reports by source</h2>
@@ -35,7 +78,7 @@
           <% [['registered', 'Registered users'], ['guest', 'Guests']].forEach(function (s) {
                const c = sourceBreakdown[s[0]]; %>
             <tr>
-              <td><span class="pill pill--<%= s[0] === 'guest' ? 'guest' : 'found' %>"><%= s[1] %></span></td>
+              <td><strong><%= s[1] %></strong></td>
               <td><%= c.approved %></td><td><%= c.pending %></td><td><%= c.rejected %></td>
               <td><%= c.approved + c.pending + c.rejected %></td>
             </tr>
@@ -92,6 +135,4 @@
     <a class="btn btn--ghost" href="/admin/bulk">Bulk status update</a>
     <a class="btn btn--ghost" href="/admin/moderation">Guest report review<% if (sourceBreakdown.guest.pending > 0) { %> (<%= sourceBreakdown.guest.pending %>)<% } %></a>
   </p>
-</main>
-
-<%- include('../partials/foot') %>
+<%- include('../partials/adminClose') %>
