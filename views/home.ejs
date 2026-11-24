@@ -21,12 +21,16 @@
         </p>
 
         <div class="hero__actions">
-          <a class="btn btn--primary" href="/reports/new?kind=lost">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Report lost item
-          </a>
-          <a class="btn btn--ghost" href="/reports/new?kind=found">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Report found item
-          </a>
+          <div class="hero__action">
+            <a class="btn btn--primary" href="/reports?kind=found">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>I lost something
+            </a>
+          </div>
+          <div class="hero__action">
+            <a class="btn btn--ghost" href="/reports/new?kind=found">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>I found something
+            </a>
+          </div>
         </div>
 
         <form class="hero__search" method="get" action="/reports" role="search" data-live-search>
@@ -110,8 +114,8 @@
           <h3>No reports yet</h3>
           <p>Wala pang naka-report dito &mdash; ikaw ba ang una?</p>
           <div class="empty-state__actions">
-            <a class="btn btn--primary" href="/reports/new?kind=lost">Report lost item</a>
-            <a class="btn btn--ghost" href="/reports/new?kind=found">Report found item</a>
+            <a class="btn btn--primary" href="/reports?kind=found">I lost something</a>
+            <a class="btn btn--ghost" href="/reports/new?kind=found">I found something</a>
           </div>
         </div>
       <% } else { %>

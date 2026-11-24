@@ -248,6 +248,10 @@ main.container > p, main.container > ul:not(.card-grid):not(.claim-list), main.c
   .hero__actions .btn--ghost:hover { background: var(--brand); border-color: var(--brand); color: var(--on-brand); }
 }
 .hero__actions .btn:active { transform: translateY(0); box-shadow: none; }
+.hero__action { display: flex; flex-direction: column; gap: .4rem; min-width: 0; }
+.hero__action-hint { margin: 0; font-size: .85rem; line-height: 1.35; opacity: .85; }
+.hero__action-hint a { color: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+@media (max-width: 480px) { .hero__actions { grid-template-columns: 1fr; } }
 .hero__search { display: flex; border-radius: var(--radius); box-shadow: 0 0 0 3px rgba(16, 66, 122, .25), 0 8px 24px rgba(11, 47, 88, .22); transition: box-shadow .15s ease; }
 .hero__search-input {
   flex: 1; min-width: 0; height: 52px; padding: 0 1.1rem; font: inherit; font-size: 1.05rem; color: var(--ink);
