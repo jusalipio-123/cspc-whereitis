@@ -867,18 +867,26 @@ img, svg, video { max-width: 100%; height: auto; }
 :root[data-theme="dark"] { --navy: var(--brand); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --navy: var(--brand); } }
 
-/* Lost / Found labels */
-.report-card__kind--lost, .kind-badge--lost, .pulse__kind--lost, .suggest__kind--lost {
-  background: var(--card); color: var(--navy); border: 1px solid var(--navy);
+/* Lost / Found: colour follows meaning.  Lost = amber (needs attention), Found = blue (safe, held),
+   Returned = green (resolved), red stays for errors.  The word is always shown too. */
+:root { --lost: #b45309; --found: #0d4a86; }
+:root[data-theme="dark"] { --lost: #f2b45a; --found: var(--brand); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --lost: #f2b45a; --found: var(--brand); } }
+
+.report-card__kind--lost, .kind-badge--lost, .pulse__kind--lost, .suggest__kind--lost, .pill--lost {
+  background: color-mix(in srgb, var(--lost) 14%, var(--card)); color: var(--lost);
+  border: 1px solid color-mix(in srgb, var(--lost) 55%, transparent);
 }
-.report-card__kind--found, .kind-badge--found, .pulse__kind--found, .suggest__kind--found {
-  background: var(--brand-050); color: var(--navy); border: 1px solid var(--brand-050);
+.report-card__kind--found, .kind-badge--found, .pulse__kind--found, .suggest__kind--found, .pill--found {
+  background: color-mix(in srgb, var(--found) 12%, var(--card)); color: var(--found);
+  border: 1px solid color-mix(in srgb, var(--found) 45%, transparent);
 }
 
 /* Circles / dots / icons */
-.radar__dot--lost { background: transparent; box-shadow: inset 0 0 0 2px var(--navy); }
-.radar__dot--found { background: var(--navy); }
-.stat-card--lost, .stat-card--found { --c: var(--navy); }
+.radar__dot--lost { background: var(--lost); }
+.radar__dot--found { background: var(--found); }
+.stat-card--lost { --c: var(--lost); }
+.stat-card--found { --c: var(--found); }
 .stat-card--returned { --c: var(--green); }
 .empty-state--green .empty-state__icon { --c: var(--navy); color: var(--navy); }
 .match-card__reasons svg { color: var(--navy); }
@@ -889,6 +897,8 @@ img, svg, video { max-width: 100%; height: auto; }
 .how__num { border-color: var(--navy); }
 /* all four stat icons share one colour (Returned stays green) */
 .stat-card { --c: var(--navy); }
+.stat-card--lost { --c: var(--lost); }
+.stat-card--found { --c: var(--found); }
 .stat-card--returned { --c: var(--green); }
 /* light mode: make the ghost button readable on the photo */
 :root:not([data-theme="dark"]) .hero__actions .btn--ghost {
@@ -909,3 +919,22 @@ img, svg, video { max-width: 100%; height: auto; }
 }
 .hero__search-input { text-overflow: ellipsis; }
 .hero__search-input::placeholder { text-overflow: ellipsis; }
+
+/* "I lost / I found" chooser on the report form uses the same meaning colours */
+.kind-choice__option:has(input[value="lost"]:checked) .kind-choice__body {
+  border-color: var(--lost); background: color-mix(in srgb, var(--lost) 8%, var(--card));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--lost) 18%, transparent);
+}
+.kind-choice__option:has(input[value="lost"]:checked) .kind-choice__body::before {
+  border-color: var(--lost); background: var(--lost); box-shadow: inset 0 0 0 3px var(--card);
+}
+.kind-choice__option:has(input[value="found"]:checked) .kind-choice__body {
+  border-color: var(--found); background: color-mix(in srgb, var(--found) 8%, var(--card));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--found) 18%, transparent);
+}
+.kind-choice__option:has(input[value="found"]:checked) .kind-choice__body::before {
+  border-color: var(--found); background: var(--found); box-shadow: inset 0 0 0 3px var(--card);
+}
+
+/* green is reserved for "Returned", so recent days-held text is neutral */
+.days-badge--fresh, .days-badge--warm { color: var(--muted); }
