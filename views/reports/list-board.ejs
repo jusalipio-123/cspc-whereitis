@@ -14,8 +14,11 @@
     <p><%- cfg.intro.replace('{n}', String(_activeTotal)) %></p>
     <div class="board-hero__cta">
       <a class="btn <%= cfg.primaryClass %>" href="<%= cfg.primaryHref %>"><%= cfg.primaryLabel %></a>
-      <a class="btn btn--ghost" href="<%= cfg.ghostHref %>"><%= cfg.ghostLabel %></a>
+           <a class="btn btn--ghost" href="<%= cfg.ghostHref %>"><%= cfg.ghostLabel %></a>
     </div>
+    <% if (cfg.notHereHref) { %>
+      <p class="board-hero__nothere">Not here? <a href="<%= cfg.notHereHref %>"><%= cfg.notHereLabel %></a> <%= cfg.notHereNote || '' %></p>
+    <% } %>
   </div>
   <ol class="mode-steps">
     <% cfg.steps.forEach(function (s) { %><li><strong><%= s[0] %></strong><span><%= s[1] %></span></li><% }); %>
