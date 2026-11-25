@@ -230,10 +230,95 @@ document.addEventListener('DOMContentLoaded', function () {
           img.src = URL.createObjectURL(f);
         });
 
-        // Take a photo with the device camera. Shown on phones/tablets only (touch screen, no mouse hover), never on
-        // laptops or desktops. Opens the phone's camera and passes the shot to the file input above, so the same
-        // preview, size/type checks and upload apply.
-        if (typeof DataTransfer !== 'undefined' && window.matchMedia && window.matchMedia('(pointer: coarse) and (hover: none)').matches) {
+        // Upload card: replaces the browser's plain "Choose file" bar with a tidy card. It holds the gallery button,
+        // a camera button (phones/tablets only: touch screen, no mouse hover), and once a photo is chosen the preview
+        // with its file name and size plus Change / Remove buttons. The real file input stays in the form, so the
+        // preview, size/type checks and upload work exactly as before.
+        const isPhone = !!(window.matchMedia && window.matchMedia('(pointer: coarse) and (hover: none)').matches);
+        const canCamera = isPhone && typeof DataTransfer !== 'undefined';
+        const mk = function (tag, cls, html) {
+          const el = document.createElement(tag);
+          if (cls) el.className = cls;
+          if (html) el.innerHTML = html;
+          return el;
+        };
+        const mkBtn = function (cls, label, icon) {
+          const b = mk('button', 'btn ' + cls, (icon || '') + '<span>' + label + '</span>');
+          b.type = 'button';
+          return b;
+        };
+        const svg = function (paths, size) {
+          return '<svg viewBox="0 0 24 24" width="' + size + '" height="' + size + '" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' + paths + '</svg>';
+        };
+        const ICON_IMAGE = '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>';
+        const ICON_CAMERA = '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>';
+        const fmtSize = function (n) { return n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'; };
+
+        const card = mk('div', 'photo-card');
+        const oldPreviewParent = preview.parentNode;
+        fileInput.parentNode.insertBefore(card, fileInput);
+        fileInput.classList.add('photo-card__input');
+        card.appendChild(preview);
+
+        const empty = mk('div', 'photo-card__empty');
+        empty.appendChild(mk('span', 'photo-card__icon', svg(ICON_IMAGE, 40)));
+        empty.appendChild(mk('strong', 'photo-card__title', 'Add a photo'));
+        const emptyActions = mk('div', 'photo-card__actions');
+        const galleryBtn = mkBtn('btn--primary btn--sm', isPhone ? 'Choose from gallery' : 'Choose a photo');
+        emptyActions.appendChild(galleryBtn);
+        const camBtn = canCamera ? mkBtn('btn--ghost btn--sm', 'Take photo', svg(ICON_CAMERA, 18)) : null;
+        if (camBtn) { camBtn.setAttribute('aria-label', 'Take a photo with the camera'); emptyActions.appendChild(camBtn); }
+        empty.appendChild(emptyActions);
+
+        const fileRow = mk('div', 'photo-card__file');
+        fileRow.hidden = true;
+        const nameEl = mk('span', 'photo-card__name');
+        const sizeEl = mk('span', 'photo-card__size');
+        const fileActions = mk('div', 'photo-card__actions');
+        const changeBtn = mkBtn('btn--ghost btn--sm', 'Change photo');
+        const removeBtn = mkBtn('btn--ghost btn--sm', 'Remove');
+        fileActions.appendChild(changeBtn);
+        fileActions.appendChild(removeBtn);
+        fileRow.appendChild(nameEl);
+        fileRow.appendChild(sizeEl);
+        fileRow.appendChild(fileActions);
+
+        const cardError = mk('p', 'field-error photo-card__error');
+        cardError.setAttribute('role', 'alert');
+        cardError.hidden = true;
+
+        card.appendChild(empty);
+        card.appendChild(fileRow);
+        card.appendChild(cardError);
+        card.appendChild(fileInput);
+        // The preview used to sit in its own spot; if that spot is now empty, hide it so no gap is left.
+        if (oldPreviewParent && oldPreviewParent !== card && oldPreviewParent.classList.contains('field') &&
+            !Array.prototype.some.call(oldPreviewParent.children, function (c) { return c.type !== 'hidden'; })) {
+          oldPreviewParent.style.display = 'none';
+        }
+
+        const refreshCard = function () {
+          const f = fileInput.files && fileInput.files[0];
+          const bad = !!(fileInput.validity && fileInput.validity.customError);
+          const has = !!f && !bad;
+          cardError.hidden = !bad;
+          if (bad) { cardError.textContent = fileInput.validationMessage; preview.hidden = true; }
+          card.classList.toggle('has-file', has);
+          empty.hidden = has;
+          fileRow.hidden = !has;
+          if (has) { nameEl.textContent = f.name; sizeEl.textContent = fmtSize(f.size); }
+        };
+        fileInput.addEventListener('change', refreshCard);
+        galleryBtn.addEventListener('click', function () { fileInput.click(); });
+        changeBtn.addEventListener('click', function () { fileInput.click(); });
+        removeBtn.addEventListener('click', function () {
+          fileInput.value = '';
+          fileInput.setCustomValidity('');
+          fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+        refreshCard();
+
+        if (camBtn) {
           const camInput = document.createElement('input');
           camInput.type = 'file';
           camInput.accept = 'image/*';
@@ -241,11 +326,7 @@ document.addEventListener('DOMContentLoaded', function () {
           camInput.hidden = true;
           camInput.tabIndex = -1;
           camInput.setAttribute('aria-hidden', 'true');
-          const camBtn = document.createElement('button');
-          camBtn.type = 'button';
-          camBtn.className = 'btn btn--ghost btn--sm';
-          camBtn.setAttribute('aria-label', 'Take a photo with the camera');
-          camBtn.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span>Take photo</span>';
+          card.appendChild(camInput);
           camBtn.addEventListener('click', function () { camInput.click(); });
           // Camera shots are often 5-12 MB. Scale them down (long side 1600 px, JPEG) before they reach the
           // file input, so they fit the 5 MB limit. If anything goes wrong the original photo is used as is.
@@ -284,11 +365,6 @@ document.addEventListener('DOMContentLoaded', function () {
               camInput.value = '';
             });
           });
-          const camWrap = document.createElement('div');
-          camWrap.className = 'photo-camera';
-          camWrap.appendChild(camBtn);
-          camWrap.appendChild(camInput);
-          fileInput.insertAdjacentElement('afterend', camWrap);
         }
       }
     }

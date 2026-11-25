@@ -2104,7 +2104,19 @@ main.container.my-page > ul.my-stats { max-width: none; }
 .pw-rules li.is-met::before { content: "\2713"; font-weight: 700; }
 @media (prefers-reduced-motion: reduce) { .pw-meter__bar { transition: none; } }
 
-/* Take-a-photo button under the photo file input */
-.photo-camera { margin-top: var(--s-3); }
-.photo-camera[hidden] { display: none; }
-.photo-camera .btn { display: inline-flex; align-items: center; gap: .5rem; }
+/* Photo upload card (replaces the plain browser file bar on the report forms) */
+.photo-card { position: relative; border: 1.5px dashed var(--border); border-radius: 12px; background: var(--brand-050); padding: 1.25rem 1rem; text-align: center; transition: border-color .2s, background-color .2s; }
+.photo-card:focus-within { border-color: var(--brand); }
+.photo-card.has-file { border-style: solid; background: var(--card); }
+.photo-card [hidden] { display: none !important; }
+.photo-card__input { position: absolute; left: 50%; bottom: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.photo-card__icon { display: inline-flex; color: var(--brand); }
+.photo-card__title { display: block; margin: .4rem 0 .9rem; font-weight: 600; color: var(--ink); }
+.photo-card__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: .6rem; }
+.photo-card__actions .btn { display: inline-flex; align-items: center; gap: .5rem; min-height: 40px; }
+.photo-card .photo-preview { margin: 0 0 .9rem; }
+.photo-card .photo-preview img { display: block; margin: 0 auto; }
+.photo-card__file { display: flex; flex-direction: column; align-items: center; gap: .25rem; }
+.photo-card__name { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: var(--ink); }
+.photo-card__size { color: var(--muted); font-size: .85rem; margin-bottom: .5rem; }
+.photo-card__error { margin: .75rem 0 0; }
