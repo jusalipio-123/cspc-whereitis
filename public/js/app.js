@@ -227,7 +227,10 @@ document.addEventListener('DOMContentLoaded', function () {
             fileInput.reportValidity(); return;
           }
           msg.hidden = true; img.hidden = false; preview.hidden = false;
-          img.src = URL.createObjectURL(f);
+          // Preview from a data: address (the site's security policy allows data: images but not blob: ones).
+          const reader = new FileReader();
+          reader.onload = function () { if (fileInput.files && fileInput.files[0] === f) { img.src = reader.result; } };
+          reader.readAsDataURL(f);
         });
 
         // Upload card: replaces the browser's plain "Choose file" bar with a tidy card. It holds the gallery button,
@@ -318,6 +321,70 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         refreshCard();
 
+        // Shrinks a photo: scales it so its longest side is at most maxSide px and re-saves it as a JPEG.
+        // Reads the photo as a data: address (the site's security policy blocks blob: images). Any failure
+        // gives back the original photo unchanged.
+        const shrinkPhoto = function (file, maxSide, quality) {
+          return new Promise(function (resolve) {
+            const reader = new FileReader();
+            const im = new Image();
+            im.onload = function () {
+              try {
+                const scale = Math.min(1, maxSide / Math.max(im.naturalWidth, im.naturalHeight));
+                const c = document.createElement('canvas');
+                c.width = Math.max(1, Math.round(im.naturalWidth * scale));
+                c.height = Math.max(1, Math.round(im.naturalHeight * scale));
+                const ctx = c.getContext('2d');
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, c.width, c.height);
+                ctx.drawImage(im, 0, 0, c.width, c.height);
+                c.toBlob(function (blob) {
+                  if (!blob || blob.size >= file.size) { resolve(file); return; }
+                  const base = String(file.name || 'photo').replace(/\.[^.]+$/, '');
+                  resolve(new File([blob], base + '.jpg', { type: 'image/jpeg' }));
+                }, 'image/jpeg', quality);
+              } catch (err) { resolve(file); }
+            };
+            im.onerror = function () { resolve(file); };
+            reader.onerror = function () { resolve(file); };
+            reader.onload = function () { im.src = reader.result; };
+            reader.readAsDataURL(file);
+          });
+        };
+
+        // Any photo over 5 MB (gallery, laptop or camera) is shrunk automatically so it can be uploaded; photos
+        // that are already small are left untouched. This runs before the size check above (capture phase on the
+        // form), then hands the smaller photo on as a normal change. If it cannot get under 5 MB, the original
+        // goes through and the usual "larger than 5 MB" message is shown.
+        const LIMIT = 5 * 1024 * 1024;
+        const titleEl = card.querySelector('.photo-card__title');
+        let handingOn = false;
+        reportForm.addEventListener('change', function (e) {
+          if (e.target !== fileInput || handingOn) return;
+          const f = fileInput.files && fileInput.files[0];
+          if (!f || f.size <= LIMIT || !/^image\/(jpeg|png|gif|webp)$/.test(f.type)) return;
+          e.stopImmediatePropagation();
+          titleEl.textContent = 'Optimizing photo\u2026';
+          const steps = [[2400, 0.85], [1800, 0.8], [1400, 0.72], [1000, 0.7]];
+          const next = function (i, current) {
+            if (current.size <= LIMIT - 102400 || i >= steps.length) return Promise.resolve(current);
+            return shrinkPhoto(f, steps[i][0], steps[i][1]).then(function (out) { return next(i + 1, out); });
+          };
+          next(0, f).then(function (photo) {
+            try {
+              if (photo !== f) {
+                const dt = new DataTransfer();
+                dt.items.add(photo);
+                fileInput.files = dt.files;
+              }
+            } catch (err) { /* keep the original photo */ }
+            titleEl.textContent = 'Add a photo';
+            handingOn = true;
+            fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+            handingOn = false;
+          });
+        }, true);
+
         if (camBtn) {
           const camInput = document.createElement('input');
           camInput.type = 'file';
@@ -328,34 +395,10 @@ document.addEventListener('DOMContentLoaded', function () {
           camInput.setAttribute('aria-hidden', 'true');
           card.appendChild(camInput);
           camBtn.addEventListener('click', function () { camInput.click(); });
-          // Camera shots are often 5-12 MB. Scale them down (long side 1600 px, JPEG) before they reach the
-          // file input, so they fit the 5 MB limit. If anything goes wrong the original photo is used as is.
-          const shrinkPhoto = function (file) {
-            return new Promise(function (resolve) {
-              const url = URL.createObjectURL(file);
-              const im = new Image();
-              im.onload = function () {
-                try {
-                  const scale = Math.min(1, 1600 / Math.max(im.naturalWidth, im.naturalHeight));
-                  const c = document.createElement('canvas');
-                  c.width = Math.max(1, Math.round(im.naturalWidth * scale));
-                  c.height = Math.max(1, Math.round(im.naturalHeight * scale));
-                  c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
-                  c.toBlob(function (blob) {
-                    URL.revokeObjectURL(url);
-                    if (!blob || blob.size >= file.size) { resolve(file); return; }
-                    resolve(new File([blob], 'camera-photo.jpg', { type: 'image/jpeg' }));
-                  }, 'image/jpeg', 0.85);
-                } catch (err) { URL.revokeObjectURL(url); resolve(file); }
-              };
-              im.onerror = function () { URL.revokeObjectURL(url); resolve(file); };
-              im.src = url;
-            });
-          };
           camInput.addEventListener('change', function () {
             const shot = camInput.files && camInput.files[0];
             if (!shot) return;
-            shrinkPhoto(shot).then(function (photo) {
+            shrinkPhoto(shot, 1600, 0.85).then(function (photo) {
               try {
                 const dt = new DataTransfer();
                 dt.items.add(photo);
