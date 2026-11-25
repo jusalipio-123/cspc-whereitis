@@ -230,9 +230,10 @@ document.addEventListener('DOMContentLoaded', function () {
           img.src = URL.createObjectURL(f);
         });
 
-        // Take a photo with the device camera. Opens the phone's camera and passes the shot to the file input above,
-        // so the same preview, size/type checks and upload apply. (On devices without a camera it opens the file picker.)
-        if (typeof DataTransfer !== 'undefined') {
+        // Take a photo with the device camera. Shown on phones/tablets only (touch screen, no mouse hover), never on
+        // laptops or desktops. Opens the phone's camera and passes the shot to the file input above, so the same
+        // preview, size/type checks and upload apply.
+        if (typeof DataTransfer !== 'undefined' && window.matchMedia && window.matchMedia('(pointer: coarse) and (hover: none)').matches) {
           const camInput = document.createElement('input');
           camInput.type = 'file';
           camInput.accept = 'image/*';
@@ -243,7 +244,8 @@ document.addEventListener('DOMContentLoaded', function () {
           const camBtn = document.createElement('button');
           camBtn.type = 'button';
           camBtn.className = 'btn btn--ghost btn--sm';
-          camBtn.textContent = 'Take a photo with camera';
+          camBtn.setAttribute('aria-label', 'Take a photo with the camera');
+          camBtn.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span>Take photo</span>';
           camBtn.addEventListener('click', function () { camInput.click(); });
           // Camera shots are often 5-12 MB. Scale them down (long side 1600 px, JPEG) before they reach the
           // file input, so they fit the 5 MB limit. If anything goes wrong the original photo is used as is.

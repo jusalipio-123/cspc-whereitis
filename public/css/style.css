@@ -2107,3 +2107,4 @@ main.container.my-page > ul.my-stats { max-width: none; }
 /* Take-a-photo button under the photo file input */
 .photo-camera { margin-top: var(--s-3); }
 .photo-camera[hidden] { display: none; }
+.photo-camera .btn { display: inline-flex; align-items: center; gap: .5rem; }
