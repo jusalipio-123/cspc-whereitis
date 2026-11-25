@@ -245,16 +245,42 @@ document.addEventListener('DOMContentLoaded', function () {
           camBtn.className = 'btn btn--ghost btn--sm';
           camBtn.textContent = 'Take a photo with camera';
           camBtn.addEventListener('click', function () { camInput.click(); });
+          // Camera shots are often 5-12 MB. Scale them down (long side 1600 px, JPEG) before they reach the
+          // file input, so they fit the 5 MB limit. If anything goes wrong the original photo is used as is.
+          const shrinkPhoto = function (file) {
+            return new Promise(function (resolve) {
+              const url = URL.createObjectURL(file);
+              const im = new Image();
+              im.onload = function () {
+                try {
+                  const scale = Math.min(1, 1600 / Math.max(im.naturalWidth, im.naturalHeight));
+                  const c = document.createElement('canvas');
+                  c.width = Math.max(1, Math.round(im.naturalWidth * scale));
+                  c.height = Math.max(1, Math.round(im.naturalHeight * scale));
+                  c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+                  c.toBlob(function (blob) {
+                    URL.revokeObjectURL(url);
+                    if (!blob || blob.size >= file.size) { resolve(file); return; }
+                    resolve(new File([blob], 'camera-photo.jpg', { type: 'image/jpeg' }));
+                  }, 'image/jpeg', 0.85);
+                } catch (err) { URL.revokeObjectURL(url); resolve(file); }
+              };
+              im.onerror = function () { URL.revokeObjectURL(url); resolve(file); };
+              im.src = url;
+            });
+          };
           camInput.addEventListener('change', function () {
             const shot = camInput.files && camInput.files[0];
             if (!shot) return;
-            try {
-              const dt = new DataTransfer();
-              dt.items.add(shot);
-              fileInput.files = dt.files;
-              fileInput.dispatchEvent(new Event('change', { bubbles: true }));
-            } catch (err) { /* leave the normal file chooser to do the job */ }
-            camInput.value = '';
+            shrinkPhoto(shot).then(function (photo) {
+              try {
+                const dt = new DataTransfer();
+                dt.items.add(photo);
+                fileInput.files = dt.files;
+                fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+              } catch (err) { /* leave the normal file chooser to do the job */ }
+              camInput.value = '';
+            });
           });
           const camWrap = document.createElement('div');
           camWrap.className = 'photo-camera';
