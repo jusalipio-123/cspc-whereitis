@@ -229,6 +229,39 @@ document.addEventListener('DOMContentLoaded', function () {
           msg.hidden = true; img.hidden = false; preview.hidden = false;
           img.src = URL.createObjectURL(f);
         });
+
+        // Take a photo with the device camera. Opens the phone's camera and passes the shot to the file input above,
+        // so the same preview, size/type checks and upload apply. (On devices without a camera it opens the file picker.)
+        if (typeof DataTransfer !== 'undefined') {
+          const camInput = document.createElement('input');
+          camInput.type = 'file';
+          camInput.accept = 'image/*';
+          camInput.setAttribute('capture', 'environment');
+          camInput.hidden = true;
+          camInput.tabIndex = -1;
+          camInput.setAttribute('aria-hidden', 'true');
+          const camBtn = document.createElement('button');
+          camBtn.type = 'button';
+          camBtn.className = 'btn btn--ghost btn--sm';
+          camBtn.textContent = 'Take a photo with camera';
+          camBtn.addEventListener('click', function () { camInput.click(); });
+          camInput.addEventListener('change', function () {
+            const shot = camInput.files && camInput.files[0];
+            if (!shot) return;
+            try {
+              const dt = new DataTransfer();
+              dt.items.add(shot);
+              fileInput.files = dt.files;
+              fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+            } catch (err) { /* leave the normal file chooser to do the job */ }
+            camInput.value = '';
+          });
+          const camWrap = document.createElement('div');
+          camWrap.className = 'photo-camera';
+          camWrap.appendChild(camBtn);
+          camWrap.appendChild(camInput);
+          fileInput.insertAdjacentElement('afterend', camWrap);
+        }
       }
     }
 

@@ -2103,3 +2103,7 @@ main.container.my-page > ul.my-stats { max-width: none; }
 .pw-rules li.is-met { color: var(--green); }
 .pw-rules li.is-met::before { content: "\2713"; font-weight: 700; }
 @media (prefers-reduced-motion: reduce) { .pw-meter__bar { transition: none; } }
+
+/* Take-a-photo button under the photo file input */
+.photo-camera { margin-top: var(--s-3); }
+.photo-camera[hidden] { display: none; }
