@@ -858,3 +858,54 @@ img, svg, video { max-width: 100%; height: auto; }
 }
 
 
+
+/* =====================================================================
+   SYMBOLS ONLY — calmer icon, circle and Lost/Found label colours.
+   Delete this block to go back to the old look.
+   ===================================================================== */
+:root { --navy: #0d4a86; }
+:root[data-theme="dark"] { --navy: var(--brand); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --navy: var(--brand); } }
+
+/* Lost / Found labels */
+.report-card__kind--lost, .kind-badge--lost, .pulse__kind--lost, .suggest__kind--lost {
+  background: var(--card); color: var(--navy); border: 1px solid var(--navy);
+}
+.report-card__kind--found, .kind-badge--found, .pulse__kind--found, .suggest__kind--found {
+  background: var(--brand-050); color: var(--navy); border: 1px solid var(--brand-050);
+}
+
+/* Circles / dots / icons */
+.radar__dot--lost { background: transparent; box-shadow: inset 0 0 0 2px var(--navy); }
+.radar__dot--found { background: var(--navy); }
+.stat-card--lost, .stat-card--found { --c: var(--navy); }
+.stat-card--returned { --c: var(--green); }
+.empty-state--green .empty-state__icon { --c: var(--navy); color: var(--navy); }
+.match-card__reasons svg { color: var(--navy); }
+.how__num, .how__steps li:hover .how__num { background: var(--navy); color: var(--on-brand); }
+
+/* --- touch-ups --- */
+/* step-number circles: remove the leftover orange ring */
+.how__num { border-color: var(--navy); }
+/* all four stat icons share one colour (Returned stays green) */
+.stat-card { --c: var(--navy); }
+.stat-card--returned { --c: var(--green); }
+/* light mode: make the ghost button readable on the photo */
+:root:not([data-theme="dark"]) .hero__actions .btn--ghost {
+  background: color-mix(in srgb, var(--card) 82%, transparent);
+  color: var(--navy);
+}
+
+/* --- phone: keep the home search bar on ONE row (icon | input | mic | Search) --- */
+@media (max-width: 860px) {
+  .hero__search { flex-wrap: nowrap; gap: .25rem; }
+  .hero__search-input { flex: 1 1 0; min-width: 0; width: auto; }
+  .hero__search-btn { flex: none; width: auto; }
+  .hero__mic { flex: none; margin-right: 0; }
+}
+@media (max-width: 520px) {
+  .hero__search-btn { flex: none; width: auto; padding: 0 1rem; border-radius: 9px; }
+  .hero__search-input { font-size: 1rem; padding-left: 2.6rem; }
+}
+.hero__search-input { text-overflow: ellipsis; }
+.hero__search-input::placeholder { text-overflow: ellipsis; }

@@ -67,15 +67,43 @@ function hasPhoto(req) {
 const MIME_BY_EXT = { '.jpg': 'image/jpeg', '.png': 'image/png', '.gif': 'image/gif', '.webp': 'image/webp' };
 const NAME_RE = /^[a-f0-9]{32}\.(jpg|png|gif|webp)$/;
 
+// MySQL refuses any single query bigger than its max_allowed_packet (often only 1-4 MB on
+// shared hosting) and drops the connection. So a photo is stored in small chunks: tiny
+// photos in one row, larger ones split across uploaded_image_chunks. Each query stays
+// well under the limit, whatever the server is set to.
+const CHUNK_BYTES = 256 * 1024;
+
+// Writes a photo under `name`. Safe to call again for a name that already exists (it is skipped).
+// Returns true if it stored something.
+async function storeImage(name, mime, buf) {
+  const [[exists]] = await pool.query('SELECT COUNT(*) AS n FROM uploaded_images WHERE name = ?', [name]);
+  if (exists.n) return false;
+  try {
+    if (buf.length <= CHUNK_BYTES) {
+      await pool.query('INSERT INTO uploaded_images (name, mime_type, data) VALUES (?, ?, ?)', [name, mime, buf]);
+    } else {
+      // Row first (empty data = "look in the chunks"), then the pieces.
+      await pool.query('INSERT INTO uploaded_images (name, mime_type, data) VALUES (?, ?, ?)', [name, mime, Buffer.alloc(0)]);
+      for (let i = 0, seq = 0; i < buf.length; i += CHUNK_BYTES, seq++) {
+        await pool.query('INSERT INTO uploaded_image_chunks (name, seq, data) VALUES (?, ?, ?)',
+          [name, seq, buf.subarray(i, i + CHUNK_BYTES)]);
+      }
+    }
+  } catch (err) {
+    // Never leave a half-written photo behind.
+    try { await pool.query('DELETE FROM uploaded_image_chunks WHERE name = ?', [name]); } catch (e) { /* ignore */ }
+    try { await pool.query('DELETE FROM uploaded_images WHERE name = ?', [name]); } catch (e) { /* ignore */ }
+    throw err;
+  }
+  return true;
+}
+
 // Stores the (already checked) file in the database and returns its public path,
 // e.g. /uploads/ab12.jpg
 async function savePhoto(file) {
   const ext = sniffExtension(file.buffer);
   const name = crypto.randomBytes(16).toString('hex') + ext;
-  await pool.query(
-    'INSERT INTO uploaded_images (name, mime_type, data) VALUES (?, ?, ?)',
-    [name, MIME_BY_EXT[ext], file.buffer]
-  );
+  await storeImage(name, MIME_BY_EXT[ext], file.buffer);
   return URL_PREFIX + name;
 }
 
@@ -87,14 +115,20 @@ async function serveUpload(req, res, next) {
   try {
     const [rows] = await pool.query('SELECT mime_type, data FROM uploaded_images WHERE name = ? LIMIT 1', [name]);
     if (!rows.length) return next();
+    let data = rows[0].data;
+    if (!data || !data.length) {
+      const [parts] = await pool.query('SELECT data FROM uploaded_image_chunks WHERE name = ? ORDER BY seq', [name]);
+      if (!parts.length) return next();
+      data = Buffer.concat(parts.map((r) => r.data));
+    }
     res.set({
       'Content-Type': rows[0].mime_type,
-      'Content-Length': rows[0].data.length,
+      'Content-Length': data.length,
       // The name is random and never reused, so the bytes behind it never change.
       'Cache-Control': 'public, max-age=31536000, immutable',
       'X-Content-Type-Options': 'nosniff',
     });
-    return res.end(rows[0].data);
+    return res.end(data);
   } catch (err) {
     return next(err);
   }
@@ -107,8 +141,9 @@ function isUploadPath(p) {
 // Best-effort delete of a previously uploaded photo (ignores external links).
 async function removePhoto(p) {
   if (!isUploadPath(p)) return;
+  try { await pool.query('DELETE FROM uploaded_image_chunks WHERE name = ?', [path.basename(p)]); } catch (e) { /* best effort */ }
   try { await pool.query('DELETE FROM uploaded_images WHERE name = ?', [path.basename(p)]); } catch (e) { /* best effort */ }
   try { await fs.promises.unlink(path.join(UPLOAD_DIR, path.basename(p))); } catch (e) { /* already gone */ }
 }
 
-module.exports = { parsePhoto, checkPhoto, hasPhoto, savePhoto, serveUpload, removePhoto, isUploadPath, UPLOAD_DIR, MIME_BY_EXT, NAME_RE };
+module.exports = { parsePhoto, checkPhoto, hasPhoto, savePhoto, storeImage, serveUpload, removePhoto, isUploadPath, UPLOAD_DIR, MIME_BY_EXT, NAME_RE };
