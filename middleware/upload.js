@@ -1,7 +1,7 @@
 // middleware/upload.js
 // Optional item-photo upload for the report forms.
 // - multer parses multipart/form-data into memory (max 5 MB, one file named "photo").
-// - Nothing touches the disk until the route has validated the rest of the form
+// - Nothing is stored until the route has validated the rest of the form
 //   (call savePhoto(req.file) only after validation passes), so a rejected
 //   submission never leaves an orphan file behind.
 // - The file type is decided by its first bytes (magic numbers), never by the
@@ -12,7 +12,15 @@ const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { pool } = require('../db');
 
+// Photos are stored in the database (table uploaded_images), NOT on local disk.
+// Most hosts (Render, Railway, Heroku, Fly, ...) give the app an ephemeral disk
+// that is wiped on every deploy/restart and is not shared between instances, so
+// files written to public/uploads/ vanish on the live site. The database
+// persists, so the image always travels with the report that points at it.
+// public/uploads/ is only read as a legacy fallback (express.static) and as the
+// source for lib/migrate.js importing older files into the database.
 const UPLOAD_DIR = path.join(__dirname, '..', 'public', 'uploads');
 const URL_PREFIX = '/uploads/';
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -56,13 +64,40 @@ function hasPhoto(req) {
   return !!(req.file && req.file.size > 0);
 }
 
-// Writes the (already checked) file and returns its public path, e.g. /uploads/ab12.jpg
+const MIME_BY_EXT = { '.jpg': 'image/jpeg', '.png': 'image/png', '.gif': 'image/gif', '.webp': 'image/webp' };
+const NAME_RE = /^[a-f0-9]{32}\.(jpg|png|gif|webp)$/;
+
+// Stores the (already checked) file in the database and returns its public path,
+// e.g. /uploads/ab12.jpg
 async function savePhoto(file) {
   const ext = sniffExtension(file.buffer);
-  await fs.promises.mkdir(UPLOAD_DIR, { recursive: true });
   const name = crypto.randomBytes(16).toString('hex') + ext;
-  await fs.promises.writeFile(path.join(UPLOAD_DIR, name), file.buffer, { flag: 'wx' });
+  await pool.query(
+    'INSERT INTO uploaded_images (name, mime_type, data) VALUES (?, ?, ?)',
+    [name, MIME_BY_EXT[ext], file.buffer]
+  );
   return URL_PREFIX + name;
+}
+
+// GET /uploads/:name — serves a stored photo. Mounted AFTER express.static so any
+// legacy file still on disk is served first; everything else comes from the database.
+async function serveUpload(req, res, next) {
+  const name = String(req.params.name || '');
+  if (!NAME_RE.test(name)) return next();
+  try {
+    const [rows] = await pool.query('SELECT mime_type, data FROM uploaded_images WHERE name = ? LIMIT 1', [name]);
+    if (!rows.length) return next();
+    res.set({
+      'Content-Type': rows[0].mime_type,
+      'Content-Length': rows[0].data.length,
+      // The name is random and never reused, so the bytes behind it never change.
+      'Cache-Control': 'public, max-age=31536000, immutable',
+      'X-Content-Type-Options': 'nosniff',
+    });
+    return res.end(rows[0].data);
+  } catch (err) {
+    return next(err);
+  }
 }
 
 function isUploadPath(p) {
@@ -72,7 +107,8 @@ function isUploadPath(p) {
 // Best-effort delete of a previously uploaded photo (ignores external links).
 async function removePhoto(p) {
   if (!isUploadPath(p)) return;
+  try { await pool.query('DELETE FROM uploaded_images WHERE name = ?', [path.basename(p)]); } catch (e) { /* best effort */ }
   try { await fs.promises.unlink(path.join(UPLOAD_DIR, path.basename(p))); } catch (e) { /* already gone */ }
 }
 
-module.exports = { parsePhoto, checkPhoto, hasPhoto, savePhoto, removePhoto, isUploadPath };
+module.exports = { parsePhoto, checkPhoto, hasPhoto, savePhoto, serveUpload, removePhoto, isUploadPath, UPLOAD_DIR, MIME_BY_EXT, NAME_RE };

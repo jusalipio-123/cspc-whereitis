@@ -67,6 +67,8 @@ app.use((req, res, next) => {
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+// Uploaded report photos live in the database (see middleware/upload.js).
+app.get('/uploads/:name', require('./middleware/upload').serveUpload);
 
 // ---------------------------------------------------------------------
 // Global middleware — logger, flash, identity, unread badge.
