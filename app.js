@@ -71,6 +71,13 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Uploaded report photos live in the database (see middleware/upload.js).
 app.get('/uploads/:name', require('./middleware/upload').serveUpload);
 
+
+// Dynamic pages depend on the login cookie: never let a CDN/browser cache them.
+app.use((req, res, next) => {
+  res.setHeader('Cache-Control', 'private, no-store');
+  res.setHeader('Vary', 'Cookie');
+  next();
+});
 // ---------------------------------------------------------------------
 // Global middleware — logger, flash, identity, unread badge.
 //
@@ -120,6 +127,7 @@ app.use((req, res, next) => {
 // ---------------------------------------------------------------------
 app.use('/', require('./routes/home'));
 app.use('/', require('./routes/nexus'));
+app.use('/', require('./routes/assistant'));
 app.use('/auth/google', require('./routes/googleAuth'));
 app.use('/reports', require('./routes/reports'));
 app.use('/claims', require('./routes/claims'));
