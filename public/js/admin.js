@@ -6,8 +6,6 @@
 //    bars, so figures and graphics land together. A small button replays a card.
 // 2. Stat tiles: numbers count up on load, staggered with the tile entrance.
 // 3. Tooltips: one tooltip that glides from mark to mark; donut segments and legend rows highlight each other.
-// 4. Play: cards follow the cursor with a soft spotlight, stat tiles tilt a few degrees, legend chips hide/show a series,
-//    a click pins a month (with change vs the month before) or a donut slice, and a second click lets go.
 
 (function () {
   'use strict';
@@ -114,7 +112,6 @@
     return tip;
   }
   function colorOf(el) {
-    if (el.classList && el.classList.contains('adm-month')) { return 'linear-gradient(90deg, var(--accent-red) 50%, var(--brand) 50%)'; }
     var k = el.getAttribute('data-kind');
     if (k === 'lost') { return 'var(--accent-red)'; }
     if (k === 'found') { return 'var(--brand)'; }
@@ -135,16 +132,8 @@
     tip.style.setProperty('--tip-c', colorOf(el));
     var wasOn = t.classList.contains('is-on');
     t.classList.toggle('no-glide', !wasOn);                 // first appearance snaps; moving between marks glides
-    var r = el.getBoundingClientRect(), top = r.top;
-    if (el.classList && el.classList.contains('adm-month')) {      // sit just above the tallest bar that is showing
-      var bars = el.querySelectorAll('.adm-bar'), best = null, hidden = (el.closest('svg').getAttribute('data-hide') || '');
-      for (var q = 0; q < bars.length; q++) {
-        if (hidden.indexOf(bars[q].classList.contains('adm-bar--lost') ? 'lost' : 'found') > -1) { continue; }
-        var bt = bars[q].getBoundingClientRect().top; if (best === null || bt < best) { best = bt; }
-      }
-      top = best === null ? r.top + r.height - 30 : best - 4;
-    }
-    place(mouse ? mouse.x : r.left + r.width / 2, mouse ? mouse.y : top);
+    var r = el.getBoundingClientRect();
+    place(mouse ? mouse.x : r.left + r.width / 2, mouse ? mouse.y : r.top);
     t.classList.add('is-on');
   }
   function hide() { if (tip) { tip.classList.remove('is-on'); } }
@@ -169,7 +158,7 @@
     if (!host) { return; }
     var segs = host.querySelectorAll('.adm-seg'), rows = host.querySelectorAll('.adm-donut__list li');
     var n = host.querySelector('.adm-donut__n'), l = host.querySelector('.adm-donut__l');
-    var total = n ? n.textContent : '', lbl = l ? (l.getAttribute('data-default') || l.textContent) : '', pinned = null;
+    var total = n ? n.textContent : '', lbl = l ? (l.getAttribute('data-default') || l.textContent) : '';
     function swap(node, text) {
       if (!node) { return; }
       node.textContent = text; node.classList.remove('is-swap'); void node.getBBox(); node.classList.add('is-swap');
@@ -177,16 +166,13 @@
     function focus(i) {
       var s, r;
       for (s = 0; s < segs.length; s++) {
-        if (i === null && pinned !== null) { i = pinned; }
         var on = i === null ? false : String(i) === segs[s].getAttribute('data-seg');
-        segs[s].classList.toggle('is-pinned', pinned !== null && String(pinned) === segs[s].getAttribute('data-seg'));
         segs[s].classList.toggle('is-active', on); segs[s].classList.toggle('is-dim', i !== null && !on);
       }
       for (r = 0; r < rows.length; r++) {
         var ron = i === null ? false : String(i) === rows[r].getAttribute('data-seg');
         rows[r].classList.toggle('is-active', ron); rows[r].classList.toggle('is-dim', i !== null && !ron);
       }
-      if (i === null && pinned !== null) { i = pinned; }
       if (i === null) { if (n) { n._live = 0; n.textContent = total; } swap(l, lbl); return; }
       var seg = host.querySelector('.adm-seg[data-seg="' + i + '"]');
       if (seg && n) {
@@ -196,13 +182,8 @@
         swap(l, name.length > 15 ? name.slice(0, 14) + '…' : name);
       }
     }
-    function toggle(id) { pinned = (pinned !== null && String(pinned) === id) ? null : id; focus(pinned); }
     function bind(el) {
       var id = el.getAttribute('data-seg');
-      if (!el.hasAttribute('tabindex')) { el.setAttribute('tabindex', '0'); }
-      el.setAttribute('role', 'button');
-      el.addEventListener('click', function () { toggle(id); });
-      el.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(id); } });
       el.addEventListener('mouseenter', function () { focus(id); });
       el.addEventListener('mouseleave', function () { focus(null); });
       el.addEventListener('focus', function () { focus(id); });
@@ -212,89 +193,11 @@
     for (var r = 0; r < rows.length; r++) { bind(rows[r]); }
   }
 
-  /* ---------- play: legend toggles, month pin ---------- */
-  function monthsAndLegend() {
-    var svg = document.querySelector('.adm-chart');
-    if (!svg) { return; }
-    var card = svg.closest('.adm-card'), pin = card.querySelector('.adm-pin');
-    var months = svg.querySelectorAll('.adm-month'), pinned = null;
-
-    card.addEventListener('click', function (e) {                       // series toggles
-      var b = e.target.closest ? e.target.closest('.adm-toggle') : null;
-      if (!b) { return; }
-      var hide = (svg.getAttribute('data-hide') || '').split(' ').filter(Boolean), k = b.getAttribute('data-series');
-      var at = hide.indexOf(k);
-      if (at > -1) { hide.splice(at, 1); } else { hide.push(k); }
-      if (hide.length > 1) { hide = [k]; }                              // never hide both: showing the other one instead
-      svg.setAttribute('data-hide', hide.join(' '));
-      var all = card.querySelectorAll('.adm-toggle');
-      for (var i = 0; i < all.length; i++) { all[i].setAttribute('aria-pressed', hide.indexOf(all[i].getAttribute('data-series')) > -1 ? 'false' : 'true'); }
-    });
-
-    function readout(m) {
-      var pop = function () { pin.classList.remove('is-swap'); void pin.offsetWidth; pin.classList.add('is-swap'); };
-      pin.textContent = '';
-      if (!m) { pin.textContent = pin.getAttribute('data-hint'); pop(); return; }
-      var lost = +m.getAttribute('data-lost'), found = +m.getAttribute('data-found'), idx = +m.getAttribute('data-m');
-      var st = document.createElement('strong'); st.textContent = m.getAttribute('data-full');
-      pin.appendChild(st);
-      pin.appendChild(document.createTextNode('  ·  ' + lost + ' lost  ·  ' + found + ' found  ·  ' + (lost + found) + ' total'));
-      if (idx > 0) {
-        var pv = months[idx - 1], d = (lost + found) - (+pv.getAttribute('data-lost') + +pv.getAttribute('data-found'));
-        var name = pv.getAttribute('data-full').split(' ')[0];
-        pin.appendChild(document.createTextNode('  ·  ' + (d === 0 ? 'same as ' + name : (d > 0 ? '\u25B2 ' : '\u25BC ') + Math.abs(d) + (d > 0 ? ' more' : ' fewer') + ' than ' + name)));
-      }
-      pop();
-    }
-    function toggleMonth(m) {
-      if (pinned) { pinned.classList.remove('is-pinned'); pinned.setAttribute('aria-pressed', 'false'); }
-      pinned = (pinned === m) ? null : m;
-      if (pinned) { pinned.classList.add('is-pinned'); pinned.setAttribute('aria-pressed', 'true'); }
-      readout(pinned);
-    }
-    for (var i = 0; i < months.length; i++) {
-      (function (m) {
-        m.addEventListener('click', function () { toggleMonth(m); });
-        m.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleMonth(m); } });
-      })(months[i]);
-    }
-  }
-
-  /* ---------- play: spotlight on cards, light tilt on stat tiles (fine pointers only) ---------- */
-  function pointerPlay() {
-    if (still || !window.matchMedia || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) { return; }
-    var hot = null, raf = 0, ev = null;
-    function release(el) {
-      if (!el) { return; }
-      el.classList.remove('is-hot');
-      el.style.removeProperty('--rx'); el.style.removeProperty('--ry');
-    }
-    function apply() {
-      raf = 0; if (!ev) { return; }
-      var el = ev.target.closest ? ev.target.closest('.adm-card, .my-stats a') : null;
-      if (el !== hot) { release(hot); hot = el; if (hot) { hot.classList.add('is-hot'); } }
-      if (!hot) { return; }
-      var r = hot.getBoundingClientRect(), x = (ev.clientX - r.left) / r.width, y = (ev.clientY - r.top) / r.height;
-      hot.style.setProperty('--mx', (x * 100).toFixed(1) + '%'); hot.style.setProperty('--my', (y * 100).toFixed(1) + '%');
-      if (hot.matches('.my-stats a')) {                                  // a few degrees only; large cards stay flat
-        hot.style.setProperty('--ry', ((x - 0.5) * 7).toFixed(2) + 'deg');
-        hot.style.setProperty('--rx', ((0.5 - y) * 6).toFixed(2) + 'deg');
-      }
-    }
-    document.addEventListener('pointermove', function (e) {
-      if (e.pointerType && e.pointerType !== 'mouse') { return; }
-      ev = e; if (!raf) { raf = window.requestAnimationFrame(apply); }
-    }, { passive: true });
-    document.documentElement.addEventListener('mouseleave', function () { release(hot); hot = null; });
-  }
-
   function init() {
     var st = document.querySelector('.my-stats');
     if (!still && st) { zero(st); }
     charts();
     donut();
-    monthsAndLegend();
-    pointerPlay();
     if (!still) { tiles(); }
   }
 

@@ -68,7 +68,7 @@
         <circle class="adm-reunite__fill" cx="65" cy="65" r="52" transform="rotate(-90 65 65)"
                 style="--full:<%= _RC.toFixed(2) %>;stroke-dasharray:<%= _RC.toFixed(2) %>;stroke-dashoffset:<%= (_RC * (1 - _pct / 100)).toFixed(2) %>"/>
       </svg>
-      <p class="adm-reunite__pct"><span class="adm-reunite__main"><span data-count="<%= _pct %>" data-dur="1500"><%= _pct %></span>%</span><span class="adm-reunite__alt" aria-hidden="true"><b><%= _ret %></b>/<%= _all %><small>returned</small></span></p>
+      <p class="adm-reunite__pct"><span data-count="<%= _pct %>" data-dur="1500"><%= _pct %></span>%</p>
     </div>
     <div class="adm-reunite__text">
       <h2 id="reunite-h">Reunited this month</h2>
@@ -175,8 +175,8 @@
     <div class="adm-card__head">
       <h2 id="monthly-h">Lost and found, last 12 months</h2>
       <p class="adm-legend">
-        <button type="button" class="adm-toggle" data-series="lost" aria-pressed="true" title="Show or hide lost reports"><i class="adm-key adm-key--lost"></i>Lost <b data-count="<%= _sum(_lost) %>"><%= _sum(_lost) %></b></button>
-        <button type="button" class="adm-toggle" data-series="found" aria-pressed="true" title="Show or hide found reports"><i class="adm-key adm-key--found"></i>Found <b data-count="<%= _sum(_found) %>"><%= _sum(_found) %></b></button>
+        <span><i class="adm-key adm-key--lost"></i>Lost <b data-count="<%= _sum(_lost) %>"><%= _sum(_lost) %></b></span>
+        <span><i class="adm-key adm-key--found"></i>Found <b data-count="<%= _sum(_found) %>"><%= _sum(_found) %></b></span>
         <button type="button" class="adm-replay" data-replay aria-label="Replay chart animation" title="Replay animation"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/></svg></button>
       </p>
     </div>
@@ -195,20 +195,15 @@
       <% }); %>
       <% _keys.forEach(function (k, i) {
            const gx = PL + i * STEP + (STEP - BW * 2 - 4) / 2; %>
-        <g class="adm-month" tabindex="0" role="button" aria-pressed="false" data-m="<%= i %>" data-full="<%= k.full %>" data-lost="<%= _lost[i] %>" data-found="<%= _found[i] %>"
-           data-tip="<%= k.full %>: <%= _lost[i] %> lost · <%= _found[i] %> found" aria-label="<%= k.full %>: <%= _lost[i] %> lost, <%= _found[i] %> found">
-        <rect class="adm-hit" x="<%= (PL + i * STEP).toFixed(1) %>" y="<%= PT %>" width="<%= STEP.toFixed(1) %>" height="<%= PH + 22 %>" rx="6"/>
         <% [[_lost[i], 'lost', 'Lost', 0], [_found[i], 'found', 'Found', 1]].forEach(function (b) {
              if (!b[0]) return;
              const bh = PH * b[0] / _nice; %>
-          <rect class="adm-bar adm-bar--<%= b[1] %>" style="--i:<%= i * 2 + b[3] %>"
+          <rect class="adm-bar adm-bar--<%= b[1] %>" tabindex="0" style="--i:<%= i * 2 + b[3] %>" data-tip="<%= k.full %>: <%= b[0] %> <%= b[2].toLowerCase() %>" data-kind="<%= b[1] %>"
                 x="<%= (gx + b[3] * (BW + 4)).toFixed(1) %>" y="<%= (PT + PH - bh).toFixed(1) %>" width="<%= BW %>" height="<%= bh.toFixed(1) %>" rx="3"/>
         <% }); %>
         <text class="adm-axis adm-axis--x" style="--i:<%= i %>" x="<%= (PL + i * STEP + STEP / 2).toFixed(1) %>" y="<%= H - 8 %>" text-anchor="middle"><%= k.label %></text>
-        </g>
       <% }); %>
     </svg>
-    <p class="adm-pin" aria-live="polite" data-hint="Click a month to compare it with the one before.">Click a month to compare it with the one before.</p>
     <details class="adm-data">
       <summary>View as table</summary>
       <div class="table-wrap"><table class="table">
