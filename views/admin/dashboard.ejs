@@ -8,6 +8,7 @@
 %>
 <% const _bd = (typeof adminBadges !== 'undefined' && adminBadges) || { guestPending: 0, claimsPending: 0 }; %>
 <%- include('../partials/adminOpen', { title: 'Admin dashboard', active: 'overview' }) %>
+  <script>document.documentElement.classList.add('adm-anim');setTimeout(function(){if(!window.__admReady){var a=document.querySelectorAll('.adm-reveal');for(var i=0;i<a.length;i++){a[i].classList.add('is-in');}}},3500);</script>
 
   <%
     // Greeting in Philippine time (the whole app runs on PST), by the signed-in admin's first name.
@@ -38,14 +39,14 @@
   </header>
 
   <ul class="my-stats" aria-label="Summary">
-    <li><a href="/admin/moderation"<%- _bd.guestPending ? ' class="adm-stat adm-stat--act"' : '' %>><% if (_bd.guestPending) { %><i class="adm-dot" aria-hidden="true"></i><% } %><strong data-count="<%= _bd.guestPending %>"><%= _bd.guestPending %></strong><span>Guest reports to review<% if (_bd.guestPending) { %> <em>Needs review</em><% } %></span></a></li>
-    <li><a href="/admin/staff"<%- _bd.claimsPending ? ' class="adm-stat adm-stat--act"' : '' %>><% if (_bd.claimsPending) { %><i class="adm-dot" aria-hidden="true"></i><% } %><strong data-count="<%= _bd.claimsPending %>"><%= _bd.claimsPending %></strong><span>Claims waiting<% if (_bd.claimsPending) { %> <em>Needs a decision</em><% } %></span></a></li>
-    <li><a href="/admin/reports"><strong data-count="<%= stats.reportsTotal %>"><%= stats.reportsTotal %></strong><span>Total reports (<%= stats.reportsOpen %> open)</span></a></li>
-    <li><a href="/admin/reports?moderation=rejected"><strong data-count="<%= stats.reportsHidden %>"><%= stats.reportsHidden %></strong><span>Hidden or rejected</span></a></li>
-    <li><a href="/admin/comments"><strong data-count="<%= stats.commentsTotal %>"><%= stats.commentsTotal %></strong><span>Comments</span></a></li>
-    <li><a href="/admin/users"><strong data-count="<%= stats.usersTotal %>"><%= stats.usersTotal %></strong><span>Users</span></a></li>
-    <li><a href="/admin/reports?status=returned"><strong data-count="<%= returnedThisMonth %>"><%= returnedThisMonth %></strong><span>Returned this month</span></a></li>
-    <li><a href="/admin/staff"><strong data-count="<%= agingOver60 %>"><%= agingOver60 %></strong><span>Held over 60 days</span></a></li>
+    <li style="--i:0"><a href="/admin/moderation"<%- _bd.guestPending ? ' class="adm-stat adm-stat--act"' : '' %>><% if (_bd.guestPending) { %><i class="adm-dot" aria-hidden="true"></i><% } %><strong data-count="<%= _bd.guestPending %>"><%= _bd.guestPending %></strong><span>Guest reports to review<% if (_bd.guestPending) { %> <em>Needs review</em><% } %></span></a></li>
+    <li style="--i:1"><a href="/admin/staff"<%- _bd.claimsPending ? ' class="adm-stat adm-stat--act"' : '' %>><% if (_bd.claimsPending) { %><i class="adm-dot" aria-hidden="true"></i><% } %><strong data-count="<%= _bd.claimsPending %>"><%= _bd.claimsPending %></strong><span>Claims waiting<% if (_bd.claimsPending) { %> <em>Needs a decision</em><% } %></span></a></li>
+    <li style="--i:2"><a href="/admin/reports"><strong data-count="<%= stats.reportsTotal %>"><%= stats.reportsTotal %></strong><span>Total reports (<%= stats.reportsOpen %> open)</span></a></li>
+    <li style="--i:3"><a href="/admin/reports?moderation=rejected"><strong data-count="<%= stats.reportsHidden %>"><%= stats.reportsHidden %></strong><span>Hidden or rejected</span></a></li>
+    <li style="--i:4"><a href="/admin/comments"><strong data-count="<%= stats.commentsTotal %>"><%= stats.commentsTotal %></strong><span>Comments</span></a></li>
+    <li style="--i:5"><a href="/admin/users"><strong data-count="<%= stats.usersTotal %>"><%= stats.usersTotal %></strong><span>Users</span></a></li>
+    <li style="--i:6"><a href="/admin/reports?status=returned"><strong data-count="<%= returnedThisMonth %>"><%= returnedThisMonth %></strong><span>Returned this month</span></a></li>
+    <li style="--i:7"><a href="/admin/staff"><strong data-count="<%= agingOver60 %>"><%= agingOver60 %></strong><span>Held over 60 days</span></a></li>
   </ul>
 
   <%
@@ -54,14 +55,20 @@
     const _pct = _all ? Math.round(_ret / _all * 100) : 0;
     const _RC = 2 * Math.PI * 52;
   %>
-  <section class="adm-card adm-reunite" aria-labelledby="reunite-h">
+  <section class="adm-card adm-reunite adm-reveal" aria-labelledby="reunite-h">
     <div class="adm-reunite__ring">
       <svg viewBox="0 0 130 130" aria-hidden="true">
+        <defs>
+          <linearGradient id="adm-ring-grad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" style="stop-color:var(--green);stop-opacity:.55"/>
+            <stop offset="1" style="stop-color:var(--green)"/>
+          </linearGradient>
+        </defs>
         <circle class="adm-reunite__track" cx="65" cy="65" r="52"/>
         <circle class="adm-reunite__fill" cx="65" cy="65" r="52" transform="rotate(-90 65 65)"
                 style="--full:<%= _RC.toFixed(2) %>;stroke-dasharray:<%= _RC.toFixed(2) %>;stroke-dashoffset:<%= (_RC * (1 - _pct / 100)).toFixed(2) %>"/>
       </svg>
-      <p class="adm-reunite__pct"><span data-count="<%= _pct %>"><%= _pct %></span>%</p>
+      <p class="adm-reunite__pct"><span class="adm-reunite__main"><span data-count="<%= _pct %>" data-dur="1500"><%= _pct %></span>%</span><span class="adm-reunite__alt" aria-hidden="true"><b><%= _ret %></b>/<%= _all %><small>returned</small></span></p>
     </div>
     <div class="adm-reunite__text">
       <h2 id="reunite-h">Reunited this month</h2>
@@ -164,30 +171,44 @@
     const _locMax = _locs.length ? _locs[0].n : 1;
   %>
 
-  <section class="adm-card" aria-labelledby="monthly-h">
+  <section class="adm-card adm-reveal" aria-labelledby="monthly-h">
     <div class="adm-card__head">
       <h2 id="monthly-h">Lost and found, last 12 months</h2>
       <p class="adm-legend">
-        <span><i class="adm-key adm-key--lost"></i>Lost <b><%= _sum(_lost) %></b></span>
-        <span><i class="adm-key adm-key--found"></i>Found <b><%= _sum(_found) %></b></span>
+        <button type="button" class="adm-toggle" data-series="lost" aria-pressed="true" title="Show or hide lost reports"><i class="adm-key adm-key--lost"></i>Lost <b data-count="<%= _sum(_lost) %>"><%= _sum(_lost) %></b></button>
+        <button type="button" class="adm-toggle" data-series="found" aria-pressed="true" title="Show or hide found reports"><i class="adm-key adm-key--found"></i>Found <b data-count="<%= _sum(_found) %>"><%= _sum(_found) %></b></button>
+        <button type="button" class="adm-replay" data-replay aria-label="Replay chart animation" title="Replay animation"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/></svg></button>
       </p>
     </div>
     <svg class="adm-chart" viewBox="0 0 <%= W %> <%= H %>" role="img" aria-label="Lost and found reports per month for the last 12 months. The table below has the same numbers.">
+      <defs>
+        <linearGradient id="adm-g-lost" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" style="stop-color:var(--accent-red);stop-opacity:.78"/><stop offset="1" style="stop-color:var(--accent-red)"/>
+        </linearGradient>
+        <linearGradient id="adm-g-found" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" style="stop-color:var(--brand);stop-opacity:.72"/><stop offset="1" style="stop-color:var(--brand)"/>
+        </linearGradient>
+      </defs>
       <% [0, 1, 2, 3, 4].forEach(function (t) { const v = _nice / 4 * t; %>
-        <line class="adm-grid" x1="<%= PL %>" x2="<%= W - PR %>" y1="<%= _y(v) %>" y2="<%= _y(v) %>"/>
-        <text class="adm-axis" x="<%= PL - 6 %>" y="<%= _y(v) + 4 %>" text-anchor="end"><%= Math.round(v) %></text>
+        <line class="adm-grid" style="--i:<%= t %>" x1="<%= PL %>" x2="<%= W - PR %>" y1="<%= _y(v) %>" y2="<%= _y(v) %>"/>
+        <text class="adm-axis adm-axis--y" style="--i:<%= t %>" x="<%= PL - 6 %>" y="<%= _y(v) + 4 %>" text-anchor="end"><%= Math.round(v) %></text>
       <% }); %>
       <% _keys.forEach(function (k, i) {
            const gx = PL + i * STEP + (STEP - BW * 2 - 4) / 2; %>
+        <g class="adm-month" tabindex="0" role="button" aria-pressed="false" data-m="<%= i %>" data-full="<%= k.full %>" data-lost="<%= _lost[i] %>" data-found="<%= _found[i] %>"
+           data-tip="<%= k.full %>: <%= _lost[i] %> lost · <%= _found[i] %> found" aria-label="<%= k.full %>: <%= _lost[i] %> lost, <%= _found[i] %> found">
+        <rect class="adm-hit" x="<%= (PL + i * STEP).toFixed(1) %>" y="<%= PT %>" width="<%= STEP.toFixed(1) %>" height="<%= PH + 22 %>" rx="6"/>
         <% [[_lost[i], 'lost', 'Lost', 0], [_found[i], 'found', 'Found', 1]].forEach(function (b) {
              if (!b[0]) return;
              const bh = PH * b[0] / _nice; %>
-          <rect class="adm-bar adm-bar--<%= b[1] %>" tabindex="0" style="--i:<%= i * 2 + b[3] %>" data-tip="<%= k.full %>: <%= b[0] %> <%= b[2].toLowerCase() %>"
+          <rect class="adm-bar adm-bar--<%= b[1] %>" style="--i:<%= i * 2 + b[3] %>"
                 x="<%= (gx + b[3] * (BW + 4)).toFixed(1) %>" y="<%= (PT + PH - bh).toFixed(1) %>" width="<%= BW %>" height="<%= bh.toFixed(1) %>" rx="3"/>
         <% }); %>
-        <text class="adm-axis" x="<%= (PL + i * STEP + STEP / 2).toFixed(1) %>" y="<%= H - 8 %>" text-anchor="middle"><%= k.label %></text>
+        <text class="adm-axis adm-axis--x" style="--i:<%= i %>" x="<%= (PL + i * STEP + STEP / 2).toFixed(1) %>" y="<%= H - 8 %>" text-anchor="middle"><%= k.label %></text>
+        </g>
       <% }); %>
     </svg>
+    <p class="adm-pin" aria-live="polite" data-hint="Click a month to compare it with the one before.">Click a month to compare it with the one before.</p>
     <details class="adm-data">
       <summary>View as table</summary>
       <div class="table-wrap"><table class="table">
@@ -200,41 +221,49 @@
   </section>
 
   <div class="adm-cols">
-    <section class="adm-card" aria-labelledby="cat-h">
+    <section class="adm-card adm-reveal" aria-labelledby="cat-h">
       <h2 id="cat-h">Category distribution</h2>
       <% if (!_catTotal) { %>
         <p class="muted">No reports yet.</p>
       <% } else { %>
         <div class="adm-donut">
           <svg viewBox="0 0 180 180" role="img" aria-label="Reports by category. The list beside the chart has the same numbers.">
+            <defs>
+              <mask id="adm-donut-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="180" height="180">
+                <circle class="adm-donut__sweep" cx="90" cy="90" r="<%= R %>" transform="rotate(-90 90 90)" style="--full:<%= CIRC.toFixed(2) %>;stroke-dasharray:<%= CIRC.toFixed(2) %>"/>
+              </mask>
+            </defs>
+            <circle class="adm-donut__track" cx="90" cy="90" r="<%= R %>"/>
+            <g mask="url(#adm-donut-mask)">
             <% let _off = 0; _slices.forEach(function (c, i) {
                  const len = CIRC * c.n / _catTotal, gap = _slices.length > 1 ? 2 : 0; %>
-              <circle class="adm-seg adm-c<%= i + 1 %>" tabindex="0" cx="90" cy="90" r="<%= R %>" style="--i:<%= i %>;stroke-dasharray:<%= Math.max(len - gap, 0.5).toFixed(2) %> <%= CIRC.toFixed(2) %>"
+              <circle class="adm-seg adm-c<%= i + 1 %>" tabindex="0" data-seg="<%= i %>" data-n="<%= c.n %>" data-name="<%= c.name %>" cx="90" cy="90" r="<%= R %>" style="--i:<%= i %>;stroke-dasharray:<%= Math.max(len - gap, 0.5).toFixed(2) %> <%= CIRC.toFixed(2) %>"
                       transform="rotate(<%= (-90 + _off / CIRC * 360).toFixed(2) %> 90 90)" data-tip="<%= c.name %>: <%= c.n %> <%= c.n === 1 ? 'report' : 'reports' %>"/>
             <% _off += len; }); %>
-            <text class="adm-donut__n" x="90" y="92" text-anchor="middle"><%= _catTotal %></text>
-            <text class="adm-donut__l" x="90" y="110" text-anchor="middle">reports</text>
+            </g>
+            <text class="adm-donut__n" x="90" y="92" text-anchor="middle" data-count="<%= _catTotal %>" data-dur="1400"><%= _catTotal %></text>
+            <text class="adm-donut__l" x="90" y="110" text-anchor="middle" data-default="reports">reports</text>
           </svg>
           <ul class="adm-donut__list">
             <% _slices.forEach(function (c, i) { %>
-              <li><i class="adm-key adm-c<%= i + 1 %>"></i><span><%= c.name %></span><b><%= c.n %></b></li>
+              <li style="--i:<%= i %>" data-seg="<%= i %>"><i class="adm-key adm-c<%= i + 1 %>"></i><span><%= c.name %></span><b data-count="<%= c.n %>"><%= c.n %></b></li>
             <% }); %>
           </ul>
         </div>
       <% } %>
     </section>
 
-    <section class="adm-card" aria-labelledby="loc-h">
+    <section class="adm-card adm-reveal" aria-labelledby="loc-h">
       <h2 id="loc-h">Top locations</h2>
       <% if (!_locs.length) { %>
         <p class="muted">No reports yet.</p>
       <% } else { %>
         <ol class="adm-hbars">
           <% _locs.forEach(function (l, i) { %>
-            <li>
+            <li style="--i:<%= i %>">
               <span class="adm-hbars__name" title="<%= l.name %>"><%= l.name %></span>
-              <span class="adm-hbars__track"><i style="width:<%= (l.n / _locMax * 100).toFixed(1) %>%;--i:<%= i %>"></i></span>
-              <b><%= l.n %></b>
+              <span class="adm-hbars__track"><i style="--w:<%= (l.n / _locMax * 100).toFixed(1) %>%;--i:<%= i %>"></i></span>
+              <b data-count="<%= l.n %>"><%= l.n %></b>
             </li>
           <% }); %>
         </ol>
