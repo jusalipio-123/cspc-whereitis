@@ -2120,3 +2120,10 @@ main.container.my-page > ul.my-stats { max-width: none; }
 .photo-card__name { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: var(--ink); }
 .photo-card__size { color: var(--muted); font-size: .85rem; margin-bottom: .5rem; }
 .photo-card__error { margin: .75rem 0 0; }
+
+/* ---------- Found board: "Can't find it? Report it as lost" callout ---------- */
+.board-cta { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); flex-wrap: wrap; margin-bottom: var(--s-3); padding: .85rem 1rem; background: var(--brand-050); border: 1px solid var(--border); border-radius: 10px; }
+.board-cta__text { margin: 0; flex: 1 1 18rem; display: grid; gap: .15rem; }
+.board-cta__text span { font-size: .875rem; color: var(--muted); }
+.board-cta .btn { flex: 0 0 auto; background: var(--card); }
+@media (max-width: 480px) { .board-cta .btn { width: 100%; } }
