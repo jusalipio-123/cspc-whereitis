@@ -55,3 +55,14 @@
   document.addEventListener('focusout', hide);
   window.addEventListener('scroll', hide, { passive: true });
 })();
+
+// Task 6: idle chart animations pause while their card is scrolled out of view.
+(function () {
+  'use strict';
+  if (!('IntersectionObserver' in window)) { return; }
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { e.target.classList.toggle('adm-idle', !e.isIntersecting); });
+  });
+  var cards = document.querySelectorAll('.adm-card');
+  for (var i = 0; i < cards.length; i++) { io.observe(cards[i]); }
+})();

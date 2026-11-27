@@ -111,7 +111,7 @@
 .adm-chart { display: block; width: 100%; height: auto; }
 .adm-grid { stroke: var(--border); stroke-width: 1; }
 .adm-axis { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
-.adm-bar { transform-box: fill-box; transform-origin: bottom; animation: adm-grow-y .7s cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(var(--i, 0) * 40ms); transition: filter .15s; cursor: default; }
+.adm-bar { transform-box: fill-box; transform-origin: bottom; animation: adm-grow-y .7s cubic-bezier(.2,.8,.2,1) both, adm-wave 6s ease-in-out infinite; animation-delay: calc(var(--i, 0) * 40ms), calc(1.6s + var(--i, 0) * 70ms); transition: filter .15s; cursor: default; }
 .adm-bar--lost { fill: var(--accent-red); } .adm-bar--found { fill: var(--brand); }
 .adm-bar:hover, .adm-bar:focus-visible { filter: brightness(1.18); outline: none; stroke: var(--ink); stroke-width: 1.5; }
 @keyframes adm-grow-y { from { transform: scaleY(0); } }
@@ -133,7 +133,7 @@
 .adm-hbars li { display: grid; grid-template-columns: minmax(6rem, 10rem) 1fr 2.2rem; gap: .75rem; align-items: center; padding: .35rem 0; font-size: .9rem; }
 .adm-hbars__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .adm-hbars__track { height: 12px; border-radius: 6px; background: var(--brand-050); overflow: hidden; }
-.adm-hbars__track i { display: block; height: 100%; border-radius: 6px; background: var(--brand); transform-origin: left; animation: adm-grow-x .8s cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(var(--i, 0) * 70ms); }
+.adm-hbars__track i { display: block; height: 100%; border-radius: 6px; background: var(--brand); transform-origin: left; position: relative; overflow: hidden; animation: adm-grow-x .8s cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(var(--i, 0) * 70ms); }
 @keyframes adm-grow-x { from { transform: scaleX(0); } }
 .adm-hbars b { text-align: right; font-variant-numeric: tabular-nums; }
 
@@ -219,4 +219,16 @@
   .is-stack .mod-card, .mod-meter i, .mod-stamp { transition: none; }
   .mod-done svg circle, .mod-done svg path { animation: none; stroke-dashoffset: 0; }
   .adm-toast { animation: none; }
+}
+
+/* ---------- Idle shimmer: bars glint every few seconds ---------- */
+@keyframes adm-wave { 0%, 26%, 100% { filter: brightness(1); } 13% { filter: brightness(1.5) saturate(1.2); } }
+.adm-hbars__track i::after { content: ""; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, .55) 50%, transparent 70%); transform: translateX(-100%); animation: adm-sheen 5s ease-in-out infinite; animation-delay: calc(1.4s + var(--i, 0) * 350ms); }
+@keyframes adm-sheen { 0% { transform: translateX(-100%); } 30%, 100% { transform: translateX(100%); } }
+/* Calm while the pointer is on the chart, and while the card is scrolled out of view. */
+.adm-chart:hover .adm-bar { animation-name: adm-grow-y; animation-delay: calc(var(--i, 0) * 40ms); }
+.adm-idle .adm-bar, .adm-idle .adm-hbars__track i::after { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) {
+  .adm-bar { animation: none; }
+  .adm-hbars__track i::after { animation: none; display: none; }
 }
