@@ -81,16 +81,6 @@
       </section>
     <% } %>
 
-    <% if (cfg.lostCta && rows.length > 0) { %>
-      <aside class="board-cta" aria-label="Report your item as lost">
-        <p class="board-cta__text">
-          <strong><%= cfg.lostCta.text %></strong>
-          <span>Tell us what you lost and we will match it when it is turned in.<% if (typeof identity === 'undefined' || !identity) { %> You will be asked to sign in first.<% } %></span>
-        </p>
-        <a class="btn btn--ghost" href="<%= cfg.lostCta.href %>"><%= cfg.lostCta.label %></a>
-      </aside>
-    <% } %>
-
     <div class="list-bar">
       <p class="result-count"><strong><%= total %></strong> item<%= total === 1 ? '' : 's' %><%= scope === 'all' ? ' (including closed)' : cfg.countActive %></p>
       <nav class="seg" aria-label="Sort">
@@ -115,6 +105,16 @@
         <% rows.forEach(function (r) { %><li><%- include('../partials/boardCard', { report: r }) %></li><% }); %>
       </ul>
       <%- include('../partials/pagination', { page: page, totalPages: totalPages, baseUrl: urlWith({}) }) %>
+    <% } %>
+
+    <% if (cfg.lostCta && rows.length > 0) { %>
+      <aside class="board-cta" aria-label="Report your item as lost">
+        <p class="board-cta__text">
+          <strong><%= cfg.lostCta.text %></strong>
+          <span>Tell us what you lost and we will match it when it is turned in.<% if (typeof identity === 'undefined' || !identity) { %> You will be asked to sign in first.<% } %></span>
+        </p>
+        <a class="btn btn--ghost" href="<%= cfg.lostCta.href %>"><%= cfg.lostCta.label %></a>
+      </aside>
     <% } %>
   </section>
 </div>
