@@ -1,0 +1,27 @@
+/* APPEND to the end of public/css/futura.css — styles for the concierge assistant */
+.concierge__log .concierge__chips {
+  align-self: flex-start; max-width: 100%; padding: 0; background: none; border: 0;
+  display: flex; flex-wrap: wrap; gap: .35rem;
+}
+.concierge__chip {
+  font: inherit; font-size: .8rem; padding: .3rem .65rem; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--card); color: var(--ink); cursor: pointer;
+}
+.concierge__chip:hover, .concierge__chip:focus-visible { border-color: var(--brand); color: var(--brand); }
+
+.concierge__line + .concierge__line { margin-top: .4rem; }
+.concierge__hits { display: grid; gap: .35rem; margin-top: .5rem; }
+.concierge__hit {
+  display: block; padding: .45rem .55rem; border: 1px solid var(--border);
+  border-radius: 8px; background: var(--brand-050); text-decoration: none; color: var(--ink);
+}
+.concierge__hit:hover, .concierge__hit:focus-visible { border-color: var(--brand); }
+.concierge__hit strong { display: block; font-size: .86rem; }
+.concierge__hit span { display: block; font-size: .76rem; color: var(--muted); line-height: 1.35; }
+
+.concierge__links { display: flex; flex-wrap: wrap; gap: .25rem .8rem; margin-top: .4rem; font-size: .85rem; }
+.concierge__log .is-typing { color: var(--muted); font-style: italic; }
+.concierge__clear {
+  font: inherit; font-size: inherit; background: none; border: 0; padding: 0;
+  color: var(--brand); text-decoration: underline; cursor: pointer;
+}

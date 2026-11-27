@@ -162,7 +162,13 @@
   }
 
   // -------------------------------------------------------------------
-  // Concierge — rules-based campus helper (honest: not a neural net)
+  // Concierge v3 — AI help assistant with a rule-based safety net.
+  //
+  // When the server has an API key (GET /api/assistant/status), questions go
+  // to POST /api/assistant/chat. If the AI is off, busy, or unreachable, the
+  // same question is answered by the original rules + the Nexus scanner, so
+  // the helper never goes dark. Instant local answers (greetings, thanks,
+  // reference numbers) never spend an AI call.
   // -------------------------------------------------------------------
   var fab = $('[data-concierge-open]');
   var panel = $('[data-concierge]');
@@ -170,76 +176,392 @@
   var form = $('[data-concierge-form]');
   var cInput = $('[data-concierge-input]');
   var cClose = $('[data-concierge-close]');
+  var cNote = $('.concierge__note');
+  var NOTE_RULES = cNote ? cNote.textContent : '';
+  var NOTE_AI = 'AI-assisted. It can make mistakes, so check details on the pages it links to.';
 
-  var REPLIES = [
-    { test: /hello|hi|hey|kamusta|good (morning|afternoon|evening)/i, say: 'Kamusta. I can help you report something, search the board, or run a match scan. What went missing — or what did you find?' },
-    { test: /how (do i |to )?report|file a report|nawala|nakita/i, say: 'Tap Report lost item or Report found item. Guests can file a found item without an account; lost items need a sign-in. You will get a reference like LF-2026-0007.' },
-    { test: /claim|this is mine|akin (ito|to)/i, say: 'Open the found report, then “This is mine — file a claim”. You will need to describe proof of ownership. The finder (or staff) reviews it.' },
-    { test: /match|scanner|score/i, say: 'Matching is a fixed rubric, not AI: same category, same location, close dates, overlapping words. Open Nexus to scan a description — every point comes with a reason.' },
-    { test: /nexus|radar|pulse/i, say: 'Nexus is the campus command centre: a radar of open reports by zone, a match scanner, and a live pulse. Open it from the nav, or press Ctrl+K and type Nexus.' },
-    { test: /sign ?in|account|password|google/i, say: 'Use Sign in with your student email, or Google if it is configured. Forgot a password? There is a reset link on the sign-in page.' },
-    { test: /theme|dark|light|glass/i, say: 'Use the sun/moon button in the header to switch light and dark. Frosted glass panels stay in both modes.' },
-    { test: /voice|mic|speak/i, say: 'If your browser supports it, the mic on the home search box and on the Nexus scanner will type what you say. Allow the microphone when asked.' },
-    { test: /ctrl|command palette|shortcut|keyboard/i, say: 'Press Ctrl+K (Cmd+K on a Mac) from any page to jump, search, or send a description to the scanner.' },
-    { test: /privacy|data|guest/i, say: 'Guest found-item reports are held for staff review. Contact details on guest reports are never shown on public pages. See Privacy in the footer.' },
-    { test: /help|guide/i, say: 'The user guide walks through reporting, searching, and claiming, step by step.', href: '/help', link: 'Open the user guide' },
+  // <routing-data>
+  // Rule-based fallback. Order matters: first match wins. \b everywhere so
+  // "hi" cannot fire inside "white" or "something".
+  var REF_RE = /\bLF-\d{4}-\d{3,}\b/i;
+  var LOST_RE = /\b(lost|nawala|nawawala|missing|naiwan|nahulog|can'?t find|cannot find)\b/i;
+  var FOUND_RE = /\b(found|nakita|napulot|natagpuan|picked up)\b/i;
+
+  var TOPICS = [
+    { local: true, test: /^\s*(hello|hi|hey|yo|kamusta|kumusta|good\s+(morning|afternoon|evening))\b[\s!.,?]*(po|there)?[\s!.,?]*$/i,
+      say: 'Kamusta. I can walk you through the system, look up a report, or help you find an item. What do you need?', chips: true },
+    { local: true, test: /^\s*(thanks|thank you|salamat)\b[\s!.,]*(po)?[\s!.,]*$/i,
+      say: 'Walang anuman. Ask again any time.' },
+    { test: /\b(how|paano|pano)\b[^.?!]*\b(report|file|post|mag-?report)\b|\bfile a report\b|\bhow to report\b/i,
+      say: 'Tap Report lost item or Report found item. Guests can file a found item without an account; lost items need a sign-in. You will get a reference like LF-2026-0007.',
+      links: [{ href: '/reports/new', text: 'Start a report' }] },
+    { test: /\bclaim(s|ed|ing)?\b|\bthis is mine\b|\bakin (ito|to)\b/i,
+      say: 'Open the found report, then tap “This is mine — file a claim”. You will need to describe proof of ownership. The person who posted the report reviews it.' },
+    { test: /\b(match|matches|matching|scanner|score)\b/i,
+      say: 'Matching is a fixed rubric, not AI: same category, same location, close dates, overlapping words. Open Nexus to scan a description. Every point comes with a reason.',
+      links: [{ href: '/nexus', text: 'Open Nexus' }] },
+    { test: /\b(nexus|radar|pulse)\b/i,
+      say: 'Nexus is the campus command centre: a radar of open reports by zone, a match scanner, and a live pulse. Press Ctrl+K and type Nexus from any page.',
+      links: [{ href: '/nexus', text: 'Open Nexus' }] },
+    { test: /\b(forgot|reset)\b[^.?!]*\bpassword\b|\bpassword\b[^.?!]*\b(forgot|reset)\b/i,
+      say: 'Use Forgot password on the sign-in page and we will email a reset link. If it does not arrive, check spam, then see the IT office with your student ID.',
+      links: [{ href: '/forgot-password', text: 'Reset my password' }] },
+    { test: /\b(sign\s?in|log\s?in|password|google|account|register|sign\s?up)\b/i,
+      say: 'Sign in with your CSPC email and password, or Google if it is available. New here? Register first and verify your email.',
+      links: [{ href: '/sign-in', text: 'Go to sign in' }, { href: '/register', text: 'Create an account' }] },
+    { test: /\b(theme|dark mode|light mode|glass)\b/i,
+      say: 'Use the sun/moon button in the header to switch light and dark.' },
+    { test: /\b(voice|microphone|mic|speak|speech)\b/i,
+      say: 'If your browser supports it, the mic on the home search box and on the Nexus scanner will type what you say. Allow the microphone when asked.' },
+    { test: /\b(ctrl|cmd|command palette|shortcut|shortcuts|keyboard)\b/i,
+      say: 'Press Ctrl+K (Cmd+K on a Mac) from any page to jump, search, or send a description to the scanner.' },
+    { test: /\b(privacy|guest|personal data|my data)\b/i,
+      say: 'Guest found-item reports are held for staff review. Contact details on guest reports are never shown on public pages.',
+      links: [{ href: '/privacy', text: 'Read the privacy page' }] },
+    { test: /\b(help|guide|faq|tulong)\b/i,
+      say: 'The user guide walks through reporting, searching, and claiming, step by step.',
+      links: [{ href: '/help', text: 'Open the user guide' }] },
   ];
 
-  function addMsg(text, who, href, linkText) {
-    if (!log) return;
-    var li = document.createElement('li');
-    li.className = who === 'me' ? 'is-me' : 'is-bot';
-    li.textContent = text;
-    if (href && linkText) {
-      li.appendChild(document.createTextNode(' '));
-      var a = document.createElement('a');
-      a.href = href;
-      a.textContent = linkText;
-      li.appendChild(a);
-    }
-    log.appendChild(li);
-    log.scrollTop = log.scrollHeight;
+  var CHIPS = [
+    { label: 'How do I report?', say: 'How do I report an item?' },
+    { label: 'How do I claim?', say: 'How do I claim an item?' },
+    { label: 'What happens after I claim?', say: 'What happens after I file a claim?' },
+    { label: 'I lost something', prefill: 'I lost my ' },
+  ];
+
+  function inferKind(text) {
+    var lost = LOST_RE.test(text);
+    var found = FOUND_RE.test(text);
+    if (lost && !found) return 'lost';
+    if (found && !lost) return 'found';
+    return '';
   }
 
-  function replyTo(text) {
-    var i, hit;
-    for (i = 0; i < REPLIES.length; i++) {
-      if (REPLIES[i].test.test(text)) { hit = REPLIES[i]; break; }
+  function findTopic(text) {
+    for (var i = 0; i < TOPICS.length; i++) {
+      if (TOPICS[i].test.test(text)) return TOPICS[i];
     }
-    if (hit) {
-      addMsg(hit.say, 'bot', hit.href, hit.link);
-      return;
+    return null;
+  }
+  // </routing-data>
+
+  var STORE_KEY = 'whereitis.concierge.v3';
+  var MAX_SAVED = 30;
+  var saved = [];
+  var busy = false;
+  var aiOn = null;          // null = unknown, true/false once checked
+  var statusAsked = false;
+
+  function loadSaved() {
+    try {
+      var raw = window.sessionStorage.getItem(STORE_KEY);
+      var arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr.slice(-MAX_SAVED) : [];
+    } catch (e) { return []; }
+  }
+  function persist() {
+    try { window.sessionStorage.setItem(STORE_KEY, JSON.stringify(saved.slice(-MAX_SAVED))); } catch (e) {}
+  }
+
+  // ---- safe mini-markdown: **bold** and [label](/site/path) only --------
+  var RICH_RE = /(\*\*[^*\n]+\*\*|\[[^\]\n]+\]\(\/[^)\s]*\))/g;
+  function safePath(p) {
+    return p.charAt(0) === '/' && p.charAt(1) !== '/' && !/["'<>\\]/.test(p);
+  }
+  function appendInline(parent, line) {
+    line.split(RICH_RE).forEach(function (part) {
+      if (!part) return;
+      var b = part.match(/^\*\*([^*]+)\*\*$/);
+      if (b) {
+        var s = document.createElement('strong');
+        s.textContent = b[1];
+        parent.appendChild(s);
+        return;
+      }
+      var l = part.match(/^\[([^\]]+)\]\((\/[^)\s]*)\)$/);
+      if (l && safePath(l[2])) {
+        var a = document.createElement('a');
+        a.href = l[2];
+        a.textContent = l[1];
+        parent.appendChild(a);
+        return;
+      }
+      parent.appendChild(document.createTextNode(part));
+    });
+  }
+  function appendRich(parent, text) {
+    String(text).split(/\r?\n/).forEach(function (line) {
+      if (!line.trim()) return;
+      var row = document.createElement('div');
+      row.className = 'concierge__line';
+      appendInline(row, line);
+      parent.appendChild(row);
+    });
+  }
+
+  function buildEntry(e) {
+    var li = document.createElement('li');
+    li.className = e.who === 'me' ? 'is-me' : 'is-bot';
+    if (e.text) {
+      if (e.rich) appendRich(li, e.text);
+      else li.appendChild(document.createTextNode(e.text));
     }
-    if (text.trim().length >= 3) {
-      addMsg('I can search the board or run an explainable scan for that.', 'bot');
-      fetch('/api/nexus/scan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({ q: text.trim() }),
-      }).then(function (r) { return r.json(); }).then(function (data) {
-        if (!data || !data.matches || !data.matches.length) {
-          addMsg('No strong matches yet. Try the reports list — keywords still work.', 'bot', '/reports?q=' + encodeURIComponent(text.trim()), 'Search reports');
-          return;
+
+    if (e.items && e.items.length) {
+      var wrap = document.createElement('div');
+      wrap.className = 'concierge__hits';
+      e.items.forEach(function (it) {
+        var a = document.createElement('a');
+        a.className = 'concierge__hit';
+        a.href = it.href;
+        var t = document.createElement('strong');
+        t.textContent = it.title;
+        var m = document.createElement('span');
+        m.textContent = it.meta;
+        a.appendChild(t);
+        a.appendChild(m);
+        if (it.why) {
+          var w = document.createElement('span');
+          w.textContent = it.why;
+          a.appendChild(w);
         }
-        var top = data.matches[0];
-        var why = (top.reasons || []).slice(0, 3).join('; ');
-        addMsg('Best hit: ' + top.report.title + ' (' + top.report.reference_no + ', score ' + top.score + '). ' + why,
-          'bot', '/reports/' + top.report.reference_no, 'Open report');
-      }).catch(function () {
-        addMsg('The scanner is offline. You can still browse reports.', 'bot', '/reports', 'Open reports');
+        wrap.appendChild(a);
       });
+      li.appendChild(wrap);
+    }
+
+    if (e.links && e.links.length) {
+      var row = document.createElement('div');
+      row.className = 'concierge__links';
+      e.links.forEach(function (l) {
+        var a = document.createElement('a');
+        a.href = l.href;
+        a.textContent = l.text;
+        row.appendChild(a);
+      });
+      li.appendChild(row);
+    }
+    return li;
+  }
+
+  function scrollLog() { if (log) log.scrollTop = log.scrollHeight; }
+
+  function say(entry) {
+    if (!log) return null;
+    var li = buildEntry(entry);
+    log.appendChild(li);
+    saved.push(entry);
+    persist();
+    scrollLog();
+    return li;
+  }
+
+  function showChips() {
+    if (!log) return;
+    var li = document.createElement('li');
+    li.className = 'concierge__chips';
+    CHIPS.forEach(function (c) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'concierge__chip';
+      b.textContent = c.label;
+      if (c.prefill) b.setAttribute('data-prefill', c.prefill);
+      else b.setAttribute('data-say', c.say);
+      li.appendChild(b);
+    });
+    log.appendChild(li);
+    scrollLog();
+  }
+
+  function clearChips() {
+    if (!log) return;
+    $$('.concierge__chips', log).forEach(function (el) { el.remove(); });
+  }
+
+  function showTyping(label) {
+    var el = buildEntry({ who: 'bot', text: label });
+    el.classList.add('is-typing');
+    log.appendChild(el);
+    scrollLog();
+    return el;
+  }
+
+  function setNote() {
+    if (!cNote || !cNote.firstChild || cNote.firstChild.nodeType !== 3) return;
+    cNote.firstChild.nodeValue = aiOn ? NOTE_AI : NOTE_RULES;
+  }
+
+  // ---- AI availability ---------------------------------------------------
+  function checkStatus(then) {
+    if (aiOn !== null) { then(); return; }
+    if (statusAsked) { then(); return; }
+    statusAsked = true;
+    fetch('/api/assistant/status', { headers: { 'Accept': 'application/json' } })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) { aiOn = !!(d && d.enabled); })
+      .catch(function () { aiOn = false; })
+      .then(function () { setNote(); then(); });
+  }
+
+  // Conversation memory for the AI: the visible text turns, newest last.
+  function historyForAI() {
+    var turns = [];
+    saved.forEach(function (e) {
+      if (!e.text) return;
+      if (e.who === 'me') turns.push({ role: 'user', content: e.text });
+      else if (e.who === 'bot') turns.push({ role: 'assistant', content: e.text });
+    });
+    return turns.slice(-10);
+  }
+
+  function askAI(text) {
+    busy = true;
+    var typing = showTyping('Thinking…');
+    function done() {
+      busy = false;
+      if (typing.parentNode) typing.parentNode.removeChild(typing);
+    }
+    fetch('/api/assistant/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ messages: historyForAI() }),
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, status: r.status, data: d || {} }; });
+    }).then(function (out) {
+      done();
+      if (out.ok && out.data.reply) {
+        say({ who: 'bot', text: out.data.reply, rich: true });
+        return;
+      }
+      if (out.data.fallback) {
+        // AI off or failing: answer with the built-in rules instead.
+        if (out.status === 503 && /not turned on/i.test(out.data.error || '')) { aiOn = false; setNote(); }
+        ruleRoute(text);
+        return;
+      }
+      say({ who: 'bot', text: out.data.error || 'Something went wrong. Please try again.' });
+    }).catch(function () {
+      done();
+      ruleRoute(text);
+    });
+  }
+
+  // ---- rule-based path (fallback) ----------------------------------------
+  function afterNoMatch(text, kind) {
+    var links = [{ href: '/reports?q=' + encodeURIComponent(text), text: 'Search the full board' }];
+    if (kind === 'lost') links.push({ href: '/reports/new?kind=lost', text: 'File a lost report' });
+    else if (kind === 'found') links.push({ href: '/reports/new?kind=found', text: 'File a found report' });
+    say({ who: 'bot', text: 'No strong match yet. New reports are added all the time, so check back.', links: links });
+  }
+
+  function scanFor(text) {
+    var kind = inferKind(text);
+    busy = true;
+    var typing = showTyping('Checking the board…');
+    function done() {
+      busy = false;
+      if (typing.parentNode) typing.parentNode.removeChild(typing);
+    }
+    fetch('/api/nexus/scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ q: text, kind: kind }),
+    }).then(function (r) {
+      return r.json().then(function (data) { return { ok: r.ok, data: data || {} }; });
+    }).then(function (out) {
+      done();
+      if (!out.ok) {
+        say({ who: 'bot', text: out.data.error || 'The scanner had a problem. Try again in a moment.',
+          links: [{ href: '/reports?q=' + encodeURIComponent(text), text: 'Search reports instead' }] });
+        return;
+      }
+      var matches = (out.data.matches || []).slice(0, 3);
+      if (!matches.length) { afterNoMatch(text, kind); return; }
+      var intro = kind === 'lost' ? 'These found reports look closest to what you lost:'
+        : kind === 'found' ? 'These lost reports look closest to what you found:'
+        : 'Closest reports I could find:';
+      var items = matches.map(function (m) {
+        var r = m.report || {};
+        return {
+          href: '/reports/' + encodeURIComponent(r.reference_no),
+          title: r.title || 'Untitled report',
+          meta: [r.kind, r.location_name, r.reference_no].filter(Boolean).join(' · '),
+          why: (m.reasons || []).slice(0, 2).join(', ') + ' (score ' + m.score + ')',
+        };
+      });
+      say({ who: 'bot', text: intro, items: items });
+      if (kind === 'lost') say({ who: 'bot', text: 'If one is yours, open it and tap “This is mine — file a claim”.' });
+    }).catch(function () {
+      done();
+      say({ who: 'bot', text: 'The scanner is offline. You can still browse reports.',
+        links: [{ href: '/reports', text: 'Open reports' }] });
+    });
+  }
+
+  function ruleRoute(text) {
+    var topic = findTopic(text);
+    if (topic) {
+      say({ who: 'bot', text: topic.say, links: topic.links });
+      if (topic.chips) showChips();
       return;
     }
-    addMsg('Try “how to report”, “claim”, “Nexus”, or describe the item in a few words.', 'bot');
+    if (text.length < 3) {
+      say({ who: 'bot', text: 'Pick one below, or describe the item in a few words.' });
+      showChips();
+      return;
+    }
+    scanFor(text);
+  }
+
+  // ---- entry point for every user message --------------------------------
+  function handle(text) {
+    text = String(text || '').trim();
+    if (!text || busy) return;
+    clearChips();
+    say({ who: 'me', text: text });
+
+    var ref = text.match(REF_RE);
+    if (ref && text.length <= 60) {
+      var no = ref[0].toUpperCase();
+      say({ who: 'bot', text: 'Here is ' + no + '. Its page shows the current status.',
+        links: [{ href: '/reports/' + encodeURIComponent(no), text: 'Open ' + no }] });
+      return;
+    }
+
+    var topic = findTopic(text);
+    if (topic && topic.local) {
+      say({ who: 'bot', text: topic.say });
+      if (topic.chips) showChips();
+      return;
+    }
+
+    busy = true;                       // hold the door while we learn if AI is on
+    checkStatus(function () {
+      busy = false;
+      if (aiOn) askAI(text); else ruleRoute(text);
+    });
+  }
+
+  function resetChat() {
+    if (!log) return;
+    log.innerHTML = '';
+    saved = [];
+    persist();
+    greet();
+  }
+
+  function greet() {
+    say({ who: 'bot', text: 'Hi! Ask me anything about WhereITis, or describe an item and I will look for it.' });
+    showChips();
   }
 
   function openConcierge() {
     if (!panel || !fab) return;
     panel.hidden = false;
     fab.setAttribute('aria-expanded', 'true');
-    if (log && log.children.length === 0) {
-      addMsg('Nexus online. Ask how to report, claim, or scan — or just describe an item.', 'bot');
-    }
+    checkStatus(function () {});
+    if (log && log.children.length === 0) greet();
     if (cInput) cInput.focus();
   }
   function closeConcierge() {
@@ -251,6 +573,36 @@
 
   if (fab && panel) {
     fab.hidden = false;
+
+    if (cNote) {
+      var clear = document.createElement('button');
+      clear.type = 'button';
+      clear.className = 'concierge__clear';
+      clear.textContent = 'Clear chat';
+      clear.addEventListener('click', resetChat);
+      cNote.appendChild(document.createTextNode(' '));
+      cNote.appendChild(clear);
+    }
+
+    if (log) {
+      log.setAttribute('aria-live', 'polite');
+      loadSaved().forEach(function (entry) {
+        log.appendChild(buildEntry(entry));
+        saved.push(entry);
+      });
+      scrollLog();
+      log.addEventListener('click', function (e) {
+        var chip = e.target.closest && e.target.closest('.concierge__chip');
+        if (!chip) return;
+        var prefill = chip.getAttribute('data-prefill');
+        if (prefill) {
+          clearChips();
+          if (cInput) { cInput.value = prefill; cInput.focus(); cInput.setSelectionRange(prefill.length, prefill.length); }
+        } else {
+          handle(chip.getAttribute('data-say'));
+        }
+      });
+    }
     fab.addEventListener('click', function () {
       if (panel.hidden) openConcierge(); else closeConcierge();
     });
@@ -262,10 +614,9 @@
       form.addEventListener('submit', function (e) {
         e.preventDefault();
         var text = cInput.value.trim();
-        if (!text) return;
-        addMsg(text, 'me');
+        if (!text || busy) return;
         cInput.value = '';
-        replyTo(text);
+        handle(text);
       });
     }
   }
