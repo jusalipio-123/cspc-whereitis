@@ -75,6 +75,19 @@ async function agingOver(days) {
   return rows[0].n;
 }
 
+// foundHeld: found items still waiting for their owner (open, matched or claimed). With returnedThisMonth
+// this gives the "Reunited this month" ring on the admin dashboard.
+async function foundHeld() {
+  const [rows] = await pool.execute(
+    `SELECT COUNT(*) AS n
+     FROM reports
+     WHERE kind = 'found' AND moderation_status = 'approved'
+       AND NOT (status = 'archived' AND COALESCE(archived_reason, '') = 'withdrawn by owner')
+       AND status IN ('open', 'matched', 'claimed')`
+  );
+  return Number(rows[0].n) || 0;
+}
+
 // sourceBreakdown: registered vs guest reports by moderation state, for the
 // admin analytics dashboard and the "waiting for review" badge.
 async function sourceBreakdown() {
@@ -101,5 +114,6 @@ module.exports = {
   topLocations,
   returnedThisMonth,
   agingOver,
+  foundHeld,
   sourceBreakdown,
 };

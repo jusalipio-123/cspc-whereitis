@@ -9,24 +9,71 @@
 <% const _bd = (typeof adminBadges !== 'undefined' && adminBadges) || { guestPending: 0, claimsPending: 0 }; %>
 <%- include('../partials/adminOpen', { title: 'Admin dashboard', active: 'overview' }) %>
 
-  <header class="page-head">
+  <%
+    // Greeting in Philippine time (the whole app runs on PST), by the signed-in admin's first name.
+    const _hr = parseInt(phParts().hour, 10);
+    const _first = String((typeof profileName !== 'undefined' && profileName) || '').trim().split(/\s+/)[0];
+    const _greet = _hr >= 5 && _hr < 12 ? 'Good morning' : (_hr >= 12 && _hr < 18 ? 'Good afternoon' : (_hr >= 18 && _hr < 22 ? 'Good evening' : 'Working late'));
+    const _icon = _hr >= 5 && _hr < 18 ? 'sun' : 'moon';
+    const _todo = [];
+    if (_bd.claimsPending)  { _todo.push('<a href="/admin/staff"><strong>' + Number(_bd.claimsPending) + ' ' + (_bd.claimsPending === 1 ? 'claim' : 'claims') + '</strong></a>'); }
+    if (_bd.guestPending)   { _todo.push('<a href="/admin/moderation"><strong>' + Number(_bd.guestPending) + ' guest ' + (_bd.guestPending === 1 ? 'report' : 'reports') + '</strong></a>'); }
+    const _verb = (_todo.length === 1 && (_bd.claimsPending + _bd.guestPending) === 1) ? 'needs' : 'need';
+  %>
+  <header class="page-head adm-greet">
     <div>
       <p class="page-head__eyebrow">Admin console</p>
-      <h1>Overview</h1>
-      <p class="muted">What needs your attention, and what is happening on the site.</p>
+      <h1>
+        <svg class="adm-greet__icon" viewBox="0 0 24 24" aria-hidden="true"><% if (_icon === 'sun') { %><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/><% } else { %><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/><% } %></svg>
+        <%= _greet %><%= _first ? ', ' + _first : '' %>
+      </h1>
+      <p class="muted">
+        <% if (_todo.length) { %>
+          <%- _todo.join(' and ') %> <%= _verb %> you.
+        <% } else { %>
+          You're all caught up. Nothing is waiting on you right now.
+        <% } %>
+      </p>
     </div>
   </header>
 
   <ul class="my-stats" aria-label="Summary">
-    <li><a href="/admin/moderation"><strong><%= _bd.guestPending %></strong><span>Guest reports to review<% if (_bd.guestPending) { %> <em>Needs review</em><% } %></span></a></li>
-    <li><a href="/admin/staff"><strong><%= _bd.claimsPending %></strong><span>Claims waiting<% if (_bd.claimsPending) { %> <em>Needs a decision</em><% } %></span></a></li>
-    <li><a href="/admin/reports"><strong><%= stats.reportsTotal %></strong><span>Total reports (<%= stats.reportsOpen %> open)</span></a></li>
-    <li><a href="/admin/reports?moderation=rejected"><strong><%= stats.reportsHidden %></strong><span>Hidden or rejected</span></a></li>
-    <li><a href="/admin/comments"><strong><%= stats.commentsTotal %></strong><span>Comments</span></a></li>
-    <li><a href="/admin/users"><strong><%= stats.usersTotal %></strong><span>Users</span></a></li>
-    <li><a href="/admin/reports?status=returned"><strong><%= returnedThisMonth %></strong><span>Returned this month</span></a></li>
-    <li><a href="/admin/staff"><strong><%= agingOver60 %></strong><span>Held over 60 days</span></a></li>
+    <li><a href="/admin/moderation"<%- _bd.guestPending ? ' class="adm-stat adm-stat--act"' : '' %>><% if (_bd.guestPending) { %><i class="adm-dot" aria-hidden="true"></i><% } %><strong data-count="<%= _bd.guestPending %>"><%= _bd.guestPending %></strong><span>Guest reports to review<% if (_bd.guestPending) { %> <em>Needs review</em><% } %></span></a></li>
+    <li><a href="/admin/staff"<%- _bd.claimsPending ? ' class="adm-stat adm-stat--act"' : '' %>><% if (_bd.claimsPending) { %><i class="adm-dot" aria-hidden="true"></i><% } %><strong data-count="<%= _bd.claimsPending %>"><%= _bd.claimsPending %></strong><span>Claims waiting<% if (_bd.claimsPending) { %> <em>Needs a decision</em><% } %></span></a></li>
+    <li><a href="/admin/reports"><strong data-count="<%= stats.reportsTotal %>"><%= stats.reportsTotal %></strong><span>Total reports (<%= stats.reportsOpen %> open)</span></a></li>
+    <li><a href="/admin/reports?moderation=rejected"><strong data-count="<%= stats.reportsHidden %>"><%= stats.reportsHidden %></strong><span>Hidden or rejected</span></a></li>
+    <li><a href="/admin/comments"><strong data-count="<%= stats.commentsTotal %>"><%= stats.commentsTotal %></strong><span>Comments</span></a></li>
+    <li><a href="/admin/users"><strong data-count="<%= stats.usersTotal %>"><%= stats.usersTotal %></strong><span>Users</span></a></li>
+    <li><a href="/admin/reports?status=returned"><strong data-count="<%= returnedThisMonth %>"><%= returnedThisMonth %></strong><span>Returned this month</span></a></li>
+    <li><a href="/admin/staff"><strong data-count="<%= agingOver60 %>"><%= agingOver60 %></strong><span>Held over 60 days</span></a></li>
   </ul>
+
+  <%
+    // "Reunited this month": returned items vs found items still waiting for their owner.
+    const _ret = Number(returnedThisMonth) || 0, _held = Number(heldFound) || 0, _all = _ret + _held;
+    const _pct = _all ? Math.round(_ret / _all * 100) : 0;
+    const _RC = 2 * Math.PI * 52;
+  %>
+  <section class="adm-card adm-reunite" aria-labelledby="reunite-h">
+    <div class="adm-reunite__ring">
+      <svg viewBox="0 0 130 130" aria-hidden="true">
+        <circle class="adm-reunite__track" cx="65" cy="65" r="52"/>
+        <circle class="adm-reunite__fill" cx="65" cy="65" r="52" transform="rotate(-90 65 65)"
+                style="--full:<%= _RC.toFixed(2) %>;stroke-dasharray:<%= _RC.toFixed(2) %>;stroke-dashoffset:<%= (_RC * (1 - _pct / 100)).toFixed(2) %>"/>
+      </svg>
+      <p class="adm-reunite__pct"><span data-count="<%= _pct %>"><%= _pct %></span>%</p>
+    </div>
+    <div class="adm-reunite__text">
+      <h2 id="reunite-h">Reunited this month</h2>
+      <% if (!_all) { %>
+        <p class="muted">No found items yet. When one is returned to its owner, it shows up here.</p>
+      <% } else { %>
+        <p><strong data-count="<%= _ret %>"><%= _ret %></strong> <%= _ret === 1 ? 'item has' : 'items have' %> gone home.
+           <strong><%= _held %></strong> <%= _held === 1 ? 'is' : 'are' %> still waiting for <%= _held === 1 ? 'its' : 'their' %> owner.</p>
+      <% } %>
+      <p class="adm-small"><a href="/admin/reports?status=returned">See returned items</a></p>
+    </div>
+  </section>
 
   <div class="adm-cols">
     <section aria-labelledby="recent-r-h">
@@ -88,47 +135,112 @@
     </div>
   </section>
 
-  <section aria-labelledby="monthly-h">
-    <h2 id="monthly-h">Monthly counts (last 12 months)</h2>
-    <div class="table-wrap">
-      <table class="table">
-        <thead><tr><th>Month</th><th>Kind</th><th>Count</th></tr></thead>
-        <tbody>
-          <% monthlyCounts.forEach(function (m) { %>
-            <tr><td><%= m.ym %></td><td><%= m.kind %></td><td><%= m.n %></td></tr>
-          <% }); %>
-        </tbody>
-      </table>
+  <%
+    // ---- Chart data, built from the same values the route already passes ----
+    const _MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const _now = phParts();
+    let _cy = parseInt(_now.year, 10), _cm = parseInt(_now.month, 10);
+    const _keys = [];
+    for (let i = 0; i < 12; i++) { _keys.unshift({ ym: _cy + '-' + String(_cm).padStart(2, '0'), label: _MON[_cm - 1], full: _MON[_cm - 1] + ' ' + _cy }); _cm--; if (_cm < 1) { _cm = 12; _cy--; } }
+    const _byKey = {};
+    monthlyCounts.forEach(function (r) { _byKey[r.ym + '|' + r.kind] = Number(r.n) || 0; });
+    const _lost  = _keys.map(function (k) { return _byKey[k.ym + '|lost']  || 0; });
+    const _found = _keys.map(function (k) { return _byKey[k.ym + '|found'] || 0; });
+    const _sum = function (a) { return a.reduce(function (x, y) { return x + y; }, 0); };
+    const _top = Math.max(4, Math.max.apply(null, _lost.concat(_found)));
+    const _nice = Math.ceil(_top / 4) * 4;
+    const W = 640, H = 260, PL = 32, PR = 8, PT = 10, PB = 26, PH = H - PT - PB, STEP = (W - PL - PR) / 12, BW = 16;
+    const _y = function (v) { return PT + PH * (1 - v / _nice); };
+
+    // Category donut: top 5 categories with reports, everything else grouped as "Other categories".
+    const _cats = categoryDistribution.map(function (c) { return { name: c.name, n: Number(c.n) || 0 }; }).filter(function (c) { return c.n > 0; });
+    const _slices = _cats.slice(0, 5);
+    if (_cats.length > 5) { _slices.push({ name: 'Other categories', n: _sum(_cats.slice(5).map(function (c) { return c.n; })) }); }
+    const _catTotal = _sum(_slices.map(function (c) { return c.n; }));
+    const R = 62, CIRC = 2 * Math.PI * R;
+
+    // Top locations: only locations that have reports.
+    const _locs = topLocations.map(function (l) { return { name: l.name, n: Number(l.n) || 0 }; }).filter(function (l) { return l.n > 0; });
+    const _locMax = _locs.length ? _locs[0].n : 1;
+  %>
+
+  <section class="adm-card" aria-labelledby="monthly-h">
+    <div class="adm-card__head">
+      <h2 id="monthly-h">Lost and found, last 12 months</h2>
+      <p class="adm-legend">
+        <span><i class="adm-key adm-key--lost"></i>Lost <b><%= _sum(_lost) %></b></span>
+        <span><i class="adm-key adm-key--found"></i>Found <b><%= _sum(_found) %></b></span>
+      </p>
     </div>
+    <svg class="adm-chart" viewBox="0 0 <%= W %> <%= H %>" role="img" aria-label="Lost and found reports per month for the last 12 months. The table below has the same numbers.">
+      <% [0, 1, 2, 3, 4].forEach(function (t) { const v = _nice / 4 * t; %>
+        <line class="adm-grid" x1="<%= PL %>" x2="<%= W - PR %>" y1="<%= _y(v) %>" y2="<%= _y(v) %>"/>
+        <text class="adm-axis" x="<%= PL - 6 %>" y="<%= _y(v) + 4 %>" text-anchor="end"><%= Math.round(v) %></text>
+      <% }); %>
+      <% _keys.forEach(function (k, i) {
+           const gx = PL + i * STEP + (STEP - BW * 2 - 4) / 2; %>
+        <% [[_lost[i], 'lost', 'Lost', 0], [_found[i], 'found', 'Found', 1]].forEach(function (b) {
+             if (!b[0]) return;
+             const bh = PH * b[0] / _nice; %>
+          <rect class="adm-bar adm-bar--<%= b[1] %>" tabindex="0" style="--i:<%= i * 2 + b[3] %>" data-tip="<%= k.full %>: <%= b[0] %> <%= b[2].toLowerCase() %>"
+                x="<%= (gx + b[3] * (BW + 4)).toFixed(1) %>" y="<%= (PT + PH - bh).toFixed(1) %>" width="<%= BW %>" height="<%= bh.toFixed(1) %>" rx="3"/>
+        <% }); %>
+        <text class="adm-axis" x="<%= (PL + i * STEP + STEP / 2).toFixed(1) %>" y="<%= H - 8 %>" text-anchor="middle"><%= k.label %></text>
+      <% }); %>
+    </svg>
+    <details class="adm-data">
+      <summary>View as table</summary>
+      <div class="table-wrap"><table class="table">
+        <thead><tr><th scope="col">Month</th><th scope="col">Lost</th><th scope="col">Found</th></tr></thead>
+        <tbody>
+          <% _keys.forEach(function (k, i) { %><tr><td><%= k.full %></td><td><%= _lost[i] %></td><td><%= _found[i] %></td></tr><% }); %>
+        </tbody>
+      </table></div>
+    </details>
   </section>
 
-  <section aria-labelledby="cat-h">
-    <h2 id="cat-h">Category distribution</h2>
-    <div class="table-wrap">
-      <table class="table">
-        <thead><tr><th>Category</th><th>Reports</th></tr></thead>
-        <tbody>
-          <% categoryDistribution.forEach(function (c) { %>
-            <tr><td><%= c.name %></td><td><%= c.n %></td></tr>
-          <% }); %>
-        </tbody>
-      </table>
-    </div>
-  </section>
+  <div class="adm-cols">
+    <section class="adm-card" aria-labelledby="cat-h">
+      <h2 id="cat-h">Category distribution</h2>
+      <% if (!_catTotal) { %>
+        <p class="muted">No reports yet.</p>
+      <% } else { %>
+        <div class="adm-donut">
+          <svg viewBox="0 0 180 180" role="img" aria-label="Reports by category. The list beside the chart has the same numbers.">
+            <% let _off = 0; _slices.forEach(function (c, i) {
+                 const len = CIRC * c.n / _catTotal, gap = _slices.length > 1 ? 2 : 0; %>
+              <circle class="adm-seg adm-c<%= i + 1 %>" tabindex="0" cx="90" cy="90" r="<%= R %>" style="--i:<%= i %>;stroke-dasharray:<%= Math.max(len - gap, 0.5).toFixed(2) %> <%= CIRC.toFixed(2) %>"
+                      transform="rotate(<%= (-90 + _off / CIRC * 360).toFixed(2) %> 90 90)" data-tip="<%= c.name %>: <%= c.n %> <%= c.n === 1 ? 'report' : 'reports' %>"/>
+            <% _off += len; }); %>
+            <text class="adm-donut__n" x="90" y="92" text-anchor="middle"><%= _catTotal %></text>
+            <text class="adm-donut__l" x="90" y="110" text-anchor="middle">reports</text>
+          </svg>
+          <ul class="adm-donut__list">
+            <% _slices.forEach(function (c, i) { %>
+              <li><i class="adm-key adm-c<%= i + 1 %>"></i><span><%= c.name %></span><b><%= c.n %></b></li>
+            <% }); %>
+          </ul>
+        </div>
+      <% } %>
+    </section>
 
-  <section aria-labelledby="loc-h">
-    <h2 id="loc-h">Top locations</h2>
-    <div class="table-wrap">
-      <table class="table">
-        <thead><tr><th>Location</th><th>Reports</th></tr></thead>
-        <tbody>
-          <% topLocations.forEach(function (l) { %>
-            <tr><td><%= l.name %></td><td><%= l.n %></td></tr>
+    <section class="adm-card" aria-labelledby="loc-h">
+      <h2 id="loc-h">Top locations</h2>
+      <% if (!_locs.length) { %>
+        <p class="muted">No reports yet.</p>
+      <% } else { %>
+        <ol class="adm-hbars">
+          <% _locs.forEach(function (l, i) { %>
+            <li>
+              <span class="adm-hbars__name" title="<%= l.name %>"><%= l.name %></span>
+              <span class="adm-hbars__track"><i style="width:<%= (l.n / _locMax * 100).toFixed(1) %>%;--i:<%= i %>"></i></span>
+              <b><%= l.n %></b>
+            </li>
           <% }); %>
-        </tbody>
-      </table>
-    </div>
-  </section>
+        </ol>
+      <% } %>
+    </section>
+  </div>
 
   <p>
     <a class="btn btn--primary" href="/admin/export.csv">Export current month CSV</a>

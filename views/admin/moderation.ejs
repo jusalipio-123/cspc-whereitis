@@ -22,6 +22,57 @@
       <h3>Nothing here</h3>
       <p><%= view === 'pending' ? 'No guest reports are waiting for review.' : 'No ' + view + ' guest reports yet.' %></p>
     </div>
+  <% } else if (view === 'pending') { %>
+    <div class="mod-queue" data-mod-queue>
+      <div class="mod-stack mod-list" data-mod-stack>
+        <% reports.forEach(function (r) { %>
+          <article class="mod-card" data-ref="<%= r.reference_no %>" aria-label="Guest report <%= r.reference_no %>">
+            <span class="mod-stamp" aria-hidden="true"></span>
+            <header class="mod-card__head">
+              <a href="/reports/<%= r.reference_no %>"><code><%= r.reference_no %></code></a>
+              <span class="adm-tag"><%= r.category_name %></span>
+              <% if (Number(r.same_source_24h) > 1) { %>
+                <span class="pill pill--matched" title="Guest reports from the same connection in the last 24 hours"><%= r.same_source_24h %> from same source today</span>
+              <% } %>
+            </header>
+            <h3 class="mod-card__title"><%= r.title %></h3>
+            <p class="mod-desc"><%= r.description %></p>
+            <div class="mod-card__body">
+              <% if (r.photo_url) { %>
+                <a class="mod-card__photo" href="<%= r.photo_url %>" target="_blank" rel="noopener"><img src="<%= r.photo_url %>" alt="Photo of <%= r.title %>" loading="lazy"></a>
+              <% } %>
+              <dl class="mod-facts">
+                <div><dt>Where</dt><dd><%= r.location_name %></dd></div>
+                <div><dt>Found</dt><dd><%= fmtDate(r.occurred_on, { year: undefined }) %></dd></div>
+                <div><dt>Held at</dt><dd><%= r.holding_location %></dd></div>
+                <div><dt>Sent</dt><dd><%= _fmt(r.created_at) %></dd></div>
+                <div><dt>Contact (staff only)</dt><dd>
+                  <% if (r.guest_contact_name || r.guest_contact_email || r.guest_contact_phone) { %>
+                    <% if (r.guest_contact_name) { %><%= r.guest_contact_name %><br><% } %>
+                    <% if (r.guest_contact_email) { %><%= r.guest_contact_email %><br><% } %>
+                    <% if (r.guest_contact_phone) { %><%= r.guest_contact_phone %><% } %>
+                  <% } else { %><span class="muted">None given</span><% } %>
+                </dd></div>
+                <% if (!r.photo_url) { %><div><dt>Photo</dt><dd><span class="muted">No photo</span></dd></div><% } %>
+              </dl>
+            </div>
+            <div class="mod-card__actions">
+              <form method="post" action="/admin/moderation/<%= r.reference_no %>/approve" class="mod-form">
+                <button class="btn btn--primary btn--sm" type="submit">Approve</button>
+              </form>
+              <form method="post" action="/admin/moderation/<%= r.reference_no %>/reject" class="mod-form mod-form--reject">
+                <div class="mod-form__note">
+                  <label class="visually-hidden" for="note-<%= r.id %>">Reason for rejecting <%= r.reference_no %></label>
+                  <input id="note-<%= r.id %>" name="note" class="input" type="text" minlength="5" maxlength="255" required placeholder="Reason (min. 5 characters)">
+                </div>
+                <button class="btn btn--danger btn--sm" type="submit">Reject</button>
+              </form>
+            </div>
+          </article>
+        <% }); %>
+      </div>
+    </div>
+    <script src="/js/admin-review.js" defer></script>
   <% } else { %>
     <div class="table-wrap">
       <table class="table table--mod">

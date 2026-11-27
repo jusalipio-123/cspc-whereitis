@@ -277,7 +277,7 @@ router.post('/:id/approve', requireIdentity, async (req, res, next) => {
       link: '/claims/' + claim.id,
     });
 
-    res.redirect(303, `/claims/${claim.id}?flash=ok:Claim%20approved`);
+    res.redirect(303, `/claims/${claim.id}?flash=yay:Claim%20approved.%20Item%20reunited%20with%20its%20owner.`);
   } catch (err) {
     next(err);
   }

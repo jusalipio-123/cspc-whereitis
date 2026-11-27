@@ -155,7 +155,9 @@ router.post(
         link: '/reports/' + report.reference_no,
       });
 
-      res.redirect(303, '/reports/' + report.reference_no + '?flash=ok:Status%20updated');
+      res.redirect(303, '/reports/' + report.reference_no + (toStatus === 'returned'
+        ? '?flash=yay:Marked%20as%20returned.%20Item%20reunited%20with%20its%20owner.'
+        : '?flash=ok:Status%20updated'));
     } catch (err) {
       next(err);
     }
@@ -212,6 +214,7 @@ async function dashboardHandler(req, res, next) {
       topLocations,
       returnedThisMonth,
       agingOver60,
+      heldFound,
       statusCounts,
       sourceBreakdown,
       stats,
@@ -224,6 +227,7 @@ async function dashboardHandler(req, res, next) {
       statsModel.topLocations(10),
       statsModel.returnedThisMonth(),
       statsModel.agingOver(60),
+      statsModel.foundHeld(),
       reportModel.countByStatus(),
       statsModel.sourceBreakdown(),
       adminModel.counts(),
@@ -239,6 +243,7 @@ async function dashboardHandler(req, res, next) {
       topLocations,
       returnedThisMonth,
       agingOver60,
+      heldFound,
       statusCounts,
       sourceBreakdown,
       stats,

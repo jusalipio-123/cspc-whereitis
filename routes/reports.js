@@ -711,7 +711,7 @@ router.post('/:reference/returned', requireIdentity, async (req, res, next) => {
     }
 
     await reportModel.markReturned(report.id, returnedToResult.value, req.identity.userId);
-    res.redirect(303, back + '?flash=ok:Marked%20as%20returned');
+    res.redirect(303, back + '?flash=yay:Marked%20as%20returned.%20Item%20reunited%20with%20its%20owner.');
   } catch (err) {
     next(err);
   }

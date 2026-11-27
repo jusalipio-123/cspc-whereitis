@@ -29,6 +29,7 @@ app.locals.googleClientId = process.env.GOOGLE_CLIENT_ID || '';
 const phTime = require('./lib/time');
 app.locals.fmtDate = phTime.fmtDate;
 app.locals.fmtDateTime = phTime.fmtDateTime;
+app.locals.phParts = phTime.parts;
 app.locals.todayISO = phTime.todayISO;
 app.locals.isoDate = phTime.isoDate;
 

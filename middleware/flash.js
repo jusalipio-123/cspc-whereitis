@@ -32,13 +32,14 @@ module.exports = function flash(req, res, next) {
 
   const type = raw.slice(0, sepIndex);
   const message = raw.slice(sepIndex + 1);
-  const allowedTypes = ['ok', 'err', 'info'];
+  const allowedTypes = ['ok', 'err', 'info', 'yay'];   // 'yay' = a success worth celebrating (item reunited)
 
   if (!allowedTypes.includes(type) || message.trim() === '') {
     res.locals.flash = null;
     return next();
   }
 
-  res.locals.flash = { type, message };
+  // 'yay' renders exactly like 'ok', plus a flag the banner uses to trigger the confetti.
+  res.locals.flash = type === 'yay' ? { type: 'ok', message, celebrate: true } : { type, message };
   next();
 };
