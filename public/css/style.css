@@ -2122,7 +2122,7 @@ main.container.my-page > ul.my-stats { max-width: none; }
 .photo-card__error { margin: .75rem 0 0; }
 
 /* ---------- Found board: "Can't find it? Report it as lost" callout ---------- */
-.board-cta { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); flex-wrap: wrap; margin-bottom: var(--s-3); padding: .85rem 1rem; background: var(--brand-050); border: 1px solid var(--border); border-radius: 10px; }
+.board-cta { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); flex-wrap: wrap; margin-top: var(--s-4); padding: .85rem 1rem; background: var(--brand-050); border: 1px solid var(--border); border-radius: 10px; }
 .board-cta__text { margin: 0; flex: 1 1 18rem; display: grid; gap: .15rem; }
 .board-cta__text span { font-size: .875rem; color: var(--muted); }
 .board-cta .btn { flex: 0 0 auto; background: var(--card); }
