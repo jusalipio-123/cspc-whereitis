@@ -37,7 +37,7 @@
         <div class="form-alert auth-alert" role="alert" id="auth-alert"><%= _errors.code %></div>
       <% } %>
 
-      <form method="post" action="/verify-code" class="auth-form" data-otp-form>
+      <form method="post" action="<%= purpose === 'reset' ? '/reset-password' : '/verify-code' %>" class="auth-form" data-otp-form>
         <% if (_next) { %><input type="hidden" name="next" value="<%= _next %>"><% } %>
         <div class="field">
           <label for="code">6-digit code</label>
@@ -57,7 +57,9 @@
       </form>
 
       <p class="auth-help auth-links">
-        <% if (_isRegister) { %>
+        <% if (purpose === 'reset') { %>
+          <a href="/forgot-password">&larr; Use a different email</a>
+        <% } else if (_isRegister) { %>
           <a href="/register<%= _next ? '?next=' + encodeURIComponent(_next) : '' %>">&larr; Use a different email</a>
         <% } else { %>
           <a href="/sign-in">&larr; Back to sign in</a>

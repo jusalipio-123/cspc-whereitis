@@ -520,6 +520,7 @@ async function resendCodeHandler(req, res, next) {
     const gate = otp.requestGate(req.ip);
 
     if (st.purpose === 'reset') {
+      if (st.stage === 'verified') return res.redirect(303, '/reset-password');
       // Same reply whether or not the address has an account.
       if (!gate.allowed) return res.redirect(303, withQuery('/reset-password', { flash: 'err:' + tooManyCodes(gate) }));
       const user = await userModel.findByEmail(st.email);
@@ -672,7 +673,8 @@ async function verifyEmailHandler(req, res, next) {
 // Forgot password, with a 6-digit code. The reply is identical whether or not the
 // email has an account, so this cannot be used to discover who is registered.
 //   /forgot-password  enter the email  ->  we email a code (if the account exists)
-//   /reset-password   enter the code AND the new password on one page
+//   /reset-password   step 1: type the code (checked on its own)
+//                     step 2: only after the code is accepted, choose the new password
 // ---------------------------------------------------------------------
 function forgotPasswordFormHandler(req, res) {
   res.render('myReports/forgotPassword', {
@@ -714,67 +716,77 @@ async function forgotPasswordSubmitHandler(req, res, next) {
   }
 }
 
-async function renderResetPassword(res, status, email, errors) {
-  let waitMs = 0;
-  try { waitMs = await otp.cooldownLeftMs('reset', email); } catch (err) { /* show the button */ }
+// Step 2 of a reset: the new-password form. Only shown after the emailed code was accepted.
+function renderResetPassword(res, status, email, errors) {
   return res.status(status).render('myReports/resetPassword', {
     title: 'Choose a new password',
     email,
     errors: errors || {},
-    resendWaitSec: Math.ceil(waitMs / 1000),
   });
 }
 
+// GET /reset-password
+//   no code session        -> back to /forgot-password
+//   code not typed yet     -> the code page
+//   code already accepted  -> the new-password form
 async function resetPasswordFormHandler(req, res, next) {
   try {
     const st = readOtpCookie(req);
-    if (!st || st.purpose !== 'reset' || st.stage !== 'code') {
+    if (!st || st.purpose !== 'reset') {
       if (typeof req.query.token === 'string' && req.query.token) {
         return res.redirect(303, '/forgot-password?flash=err:' + encodeURIComponent('Password resets now use a 6-digit code. Request one below.'));
       }
       return res.redirect(303, '/forgot-password');
     }
-    await renderResetPassword(res, 200, st.email, {});
+    if (st.stage === 'verified') return renderResetPassword(res, 200, st.email, {});
+    await renderVerifyCode(res, 200, st, {}, '');
   } catch (err) {
     next(err);
   }
 }
 
+// POST /reset-password
+//   step 1 (stage 'code')     checks the code ONLY; if right, unlocks step 2
+//   step 2 (stage 'verified') sets the new password
 async function resetPasswordSubmitHandler(req, res, next) {
   try {
     const st = readOtpCookie(req);
-    if (!st || st.purpose !== 'reset' || st.stage !== 'code') {
+    if (!st || st.purpose !== 'reset') {
       return res.redirect(303, '/forgot-password?flash=err:' + encodeURIComponent('Your reset session expired. Request a new code.'));
     }
 
-    const gate = limiter.check('otp:' + st.email, req.ip);
-    if (gate.limited) {
-      return renderResetPassword(res, 429, st.email, { code: 'Too many wrong codes. Please try again in ' + limiter.minutesText(gate.retryAfterMs) + '.' });
+    if (st.stage === 'code') {
+      const gate = limiter.check('otp:' + st.email, req.ip);
+      if (gate.limited) {
+        return renderVerifyCode(res, 429, st, { code: 'Too many wrong codes. Please try again in ' + limiter.minutesText(gate.retryAfterMs) + '.' }, '');
+      }
+      const code = typeof req.body.code === 'string' ? req.body.code : '';
+      const result = await otp.check('reset', st.email, code);
+      if (!result.ok) {
+        if (countsAsFailure(result)) limiter.recordFailure('otp:' + st.email, req.ip);
+        return renderVerifyCode(res, 422, st, { code: codeErrorText(result) }, '');
+      }
+      limiter.recordSuccess('otp:' + st.email);
+      setOtpCookie(res, st.email, 'reset', 'verified');
+      return res.redirect(303, withQuery('/reset-password', { flash: 'ok:Code accepted. Now choose a new password.' }));
     }
 
+    // stage 'verified': the code was already proven, so only the password is checked here.
     const user = await userModel.findByEmail(st.email);
-    const code = typeof req.body.code === 'string' ? req.body.code : '';
+    if (!user) {
+      clearOtpCookie(res);
+      return res.redirect(303, '/forgot-password?flash=err:' + encodeURIComponent('Your reset session expired. Request a new code.'));
+    }
     const password = typeof req.body.password === 'string' ? req.body.password : '';
     const password2 = typeof req.body.password_confirm === 'string' ? req.body.password_confirm : '';
-
-    // Fix the easy mistakes first so a typo in the password never costs one of the 5 code tries.
     const errors = {};
-    if (!otp.CODE_RE.test(code.replace(/\s+/g, ''))) errors.code = codeErrorText({ reason: 'format' });
-    const passwordError = passwords.validate(password, user || { email: st.email });
+    const passwordError = passwords.validate(password, user);
     if (passwordError) errors.password = passwordError;
     else if (password !== password2) errors.password_confirm = 'The two passwords do not match.';
     if (Object.keys(errors).length > 0) return renderResetPassword(res, 422, st.email, errors);
 
-    const result = await otp.check('reset', st.email, code);
-    if (!result.ok || !user) {
-      const r = result.ok ? { reason: 'none' } : result;
-      if (countsAsFailure(r)) limiter.recordFailure('otp:' + st.email, req.ip);
-      return renderResetPassword(res, 422, st.email, { code: codeErrorText(r) });
-    }
-    limiter.recordSuccess('otp:' + st.email);
-
     await userModel.setPassword(user.id, password);
-    if (!user.email_verified_at) await userModel.markEmailVerified(user.id);   // they just proved the mailbox is theirs
+    if (!user.email_verified_at) await userModel.markEmailVerified(user.id);   // they proved the mailbox is theirs
     clearOtpCookie(res);
 
     return res.redirect(303, '/sign-in?flash=ok:' + encodeURIComponent('Password updated. Please sign in with your new password.'));

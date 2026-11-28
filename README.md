@@ -163,7 +163,7 @@ The schema has fourteen tables:
 | GET | `/verify-email` | Public | Only for links emailed before codes existed (valid 24 hours) |
 | GET | `/check-email` | Public | Old address; redirects to `/verify-code` or sign-in |
 | GET, POST | `/forgot-password` | Public | Email a 6-digit password-reset code |
-| GET, POST | `/reset-password` | Public | Type the code and the new password on one page |
+| GET, POST | `/reset-password` | Public | Step 1: type the code (checked on its own). Step 2: only then choose the new password |
 | GET, POST | `/admin/login` | Public | Staff/admin sign-in |
 | GET | `/admin` | Admin only | Dashboard, CSV export link, bulk update and lookup management links |
 | GET | `/admin/staff` | Staff or admin | Pending claims and aging found items |
