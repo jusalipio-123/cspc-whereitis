@@ -144,7 +144,7 @@ router.post('/api/assistant/chat', async (req, res) => {
       signedIn: !!req.identity,
       deps,
     });
-    return res.json({ ok: true, reply: out.reply });
+    return res.json({ ok: true, reply: out.reply, suggestions: out.suggestions || [] });
   } catch (err) {
     const status = err && err.status ? err.status : 502;
     console.error('[assistant]', err && err.message);

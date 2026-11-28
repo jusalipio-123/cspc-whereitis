@@ -195,6 +195,9 @@
     { test: /\b(how|paano|pano)\b[^.?!]*\b(report|file|post|mag-?report)\b|\bfile a report\b|\bhow to report\b/i,
       say: 'Tap Report lost item or Report found item. Guests can file a found item without an account; lost items need a sign-in. You will get a reference like LF-2026-0007.',
       links: [{ href: '/reports/new', text: 'Start a report' }] },
+    { test: /\b(after|next|pagkatapos|happens?)\b[^.?!]*\bclaims?\b|\bclaims?\b[^.?!]*\b(approved|rejected|status|next)\b/i,
+      say: 'The person who posted the report reviews your claim and approves or rejects it. If it is approved, the report becomes claimed and you arrange the handover by message. Bring your student ID when you collect. Once the item is handed over it is marked returned. If a claim is rejected and you believe the item is yours, contact Student Affairs.',
+      links: [{ href: '/help', text: 'Open the user guide' }] },
     { test: /\bclaim(s|ed|ing)?\b|\bthis is mine\b|\bakin (ito|to)\b/i,
       say: 'Open the found report, then tap “This is mine — file a claim”. You will need to describe proof of ownership. The person who posted the report reviews it.' },
     { test: /\b(match|matches|matching|scanner|score)\b/i,
@@ -393,7 +396,39 @@
 
   function clearChips() {
     if (!log) return;
-    $$('.concierge__chips', log).forEach(function (el) { el.remove(); });
+    $$('.concierge__chips, .concierge__suggest', log).forEach(function (el) { el.remove(); });
+  }
+
+  // Follow-up questions the AI offers after a reply (tap to ask). Own scoped
+  // style, injected once, so no shared stylesheet is touched.
+  var suggestCssAdded = false;
+  function showSuggestions(list) {
+    if (!log || !Array.isArray(list) || !list.length) return;
+    if (!suggestCssAdded) {
+      suggestCssAdded = true;
+      var st = document.createElement('style');
+      st.textContent =
+        '.concierge__log li.concierge__suggest{align-self:stretch;max-width:100%;padding:0;background:none;border:0;box-shadow:none;' +
+        'display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.1rem}' +
+        '.concierge__log li.concierge__suggest .concierge__chip{display:inline-block;flex:0 1 auto;padding:.3rem .7rem;border-radius:999px;' +
+        'font-size:.8rem;font-weight:500;line-height:1.3;text-align:left}' +
+        '.concierge__log li.concierge__suggest .concierge__chip:hover,.concierge__log li.concierge__suggest .concierge__chip:focus-visible{transform:none}';
+      document.head.appendChild(st);
+    }
+    var li = document.createElement('li');
+    li.className = 'concierge__suggest';
+    list.slice(0, 3).forEach(function (q) {
+      if (typeof q !== 'string' || !q.trim()) return;
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'concierge__chip';
+      b.setAttribute('data-say', q.trim().slice(0, 80));
+      b.textContent = q.trim().slice(0, 60);
+      li.appendChild(b);
+    });
+    if (!li.children.length) return;
+    log.appendChild(li);
+    scrollLog();
   }
 
   function showTyping(label) {
@@ -456,6 +491,7 @@
       done();
       if (out.ok && out.data.reply) {
         say({ who: 'bot', text: out.data.reply, rich: true });
+        showSuggestions(out.data.suggestions);
         return;
       }
       if (out.data.fallback) {
