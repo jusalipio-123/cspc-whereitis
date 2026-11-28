@@ -14,8 +14,7 @@ const phTime = require('../lib/time');
 const SCAN_MIN = 3;
 const SCAN_MAX = 200;
 const SCAN_LIMIT = 8;
-const SCAN_FLOOR = 15;
-const CORPUS_SIZE = 120;
+const CORPUS_SIZE = 200;
 
 // Tiny in-memory throttle so a scripted client cannot hammer the scanner.
 const hits = new Map();
@@ -184,7 +183,14 @@ router.post('/api/nexus/scan', async (req, res, next) => {
     const categoryId = Number.parseInt(body.category_id, 10) || null;
     const locationId = Number.parseInt(body.location_id, 10) || null;
 
-    const corpus = await reportModel.scanCorpus(CORPUS_SIZE);
+    // If you lost it, only found reports can match (and vice versa). Category
+    // and location, when chosen, are exact filters, applied in SQL too.
+    const wantKind = kind === 'lost' ? 'found' : kind === 'found' ? 'lost' : null;
+    const corpus = await reportModel.scanCorpus(CORPUS_SIZE, {
+      kind: wantKind,
+      category_id: categoryId,
+      location_id: locationId,
+    });
     const probe = {
       title: q,
       description: q,
@@ -194,19 +200,32 @@ router.post('/api/nexus/scan', async (req, res, next) => {
       occurred_on: new Date(),
     };
 
+    // Nothing but filler ("lost item please")? Say so instead of guessing.
+    const terms = matching.scanTerms(q);
+    if (!terms.length) {
+      return res.json({
+        ok: true,
+        query: q,
+        corpus: corpus.length,
+        matches: [],
+        hint: 'Add the item itself (for example "umbrella" or "wallet") or a distinctive word like its colour or brand.',
+      });
+    }
+
+    // scanProbe returns score 0 for anything that is not a genuine match.
     const matches = corpus
-      .filter((row) => !kind || row.kind !== kind) // if you lost it, prefer found reports
       .map((row) => {
-        const { score, reasons } = matching.scanProbe(probe, row);
-        return { report: publicReport(row), score, reasons };
+        const { score, reasons, matched } = matching.scanProbe(probe, row);
+        return { report: publicReport(row), score, reasons, matched };
       })
-      .filter((entry) => entry.score >= SCAN_FLOOR && entry.reasons.length > 0)
-      .sort((a, b) => b.score - a.score)
+      .filter((entry) => entry.score > 0 && entry.reasons.length > 0)
+      .sort((a, b) => (b.score - a.score) || (b.matched.length - a.matched.length))
       .slice(0, SCAN_LIMIT);
 
     res.json({
       ok: true,
       query: q,
+      terms: terms.map((t) => t.word),
       corpus: corpus.length,
       matches,
     });
