@@ -35,17 +35,30 @@
 
 <div class="concierge" id="concierge-panel" data-concierge hidden role="dialog" aria-modal="true" aria-labelledby="concierge-title">
   <header class="concierge__head">
-    <div>
+    <span class="concierge__avatar" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M12 3a7 7 0 0 0-7 7v1.2A3.8 3.8 0 0 0 8.8 15H9v3l3.5-3H15a7 7 0 0 0 7-7 7 7 0 0 0-7-7h-3z"/><circle cx="9" cy="10" r="1"/><circle cx="12" cy="10" r="1"/><circle cx="15" cy="10" r="1"/></svg>
+    </span>
+    <div class="concierge__titles">
       <p class="concierge__kicker">Campus concierge</p>
       <h2 id="concierge-title">Ask WhereITis</h2>
+      <p class="concierge__status"><i aria-hidden="true"></i><span data-concierge-mode>Guided helper &middot; instant answers</span></p>
     </div>
-    <button type="button" class="concierge__close" data-concierge-close aria-label="Close concierge">×</button>
+    <div class="concierge__tools">
+      <button type="button" class="concierge__tool" data-concierge-clear aria-label="Start a new chat" title="New chat">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 0 1 13.7-5.6L20 8.7"/><path d="M20 4v4.7h-4.7"/><path d="M20 12a8 8 0 0 1-13.7 5.6L4 15.3"/><path d="M4 20v-4.7h4.7"/></svg>
+      </button>
+      <button type="button" class="concierge__tool concierge__close" data-concierge-close aria-label="Close concierge" title="Close">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
   </header>
   <ol class="concierge__log" data-concierge-log></ol>
   <form class="concierge__form" data-concierge-form>
     <label class="visually-hidden" for="concierge-q">Your question</label>
-    <input id="concierge-q" type="text" data-concierge-input maxlength="200" placeholder="Ask, or describe an item…" autocomplete="off">
-    <button type="submit">Send</button>
+    <input id="concierge-q" type="text" data-concierge-input maxlength="200" placeholder="Ask, or describe an item&hellip;" autocomplete="off">
+    <button type="submit" class="concierge__send" aria-label="Send">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </button>
   </form>
-  <p class="concierge__note">Guided helper — not a neural net. Matches always show their reasons.</p>
+  <p class="concierge__note">Guided helper &mdash; not a neural net. Matches always show their reasons.</p>
 </div>

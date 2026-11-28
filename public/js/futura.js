@@ -223,11 +223,16 @@
       links: [{ href: '/help', text: 'Open the user guide' }] },
   ];
 
+  // Quick-action cards. `icon` is a static SVG path set (no user input), so innerHTML is safe here.
   var CHIPS = [
-    { label: 'How do I report?', say: 'How do I report an item?' },
-    { label: 'How do I claim?', say: 'How do I claim an item?' },
-    { label: 'What happens after I claim?', say: 'What happens after I file a claim?' },
-    { label: 'I lost something', prefill: 'I lost my ' },
+    { label: 'Report an item', hint: 'Lost or found, step by step', say: 'How do I report an item?',
+      icon: '<path d="M12 5v14M5 12h14"/>' },
+    { label: 'Claim an item', hint: 'Prove it is yours', say: 'How do I claim an item?',
+      icon: '<path d="M12 3 4.5 6v5.5c0 4.4 3.1 8 7.5 9.5 4.4-1.5 7.5-5.1 7.5-9.5V6z"/><path d="m9 12 2.2 2.2L15.5 10"/>' },
+    { label: 'After I claim', hint: 'What happens next', say: 'What happens after I file a claim?',
+      icon: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>' },
+    { label: 'I lost something', hint: 'Describe it, I will search', prefill: 'I lost my ',
+      icon: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>' },
   ];
 
   function inferKind(text) {
@@ -365,7 +370,19 @@
       var b = document.createElement('button');
       b.type = 'button';
       b.className = 'concierge__chip';
-      b.textContent = c.label;
+      var ico = document.createElement('span');
+      ico.className = 'concierge__chip-ico';
+      ico.setAttribute('aria-hidden', 'true');
+      ico.innerHTML = '<svg viewBox="0 0 24 24">' + c.icon + '</svg>';
+      var txt = document.createElement('span');
+      txt.className = 'concierge__chip-label';
+      txt.appendChild(document.createTextNode(c.label));
+      var hint = document.createElement('span');
+      hint.className = 'concierge__chip-hint';
+      hint.textContent = c.hint;
+      txt.appendChild(hint);
+      b.appendChild(ico);
+      b.appendChild(txt);
       if (c.prefill) b.setAttribute('data-prefill', c.prefill);
       else b.setAttribute('data-say', c.say);
       li.appendChild(b);
@@ -382,12 +399,19 @@
   function showTyping(label) {
     var el = buildEntry({ who: 'bot', text: label });
     el.classList.add('is-typing');
+    var dots = document.createElement('span');
+    dots.className = 'concierge__dots';
+    dots.setAttribute('aria-hidden', 'true');
+    dots.innerHTML = '<i></i><i></i><i></i>';
+    el.appendChild(dots);
     log.appendChild(el);
     scrollLog();
     return el;
   }
 
+  var cMode = $('[data-concierge-mode]');
   function setNote() {
+    if (cMode) cMode.textContent = aiOn ? 'AI-assisted \u00b7 replies in seconds' : 'Guided helper \u00b7 instant answers';
     if (!cNote || !cNote.firstChild || cNote.firstChild.nodeType !== 3) return;
     cNote.firstChild.nodeValue = aiOn ? NOTE_AI : NOTE_RULES;
   }
@@ -574,15 +598,12 @@
   if (fab && panel) {
     fab.hidden = false;
 
-    if (cNote) {
-      var clear = document.createElement('button');
-      clear.type = 'button';
-      clear.className = 'concierge__clear';
-      clear.textContent = 'Clear chat';
-      clear.addEventListener('click', resetChat);
-      cNote.appendChild(document.createTextNode(' '));
-      cNote.appendChild(clear);
-    }
+    var cClear = $('[data-concierge-clear]');
+    if (cClear) cClear.addEventListener('click', function () {
+      if (busy) return;
+      resetChat();
+      if (cInput) cInput.focus();
+    });
 
     if (log) {
       log.setAttribute('aria-live', 'polite');
