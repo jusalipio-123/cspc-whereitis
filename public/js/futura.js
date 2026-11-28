@@ -308,6 +308,140 @@
     });
   }
 
+  // ---- text to speech ------------------------------------------------------
+  // Uses the browser's built-in voices (Web Speech API): no server, no key, no cost.
+  // Each bot reply gets a small speaker button; a header toggle reads new replies
+  // aloud automatically. Quietly absent in browsers without speech support.
+  var synth = ('speechSynthesis' in window && 'SpeechSynthesisUtterance' in window) ? window.speechSynthesis : null;
+  var ttsOK = !!synth;
+  var TTS_KEY = 'whereitis.concierge.tts';
+  var SPEAK_LABEL = 'Read this reply aloud';
+  var autoRead = false;
+  try { autoRead = window.localStorage.getItem(TTS_KEY) === '1'; } catch (err) { /* storage blocked */ }
+  var speakingBtn = null;
+  var micAbort = null;               // set below when the chat mic exists
+  var speakToken = 0;
+  var voiceList = [];
+
+  function loadVoices() { if (synth) voiceList = synth.getVoices() || []; }
+  if (synth) {
+    loadVoices();
+    if (synth.addEventListener) synth.addEventListener('voiceschanged', loadVoices);
+  }
+
+  var FIL_RE = /\b(ang|ng|sa|mga|ako|ko|mo|ka|po|ba|na|ay|kung|paano|pano|saan|kailan|anong|ano|nawala|nawalang|nakita|salamat|kumusta|kamusta|bukas|ngayon|gamit|bagay|naman|din|rin|lang|namin|natin|niyo|ito|iyon|yung|wala|hindi|opo|oo)\b/gi;
+  function looksFilipino(t) {
+    var hits = (t.match(FIL_RE) || []).length;
+    var words = t.split(/\s+/).length || 1;
+    return hits >= 2 && hits / words >= 0.2;
+  }
+
+  function pickVoice(fil) {
+    var prefs = fil ? ['fil', 'tl'] : ['en-ph', 'en-us', 'en'];
+    for (var i = 0; i < prefs.length; i++) {
+      for (var j = 0; j < voiceList.length; j++) {
+        if (String(voiceList[j].lang || '').toLowerCase().indexOf(prefs[i]) === 0) return voiceList[j];
+      }
+    }
+    return null;
+  }
+
+  // Plain speakable text: no markdown, reference numbers spelled out.
+  function cleanForSpeech(text) {
+    return String(text || '')
+      .replace(/\[([^\]]+)\]\(\/[^)\s]*\)/g, '$1')
+      .replace(/\*\*/g, '')
+      .replace(/\bLF-(\d{4})-(\d+)\b/gi, 'L F $1, $2')
+      .replace(/([.!?:])\s*\n+\s*/g, '$1 ')
+      .replace(/\s*\n+\s*/g, '. ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  // Some browsers cut long utterances short, so speak sentence-sized pieces.
+  function chunkText(text) {
+    var parts = text.match(/[^.!?]+[.!?]*\s*/g) || [text];
+    var out = [];
+    var cur = '';
+    parts.forEach(function (p) {
+      if (cur && (cur + p).length > 180) { out.push(cur.trim()); cur = ''; }
+      cur += p;
+    });
+    if (cur.trim()) out.push(cur.trim());
+    return out;
+  }
+
+  function markSpeaking(btn, on) {
+    if (!btn) return;
+    btn.classList.toggle('is-speaking', on);
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btn.setAttribute('aria-label', on ? 'Stop reading' : SPEAK_LABEL);
+    btn.title = on ? 'Stop' : 'Listen';
+  }
+
+  function stopSpeaking() {
+    if (!synth) return;
+    speakToken += 1;                 // makes any pending "finished" callback a no-op
+    synth.cancel();
+    markSpeaking(speakingBtn, false);
+    speakingBtn = null;
+  }
+
+  function speak(text, btn) {
+    if (!synth) return;
+    stopSpeaking();
+    var clean = cleanForSpeech(text);
+    if (!clean) return;
+    var fil = looksFilipino(clean);
+    var voice = pickVoice(fil);
+    var parts = chunkText(clean);
+    var token = speakToken;
+    speakingBtn = btn || null;
+    markSpeaking(btn, true);
+    parts.forEach(function (part, i) {
+      var u = new window.SpeechSynthesisUtterance(part);
+      u.lang = voice ? voice.lang : (fil ? 'fil-PH' : 'en-PH');
+      if (voice) u.voice = voice;
+      u.rate = 1;
+      if (i === parts.length - 1) {
+        var finished = function () {
+          if (token !== speakToken) return;
+          markSpeaking(speakingBtn, false);
+          speakingBtn = null;
+        };
+        u.onend = finished;
+        u.onerror = finished;
+      }
+      synth.speak(u);
+    });
+  }
+
+  function makeSpeakButton(text) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'concierge__speak';
+    b.setAttribute('aria-label', SPEAK_LABEL);
+    b.setAttribute('aria-pressed', 'false');
+    b.title = 'Listen';
+    b.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z"/><path d="M15.5 9a4 4 0 0 1 0 6"/><path d="M18 6.5a8 8 0 0 1 0 11"/></svg>';
+    b._speakText = text;
+    return b;
+  }
+
+  if (ttsOK) {
+    var ttsCss = document.createElement('style');
+    ttsCss.textContent =
+      '.concierge__speak{display:inline-flex;align-items:center;justify-content:center;align-self:flex-start;width:26px;height:26px;margin:.3rem 0 0;padding:0;border:0;border-radius:999px;background:transparent;color:inherit;opacity:.6;cursor:pointer}' +
+      '.concierge__speak svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}' +
+      '.concierge__speak:hover,.concierge__speak:focus-visible{opacity:1;background:rgba(127,127,127,.2)}' +
+      '.concierge__speak.is-speaking{opacity:1;background:rgba(56,140,220,.25)}' +
+      '.concierge__tool[data-concierge-tts] .tts-slash{display:none}' +
+      '.concierge__tool[data-concierge-tts][aria-pressed="false"] .tts-slash{display:inline}' +
+      '.concierge__tool[data-concierge-tts][aria-pressed="true"]{background:rgba(56,140,220,.25)}';
+    document.head.appendChild(ttsCss);
+    window.addEventListener('pagehide', function () { if (synth) synth.cancel(); });
+  }
+
   function buildEntry(e) {
     var li = document.createElement('li');
     li.className = e.who === 'me' ? 'is-me' : 'is-bot';
@@ -350,6 +484,8 @@
       });
       li.appendChild(row);
     }
+
+    if (ttsOK && e.who === 'bot' && e.text && !e.noSpeak) li.appendChild(makeSpeakButton(e.text));
     return li;
   }
 
@@ -362,6 +498,9 @@
     saved.push(entry);
     persist();
     scrollLog();
+    if (autoRead && ttsOK && entry.who === 'bot' && entry.text && !entry.noAuto) {
+      speak(entry.text, li.querySelector('.concierge__speak'));
+    }
     return li;
   }
 
@@ -432,7 +571,7 @@
   }
 
   function showTyping(label) {
-    var el = buildEntry({ who: 'bot', text: label });
+    var el = buildEntry({ who: 'bot', text: label, noSpeak: true });
     el.classList.add('is-typing');
     var dots = document.createElement('span');
     dots.className = 'concierge__dots';
@@ -605,6 +744,7 @@
 
   function resetChat() {
     if (!log) return;
+    stopSpeaking();
     log.innerHTML = '';
     saved = [];
     persist();
@@ -612,7 +752,7 @@
   }
 
   function greet() {
-    say({ who: 'bot', text: 'Hi! Ask me anything about WhereITis, or describe an item and I will look for it.' });
+    say({ who: 'bot', text: 'Hi! Ask me anything about WhereITis, or describe an item and I will look for it.', noAuto: true });
     showChips();
   }
 
@@ -626,6 +766,8 @@
   }
   function closeConcierge() {
     if (!panel || !fab) return;
+    stopSpeaking();
+    if (micAbort) micAbort();
     panel.hidden = true;
     fab.setAttribute('aria-expanded', 'false');
     fab.focus();
@@ -649,6 +791,11 @@
       });
       scrollLog();
       log.addEventListener('click', function (e) {
+        var sp = e.target.closest && e.target.closest('.concierge__speak');
+        if (sp) {
+          if (speakingBtn === sp) stopSpeaking(); else speak(sp._speakText, sp);
+          return;
+        }
         var chip = e.target.closest && e.target.closest('.concierge__chip');
         if (!chip) return;
         var prefill = chip.getAttribute('data-prefill');
@@ -664,6 +811,29 @@
       if (panel.hidden) openConcierge(); else closeConcierge();
     });
     if (cClose) cClose.addEventListener('click', closeConcierge);
+
+    // Header toggle: read new replies aloud automatically (remembered on this device).
+    var cTools = $('.concierge__tools');
+    if (ttsOK && cTools) {
+      var tb = document.createElement('button');
+      tb.type = 'button';
+      tb.className = 'concierge__tool';
+      tb.setAttribute('data-concierge-tts', '');
+      tb.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z"/><path d="M15.5 9a4 4 0 0 1 0 6"/><path d="M18 6.5a8 8 0 0 1 0 11"/><path class="tts-slash" d="M3.5 3.5l17 17"/></svg>';
+      var syncTts = function () {
+        tb.setAttribute('aria-pressed', autoRead ? 'true' : 'false');
+        tb.setAttribute('aria-label', autoRead ? 'Turn off reading replies aloud' : 'Read replies aloud');
+        tb.title = autoRead ? 'Reading replies aloud: on' : 'Read replies aloud: off';
+      };
+      syncTts();
+      tb.addEventListener('click', function () {
+        autoRead = !autoRead;
+        try { window.localStorage.setItem(TTS_KEY, autoRead ? '1' : '0'); } catch (err) { /* ignore */ }
+        if (!autoRead) stopSpeaking();
+        syncTts();
+      });
+      cTools.insertBefore(tb, cTools.firstChild);
+    }
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && panel && !panel.hidden) closeConcierge();
     });
@@ -674,6 +844,130 @@
         if (!text || busy) return;
         cInput.value = '';
         handle(text);
+      });
+    }
+
+    // ---- microphone: talk instead of typing -------------------------------
+    // Tap the mic and speak. Your words appear in the box as you talk and are
+    // sent automatically when you stop. EN / FIL picks the language it listens for.
+    var sendBtn = form ? form.querySelector('.concierge__send') : null;
+    if (Speech && form && cInput && sendBtn) {
+      var MIC_LANG_KEY = 'whereitis.concierge.lang';
+      var micLang = 'en-PH';
+      try { if (window.localStorage.getItem(MIC_LANG_KEY) === 'fil-PH') micLang = 'fil-PH'; } catch (err) { /* ignore */ }
+      var basePlaceholder = cInput.getAttribute('placeholder') || '';
+      var hintTimer = null;
+      var recog = null;
+
+      var micCss = document.createElement('style');
+      micCss.textContent =
+        '.concierge__mic{flex:none;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;padding:0;border:0;border-radius:999px;background:transparent;color:inherit;cursor:pointer}' +
+        '.concierge__mic svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}' +
+        '.concierge__mic:hover,.concierge__mic:focus-visible{background:rgba(127,127,127,.2)}' +
+        '.concierge__mic.is-on{background:#d93a3a;color:#fff;animation:conciergeMic 1.2s ease-in-out infinite}' +
+        '@keyframes conciergeMic{0%,100%{box-shadow:0 0 0 0 rgba(217,58,58,.5)}50%{box-shadow:0 0 0 7px rgba(217,58,58,0)}}' +
+        '@media (prefers-reduced-motion:reduce){.concierge__mic.is-on{animation:none}}' +
+        '.concierge__mic-lang{flex:none;padding:.35rem .35rem;border:0;border-radius:6px;background:transparent;color:inherit;font-size:.68rem;font-weight:700;letter-spacing:.04em;line-height:1;opacity:.75;cursor:pointer}' +
+        '.concierge__mic-lang:hover,.concierge__mic-lang:focus-visible{opacity:1;background:rgba(127,127,127,.2)}';
+      document.head.appendChild(micCss);
+
+      var micBtn = document.createElement('button');
+      micBtn.type = 'button';
+      micBtn.className = 'concierge__mic';
+      micBtn.setAttribute('aria-pressed', 'false');
+      micBtn.setAttribute('aria-label', 'Speak your question');
+      micBtn.title = 'Speak';
+      micBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6"/></svg>';
+
+      var langBtn = document.createElement('button');
+      langBtn.type = 'button';
+      langBtn.className = 'concierge__mic-lang';
+      var syncLang = function () {
+        var fil = micLang === 'fil-PH';
+        langBtn.textContent = fil ? 'FIL' : 'EN';
+        langBtn.setAttribute('aria-label', 'Speech language: ' + (fil ? 'Filipino' : 'English') + '. Tap to switch.');
+        langBtn.title = langBtn.getAttribute('aria-label');
+      };
+      syncLang();
+      langBtn.addEventListener('click', function () {
+        micLang = micLang === 'fil-PH' ? 'en-PH' : 'fil-PH';
+        try { window.localStorage.setItem(MIC_LANG_KEY, micLang); } catch (err) { /* ignore */ }
+        syncLang();
+      });
+
+      form.insertBefore(langBtn, sendBtn);
+      form.insertBefore(micBtn, langBtn);
+
+      var hint = function (msg) {
+        cInput.placeholder = msg;
+        clearTimeout(hintTimer);
+        hintTimer = setTimeout(function () { cInput.placeholder = basePlaceholder; }, 4500);
+      };
+      var micIdle = function () {
+        micBtn.classList.remove('is-on');
+        micBtn.setAttribute('aria-pressed', 'false');
+        micBtn.setAttribute('aria-label', 'Speak your question');
+        micBtn.title = 'Speak';
+      };
+
+      micAbort = function () {
+        var r = recog;
+        recog = null;
+        micIdle();
+        cInput.placeholder = basePlaceholder;
+        if (r) { try { r.abort(); } catch (err) { /* ignore */ } }
+      };
+
+      micBtn.addEventListener('click', function () {
+        if (recog) { try { recog.stop(); } catch (err) { /* ignore */ } return; }   // stop = send what was heard
+        if (busy) return;
+        stopSpeaking();                       // don't listen to our own voice
+        clearTimeout(hintTimer);
+        var r = new Speech();
+        var finalText = '';
+        var failure = '';
+        r.lang = micLang;
+        r.interimResults = true;
+        r.maxAlternatives = 1;
+        r.continuous = false;
+        r.onresult = function (ev) {
+          var interim = '';
+          for (var i = ev.resultIndex; i < ev.results.length; i++) {
+            var piece = ev.results[i][0].transcript;
+            if (ev.results[i].isFinal) finalText += piece; else interim += piece;
+          }
+          cInput.value = (finalText + interim).slice(0, 300);
+          cInput.dispatchEvent(new Event('input', { bubbles: true }));
+        };
+        r.onerror = function (ev) { failure = (ev && ev.error) || 'error'; };
+        r.onend = function () {
+          if (recog !== r) return;            // aborted or replaced
+          recog = null;
+          micIdle();
+          cInput.placeholder = basePlaceholder;
+          var text = cInput.value.trim();
+          if (failure === 'not-allowed' || failure === 'service-not-allowed') {
+            hint('Microphone is blocked. Allow it for this site in your browser.');
+            return;
+          }
+          if (failure === 'network') { hint('Voice needs an internet connection. Try typing instead.'); return; }
+          if (!text) { hint("I didn't catch that. Tap the mic and try again."); return; }
+          if (typeof form.requestSubmit === 'function') form.requestSubmit();
+          else form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+        };
+        cInput.value = '';
+        recog = r;
+        try {
+          r.start();
+          micBtn.classList.add('is-on');
+          micBtn.setAttribute('aria-pressed', 'true');
+          micBtn.setAttribute('aria-label', 'Stop listening and send');
+          micBtn.title = 'Stop';
+          cInput.placeholder = micLang === 'fil-PH' ? 'Nakikinig… magsalita na' : 'Listening… go ahead';
+        } catch (err) {
+          recog = null;
+          micIdle();
+        }
       });
     }
   }
