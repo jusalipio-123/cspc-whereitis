@@ -527,3 +527,17 @@ CREATE TABLE IF NOT EXISTS messages (
     FOREIGN KEY (sender_user_id)  REFERENCES users(id)         ON DELETE RESTRICT,
   INDEX idx_messages_conversation (conversation_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- One-time 6-digit email codes (registration, verifying an old account, password reset).
+-- Only a keyed hash of the code is stored. The app also creates this table on start (lib/migrate.js).
+CREATE TABLE IF NOT EXISTS email_otps (
+  id          INT AUTO_INCREMENT PRIMARY KEY,
+  purpose     VARCHAR(12)  NOT NULL,
+  email       VARCHAR(160) NOT NULL,
+  code_hash   CHAR(64)     NOT NULL,
+  expires_at  DATETIME     NOT NULL,
+  attempts    TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  sent_at     DATETIME     NOT NULL,
+  UNIQUE KEY uq_email_otps (purpose, email),
+  INDEX idx_email_otps_expires (expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -30,6 +30,7 @@ const validate = require('../middleware/validate');
 const passwords = require('../lib/passwords');
 const limiter = require('../lib/loginLimiter');
 const mailer = require('../lib/mailer');
+const otp = require('../lib/otp');
 const sessionStore = require('../lib/sessionStore');
 
 const COOKIE_NAME = 'whereitis_id';
@@ -94,33 +95,96 @@ function buildCookieValue(userId, studentNo, role, expiresAtMs) {
 }
 
 // ---------------------------------------------------------------------
-// "Waiting for verification" cookie. Lets the check-email page ask, every few
-// seconds, whether this browser's pending email has been verified (e.g. from the
-// phone). It is only handed out right after a successful registration or a
-// correct-password sign-in on an unverified account, so nobody can use it to
-// find out whether some other email address is registered or verified.
+// "Email code" cookie. While someone is typing a 6-digit code it remembers WHICH
+// address, WHAT the code is for (register / verify / reset) and how far they got:
+//   stage 'code'     = a code was sent and we are waiting for them to type it
+//   stage 'verified' = (register only) the code was right, so they may finish the form
+// It is signed (cannot be edited), HttpOnly and short-lived. The same cookie is
+// handed out whether or not an address has an account, so it reveals nothing.
 // ---------------------------------------------------------------------
-const VERIFY_WAIT_COOKIE = 'whereitis_verifywait';
-const VERIFY_WAIT_MAX_AGE_MS = 24 * 60 * 60 * 1000; // same lifetime as the emailed link
+const OTP_COOKIE = 'whereitis_otp';
+const OTP_COOKIE_MAX_AGE_MS = 30 * 60 * 1000;
 
-function setVerifyWaitCookie(res, email) {
+function setOtpCookie(res, email, purpose, stage) {
   const b64 = Buffer.from(String(email), 'utf8').toString('base64url');
-  const expires = Date.now() + VERIFY_WAIT_MAX_AGE_MS;
-  const sig = hmac.sign(`verifywait.${b64}.${expires}`);
-  res.cookie(VERIFY_WAIT_COOKIE, `${b64}.${expires}.${sig}`, cookieOptions(VERIFY_WAIT_MAX_AGE_MS));
+  const expires = Date.now() + OTP_COOKIE_MAX_AGE_MS;
+  const sig = hmac.sign(`otpstate.${b64}.${purpose}.${stage}.${expires}`);
+  res.cookie(OTP_COOKIE, `${b64}.${purpose}.${stage}.${expires}.${sig}`, cookieOptions(OTP_COOKIE_MAX_AGE_MS));
 }
 
-// readVerifyWaitEmail: the email from a valid, unexpired cookie, or null.
-function readVerifyWaitEmail(req) {
-  const raw = req.cookies && req.cookies[VERIFY_WAIT_COOKIE];
+// readOtpCookie: { email, purpose, stage } from a valid, unexpired cookie, or null.
+function readOtpCookie(req) {
+  const raw = req.cookies && req.cookies[OTP_COOKIE];
   if (!raw || typeof raw !== 'string') return null;
   const parts = raw.split('.');
-  if (parts.length !== 3) return null;
-  const [b64, expStr, sig] = parts;
+  if (parts.length !== 5) return null;
+  const [b64, purpose, stage, expStr, sig] = parts;
   const expires = Number(expStr);
-  if (!/^[A-Za-z0-9_-]+$/.test(b64) || !Number.isFinite(expires) || expires <= Date.now()) return null;
-  if (!hmac.verify(`verifywait.${b64}.${expStr}`, sig)) return null;
-  return Buffer.from(b64, 'base64url').toString('utf8');
+  if (!/^[A-Za-z0-9_-]+$/.test(b64) || !otp.PURPOSES.includes(purpose) || !['code', 'verified'].includes(stage)) return null;
+  if (!Number.isFinite(expires) || expires <= Date.now()) return null;
+  if (!hmac.verify(`otpstate.${b64}.${purpose}.${stage}.${expStr}`, sig)) return null;
+  return { email: Buffer.from(b64, 'base64url').toString('utf8'), purpose, stage };
+}
+
+function clearOtpCookie(res) {
+  res.clearCookie(OTP_COOKIE, { path: '/' });
+}
+
+function withQuery(path, params) {
+  const q = Object.keys(params)
+    .filter((k) => params[k])
+    .map((k) => k + '=' + encodeURIComponent(params[k]))
+    .join('&');
+  return q ? path + '?' + q : path;
+}
+
+const RESET_SENT_MSG = 'If that email belongs to an account, we sent a 6-digit code. Check your inbox and spam folder.';
+
+// sendCode: makes a code and emails it. Never throws.
+//   { status: 'sent' | 'cooldown' | 'failed', message }
+async function sendCode(purpose, email, fullName) {
+  let issued;
+  try {
+    issued = await otp.issue(purpose, email);
+  } catch (err) {
+    console.error('[otp] could not create a code:', err.message);
+    return { status: 'failed', message: 'We could not send the email right now. Please try again in a moment.' };
+  }
+  if (!issued.ok) {
+    return {
+      status: 'cooldown',
+      message: 'A code was sent a moment ago. Check your inbox, or wait ' + otp.secondsText(issued.retryAfterMs) + ' before asking for another.',
+    };
+  }
+  try {
+    await mailer.sendOtpEmail({ email, full_name: fullName }, issued.code, purpose);
+    return { status: 'sent', message: 'We sent a 6-digit code to ' + email + '. It expires in 10 minutes.' };
+  } catch (err) {
+    console.error('[otp] could not send the code email:', err.message);
+    await otp.discard(purpose, email).catch(() => {});   // so they can try again straight away
+    return { status: 'failed', message: 'We could not send the email right now. Please try again in a moment.' };
+  }
+}
+
+function flashFor(sent) {
+  return (sent.status === 'failed' ? 'err:' : 'ok:') + sent.message;
+}
+
+function tooManyCodes(gate) {
+  return 'Too many code requests from this network. Please try again in ' + limiter.minutesText(gate.retryAfterMs) + '.';
+}
+
+// Plain-language text for a failed code check (see lib/otp.js for the reasons).
+function codeErrorText(r) {
+  switch (r.reason) {
+    case 'format': return 'Enter the 6-digit code from your email.';
+    case 'invalid': return 'That code is not correct. ' + (r.attemptsLeft === 1 ? '1 try' : r.attemptsLeft + ' tries') + ' left.';
+    case 'locked': return 'Too many wrong tries for that code. Request a new code below.';
+    default: return 'That code has expired or was not found. Request a new code below.';
+  }
+}
+function countsAsFailure(r) {
+  return r.reason === 'invalid' || r.reason === 'locked';
 }
 
 // dashboardFor: students/staff/teachers share the My Reports interface;
@@ -269,11 +333,16 @@ async function signInSubmitHandler(req, res, next) {
       });
     }
 
-    // Email verification stays enabled for every account.
+    // Email verification stays enabled for every account: send a 6-digit code and let them type it.
     if (!user.email_verified) {
-      setVerifyWaitCookie(res, user.email);
-      return res.redirect(303, '/check-email?email=' + encodeURIComponent(user.email) +
-        '&flash=err:' + encodeURIComponent('Please verify your email before signing in. Check your inbox for the verification link.'));
+      const gate = otp.requestGate(req.ip);
+      const sent = gate.allowed
+        ? await sendCode('verify', user.email, user.full_name)
+        : { status: 'failed', message: tooManyCodes(gate) };
+      setOtpCookie(res, user.email, 'verify', 'code');
+      return res.redirect(303, withQuery('/verify-code', {
+        flash: (sent.status === 'failed' ? 'err:' : 'ok:') + 'Please verify your email before signing in. ' + sent.message,
+      }));
     }
 
     // Old account that just used its 4-digit PIN: they are NOT signed in yet. They must choose a
@@ -295,7 +364,13 @@ async function signInSubmitHandler(req, res, next) {
 
 
 // ---------------------------------------------------------------------
-// Create an account (self-service registration) — ONE page, all fields.
+// Create an account (self-service registration) — VERIFY FIRST.
+//   1. /register          the person enters only their CSPC email
+//   2. /verify-code       we email a 6-digit code; they type it
+//   3. /register/details  only now do they fill in the rest; the account is created
+//                         already verified and they are signed in
+// Nothing is saved until step 3, so a mistyped or invented address never creates
+// an account and nobody can reserve someone else's email or ID number.
 // Roles available to the public are Student, Staff and Teacher only.
 // The stored values are user (the historical Student value), staff, teacher.
 // ---------------------------------------------------------------------
@@ -307,6 +382,15 @@ const REGISTER_EMAIL_RE = /^[^@\s]+@(my\.)?cspc\.edu\.ph$/i;
 const SCHOOL_EMAIL_RE = /^[^@\s]+@(my\.)?cspc\.edu\.ph$/i;
 const PUBLIC_ROLE_MAP = { student: 'user', staff: 'staff', teacher: 'teacher' };
 
+function renderRegisterEmail(res, status, values, errors, nextPath) {
+  return res.status(status).render('myReports/registerEmail', {
+    title: 'Create an account',
+    values: values || {},
+    errors: errors || {},
+    next: nextPath || '',
+  });
+}
+
 function renderRegister(res, status, values, errors, nextPath) {
   return res.status(status).render('myReports/register', {
     title: 'Create an account',
@@ -316,19 +400,164 @@ function renderRegister(res, status, values, errors, nextPath) {
   });
 }
 
-// GET /register, GET /my-reports/register
+// Step 1. GET /register, GET /my-reports/register
 function registerFormHandler(req, res) {
   if (req.identity) return res.redirect(303, dashboardFor(req.identity.role));
   const nextPath = isSafeRelativePath(req.query.next) ? req.query.next : '';
-  renderRegister(res, 200, {}, {}, nextPath);
+  renderRegisterEmail(res, 200, {}, {}, nextPath);
 }
 
-// POST /register, POST /my-reports/register
-async function registerSubmitHandler(req, res, next) {
+// Step 1. POST /register, POST /my-reports/register
+async function registerEmailSubmitHandler(req, res, next) {
   try {
     const nextPath = isSafeRelativePath(req.body.next) ? req.body.next : '';
+    const emailR = validate.compose(
+      validate.required('Email address'),
+      validate.maxLen(160, 'Email address'),
+      validate.isEmailLoose('Email address')
+    )(req.body.email);
+    const email = emailR.value.toLowerCase();
+    const values = { email: emailR.value };
+
+    let error = '';
+    if (!emailR.ok) error = emailR.error;
+    else if (!REGISTER_EMAIL_RE.test(email)) error = 'Please use your CSPC school email (e.g. name@my.cspc.edu.ph).';
+    if (error) return renderRegisterEmail(res, 422, values, { email: error }, nextPath);
+
+    const existing = await userModel.findByEmail(email);
+    if (existing && existing.email_verified_at) {
+      return renderRegisterEmail(res, 422, values, { email: 'An account with this email already exists. Try signing in.' }, nextPath);
+    }
+
+    const gate = otp.requestGate(req.ip);
+    if (!gate.allowed) return renderRegisterEmail(res, 429, values, { email: tooManyCodes(gate) }, nextPath);
+
+    // An older account that never finished verifying just gets its email verified by the code.
+    const purpose = existing ? 'verify' : 'register';
+    const sent = await sendCode(purpose, email, existing && existing.full_name);
+    if (sent.status === 'failed') return renderRegisterEmail(res, 503, values, { email: sent.message }, nextPath);
+
+    setOtpCookie(res, email, purpose, 'code');
+    res.redirect(303, withQuery('/verify-code', { next: nextPath, flash: flashFor(sent) }));
+  } catch (err) {
+    next(err);
+  }
+}
+
+// Step 2. GET /verify-code
+async function renderVerifyCode(res, status, st, errors, nextPath) {
+  let waitMs = 0;
+  try { waitMs = await otp.cooldownLeftMs(st.purpose, st.email); } catch (err) { /* show the button */ }
+  return res.status(status).render('myReports/verifyCode', {
+    title: 'Enter your code',
+    email: st.email,
+    purpose: st.purpose,
+    errors: errors || {},
+    next: nextPath || '',
+    resendWaitSec: Math.ceil(waitMs / 1000),
+  });
+}
+
+async function verifyCodeFormHandler(req, res, next) {
+  try {
+    const st = readOtpCookie(req);
+    if (st && st.purpose === 'reset') return res.redirect(303, '/reset-password');
+    if (!st || st.stage !== 'code') {
+      return res.redirect(303, '/register?flash=err:' + encodeURIComponent('Please enter your email to get a code.'));
+    }
+    const nextPath = isSafeRelativePath(req.query.next) ? req.query.next : '';
+    await renderVerifyCode(res, 200, st, {}, nextPath);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// Step 2. POST /verify-code
+async function verifyCodeSubmitHandler(req, res, next) {
+  try {
+    const st = readOtpCookie(req);
+    if (st && st.purpose === 'reset') return res.redirect(303, '/reset-password');
+    if (!st || st.stage !== 'code') {
+      return res.redirect(303, '/register?flash=err:' + encodeURIComponent('Your code session expired. Enter your email to get a new code.'));
+    }
+    const nextPath = isSafeRelativePath(req.body.next) ? req.body.next : '';
+
+    // Wrong guesses are limited per address and per network on top of the 5-tries-per-code rule.
+    const gate = limiter.check('otp:' + st.email, req.ip);
+    if (gate.limited) {
+      return renderVerifyCode(res, 429, st, { code: 'Too many wrong codes. Please try again in ' + limiter.minutesText(gate.retryAfterMs) + '.' }, nextPath);
+    }
+
+    const code = typeof req.body.code === 'string' ? req.body.code : '';
+    const result = await otp.check(st.purpose, st.email, code);
+    if (!result.ok) {
+      if (countsAsFailure(result)) limiter.recordFailure('otp:' + st.email, req.ip);
+      return renderVerifyCode(res, 422, st, { code: codeErrorText(result) }, nextPath);
+    }
+    limiter.recordSuccess('otp:' + st.email);
+
+    if (st.purpose === 'register') {
+      setOtpCookie(res, st.email, 'register', 'verified');
+      return res.redirect(303, withQuery('/register/details', { next: nextPath }));
+    }
+
+    // purpose 'verify': an existing account whose email was never confirmed.
+    const user = await userModel.findByEmail(st.email);
+    if (user && !user.email_verified_at) await userModel.markEmailVerified(user.id);
+    clearOtpCookie(res);
+    res.redirect(303, '/sign-in?flash=ok:' + encodeURIComponent('Email verified! Please sign in.'));
+  } catch (err) {
+    next(err);
+  }
+}
+
+// POST /verify-code/resend — a new code for whatever this browser is verifying.
+async function resendCodeHandler(req, res, next) {
+  try {
+    const st = readOtpCookie(req);
+    if (!st) return res.redirect(303, '/register?flash=err:' + encodeURIComponent('Your code session expired. Enter your email to get a new code.'));
+    const nextPath = isSafeRelativePath(req.body.next) ? req.body.next : '';
+    const gate = otp.requestGate(req.ip);
+
+    if (st.purpose === 'reset') {
+      // Same reply whether or not the address has an account.
+      if (!gate.allowed) return res.redirect(303, withQuery('/reset-password', { flash: 'err:' + tooManyCodes(gate) }));
+      const user = await userModel.findByEmail(st.email);
+      if (user) await sendCode('reset', st.email, user.full_name);
+      return res.redirect(303, withQuery('/reset-password', { flash: 'ok:' + RESET_SENT_MSG }));
+    }
+
+    if (st.stage !== 'code') return res.redirect(303, withQuery('/register/details', { next: nextPath }));
+    if (!gate.allowed) return res.redirect(303, withQuery('/verify-code', { next: nextPath, flash: 'err:' + tooManyCodes(gate) }));
+
+    const user = st.purpose === 'verify' ? await userModel.findByEmail(st.email) : null;
+    const sent = await sendCode(st.purpose, st.email, user && user.full_name);
+    res.redirect(303, withQuery('/verify-code', { next: nextPath, flash: flashFor(sent) }));
+  } catch (err) {
+    next(err);
+  }
+}
+
+// Step 3. GET /register/details
+function registerDetailsFormHandler(req, res) {
+  const st = readOtpCookie(req);
+  if (!st || st.purpose !== 'register' || st.stage !== 'verified') {
+    return res.redirect(303, '/register?flash=err:' + encodeURIComponent('Please verify your email first.'));
+  }
+  const nextPath = isSafeRelativePath(req.query.next) ? req.query.next : '';
+  renderRegister(res, 200, { email: st.email }, {}, nextPath);
+}
+
+// Step 3. POST /register/details
+async function registerDetailsSubmitHandler(req, res, next) {
+  try {
+    const st = readOtpCookie(req);
+    if (!st || st.purpose !== 'register' || st.stage !== 'verified') {
+      return res.redirect(303, '/register?flash=err:' + encodeURIComponent('Your verification expired. Please verify your email again.'));
+    }
+    const nextPath = isSafeRelativePath(req.body.next) ? req.body.next : '';
     const errors = {};
-    const values = {};
+    const values = { email: st.email };      // the verified address; anything posted is ignored
 
     const nameR = validate.compose(
       validate.required('Full name'),
@@ -352,15 +581,6 @@ async function registerSubmitHandler(req, res, next) {
     else if (!ID_NO_RE.test(noR.value)) errors.student_no = 'Use 5-20 letters, numbers or hyphens (no spaces).';
     else if (/^(ADM|STF|GOO)-/i.test(noR.value)) errors.student_no = 'That ID number format is reserved. Please enter your real ID number.';
 
-    const emailR = validate.compose(
-      validate.required('Email address'),
-      validate.maxLen(160, 'Email address'),
-      validate.isEmailLoose('Email address')
-    )(req.body.email);
-    values.email = emailR.value.toLowerCase();
-    if (!emailR.ok) errors.email = emailR.error;
-    else if (!REGISTER_EMAIL_RE.test(values.email)) errors.email = 'Please use your CSPC school email (e.g. name@my.cspc.edu.ph).';
-
     const password = typeof req.body.password === 'string' ? req.body.password : '';
     const password2 = typeof req.body.password_confirm === 'string' ? req.body.password_confirm : '';
     const passwordError = passwords.validate(password, {
@@ -377,8 +597,9 @@ async function registerSubmitHandler(req, res, next) {
     if (!errors.student_no && (await userModel.studentNoExists(values.student_no))) {
       errors.student_no = 'An account with this ID number already exists. Try signing in.';
     }
-    if (!errors.email && (await userModel.emailExists(values.email))) {
-      errors.email = 'An account with this email already exists. Try signing in.';
+    if (await userModel.emailExists(values.email)) {
+      clearOtpCookie(res);
+      return res.redirect(303, '/sign-in?flash=err:' + encodeURIComponent('An account with this email already exists. Please sign in.'));
     }
 
     if (Object.keys(errors).length > 0) return renderRegister(res, 422, values, errors, nextPath);
@@ -395,60 +616,42 @@ async function registerSubmitHandler(req, res, next) {
     } catch (err) {
       // Two people registering at once can slip past the pre-check; the UNIQUE keys catch it.
       if (err && err.code === 'ER_DUP_ENTRY') {
-        const field = /email/i.test(err.message) ? 'email' : 'student_no';
-        errors[field] = field === 'email'
-          ? 'An account with this email already exists. Try signing in.'
-          : 'An account with this ID number already exists. Try signing in.';
+        if (/email/i.test(err.message)) {
+          clearOtpCookie(res);
+          return res.redirect(303, '/sign-in?flash=err:' + encodeURIComponent('An account with this email already exists. Please sign in.'));
+        }
+        errors.student_no = 'An account with this ID number already exists. Try signing in.';
         return renderRegister(res, 422, values, errors, nextPath);
       }
       throw err;
     }
 
-    // Not signed in yet: they must click the verification link we email them first.
-    let flashMsg = 'ok:Account created. We sent a verification link to your email.';
-    try {
-      await mailer.sendVerificationEmail(user, await userModel.issueVerificationToken(user.id));
-    } catch (mailErr) {
-      console.error('[register] could not send verification email:', mailErr.message);
-      flashMsg = 'err:Account created, but we could not send the verification email. Please press "Resend verification email".';
-    }
-    setVerifyWaitCookie(res, user.email);
-    res.redirect(303, '/check-email?email=' + encodeURIComponent(user.email) + '&flash=' + encodeURIComponent(flashMsg));
+    // The email was proven by the code, so the account starts verified and they are signed in.
+    await userModel.markEmailVerified(user.id);
+    clearOtpCookie(res);
+    await signInAs(res, user);
+
+    const role = user.role || 'user';
+    const destination = allowedNext(nextPath, role) ? nextPath : dashboardFor(role);
+    const sep = destination.includes('?') ? '&' : '?';
+    res.redirect(303, `${destination}${sep}flash=ok:${encodeURIComponent('Account created. Welcome to WhereITis!')}`);
   } catch (err) {
     next(err);
   }
 }
 
-// GET /check-email — "look in your inbox" page with a resend button.
+// GET /check-email — the old "look for the link" page. Codes now live on /verify-code.
 function checkEmailHandler(req, res) {
-  const email = typeof req.query.email === 'string' ? req.query.email.trim().toLowerCase() : '';
-  if (!REGISTER_EMAIL_RE.test(email)) return res.redirect(303, '/sign-in');
-  res.render('myReports/checkEmail', { title: 'Verify your email', email });
+  res.redirect(303, readOtpCookie(req) ? '/verify-code' : '/sign-in');
 }
 
-// GET /check-email/status — polled by the check-email page (public/js/verify-wait.js).
-// Answers only for the email in this browser's signed "waiting" cookie, never for an
-// email supplied in the URL, so it cannot be used to look up other people's accounts.
-async function verifyStatusHandler(req, res) {
-  res.set('Cache-Control', 'no-store');
-  const email = readVerifyWaitEmail(req);
-  if (!email) return res.json({ tracking: false, verified: false });
-  try {
-    const user = await userModel.findByEmail(email);
-    const verified = !!(user && user.email_verified_at);
-    if (verified) res.clearCookie(VERIFY_WAIT_COOKIE, { path: '/' });
-    return res.json({ tracking: true, verified });
-  } catch (err) {
-    return res.json({ tracking: true, verified: false });
-  }
-}
-
-// GET /verify-email?token=...  (the button in the email)
+// GET /verify-email?token=...  Only for verification links emailed BEFORE codes were introduced
+// (they stay valid for their 24 hours). New emails carry a code instead.
 async function verifyEmailHandler(req, res, next) {
   try {
     const token = typeof req.query.token === 'string' ? req.query.token : '';
     const row = /^[0-9a-f]{64}$/.test(token) ? await userModel.findByVerificationToken(token) : null;
-    const invalid = '/sign-in?flash=err:' + encodeURIComponent('That verification link is invalid or has expired. Sign in to get a new one.');
+    const invalid = '/sign-in?flash=err:' + encodeURIComponent('That verification link is no longer valid. Sign in and we will email you a code instead.');
 
     if (!row) return res.redirect(303, invalid);
     if (row.email_verified_at) {
@@ -465,36 +668,11 @@ async function verifyEmailHandler(req, res, next) {
   }
 }
 
-// POST /resend-verification
-// The reply is the same whether or not the email belongs to an account, so this cannot be used
-// to discover who is registered. One email per minute per account.
-async function resendVerificationHandler(req, res, next) {
-  try {
-    const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
-    if (!REGISTER_EMAIL_RE.test(email)) return res.redirect(303, '/sign-in');
-
-    let flashMsg = 'ok:If that account still needs verification, a new link is on its way.';
-    const user = await userModel.findByEmail(email);
-    if (user && !user.email_verified_at) {
-      const last = user.verify_sent_at ? new Date(user.verify_sent_at).getTime() : 0;
-      if (Date.now() - last >= userModel.RESEND_COOLDOWN_MS) {
-        try {
-          await mailer.sendVerificationEmail(user, await userModel.issueVerificationToken(user.id));
-        } catch (mailErr) {
-          console.error('[resend] could not send verification email:', mailErr.message);
-          flashMsg = 'err:We could not send the email right now. Please try again later.';
-        }
-      }
-    }
-    res.redirect(303, '/check-email?email=' + encodeURIComponent(email) + '&flash=' + encodeURIComponent(flashMsg));
-  } catch (err) {
-    next(err);
-  }
-}
-
 // ---------------------------------------------------------------------
-// Forgot password. The public reply is identical whether or not the email
-// exists, so this endpoint cannot be used to enumerate accounts.
+// Forgot password, with a 6-digit code. The reply is identical whether or not the
+// email has an account, so this cannot be used to discover who is registered.
+//   /forgot-password  enter the email  ->  we email a code (if the account exists)
+//   /reset-password   enter the code AND the new password on one page
 // ---------------------------------------------------------------------
 function forgotPasswordFormHandler(req, res) {
   res.render('myReports/forgotPassword', {
@@ -512,84 +690,92 @@ async function forgotPasswordSubmitHandler(req, res, next) {
       validate.isEmailLoose('Email address')
     )(req.body.email);
     const values = { email: typeof req.body.email === 'string' ? req.body.email : '' };
+    const fail = (status, message) => res.status(status).render('myReports/forgotPassword', {
+      title: 'Forgot your password?',
+      values,
+      errors: { email: message },
+    });
 
-    if (!emailResult.ok) {
-      return res.status(422).render('myReports/forgotPassword', {
-        title: 'Forgot your password?',
-        values,
-        errors: { email: emailResult.error },
-      });
-    }
+    if (!emailResult.ok) return fail(422, emailResult.error);
 
     const email = emailResult.value.toLowerCase();
     const gate = limiter.check(email, req.ip);
-    if (gate.limited) {
-      return res.status(429).render('myReports/forgotPassword', {
-        title: 'Forgot your password?',
-        values,
-        errors: { email: 'Too many requests. Please try again in ' + limiter.minutesText(gate.retryAfterMs) + '.' },
-      });
-    }
+    if (gate.limited) return fail(429, 'Too many requests. Please try again in ' + limiter.minutesText(gate.retryAfterMs) + '.');
+    const codeGate = otp.requestGate(req.ip);
+    if (!codeGate.allowed) return fail(429, tooManyCodes(codeGate));
 
     const user = await userModel.findByEmail(email);
-    if (user) {
-      const last = user.reset_sent_at ? new Date(user.reset_sent_at).getTime() : 0;
-      if (Date.now() - last >= userModel.RESET_RESEND_COOLDOWN_MS) {
-        try {
-          await mailer.sendPasswordResetEmail(user, await userModel.issuePasswordResetToken(user.id));
-          limiter.recordSuccess(email);
-        } catch (mailErr) {
-          console.error('[forgot-password] could not send reset email:', mailErr.message);
-        }
-      }
-    }
+    if (user) await sendCode('reset', email, user.full_name);    // failures are logged, never shown
 
-    return res.redirect(303, '/forgot-password?flash=ok:' + encodeURIComponent(
-      'If that email belongs to an account, a reset link is on its way. Check your inbox and spam folder.'
-    ));
+    setOtpCookie(res, email, 'reset', 'code');
+    return res.redirect(303, withQuery('/reset-password', { flash: 'ok:' + RESET_SENT_MSG }));
   } catch (err) {
     next(err);
   }
 }
 
-function renderResetPassword(res, status, token, errors) {
+async function renderResetPassword(res, status, email, errors) {
+  let waitMs = 0;
+  try { waitMs = await otp.cooldownLeftMs('reset', email); } catch (err) { /* show the button */ }
   return res.status(status).render('myReports/resetPassword', {
     title: 'Choose a new password',
-    token,
+    email,
     errors: errors || {},
+    resendWaitSec: Math.ceil(waitMs / 1000),
   });
 }
 
-function resetPasswordFormHandler(req, res) {
-  const token = typeof req.query.token === 'string' ? req.query.token : '';
-  if (!/^[0-9a-f]{64}$/.test(token)) {
-    return res.redirect(303, '/forgot-password?flash=err:' + encodeURIComponent('That reset link is invalid or has expired.'));
+async function resetPasswordFormHandler(req, res, next) {
+  try {
+    const st = readOtpCookie(req);
+    if (!st || st.purpose !== 'reset' || st.stage !== 'code') {
+      if (typeof req.query.token === 'string' && req.query.token) {
+        return res.redirect(303, '/forgot-password?flash=err:' + encodeURIComponent('Password resets now use a 6-digit code. Request one below.'));
+      }
+      return res.redirect(303, '/forgot-password');
+    }
+    await renderResetPassword(res, 200, st.email, {});
+  } catch (err) {
+    next(err);
   }
-  renderResetPassword(res, 200, token, {});
 }
 
 async function resetPasswordSubmitHandler(req, res, next) {
   try {
-    const token = typeof req.body.token === 'string' ? req.body.token : '';
-    const user = /^[0-9a-f]{64}$/.test(token)
-      ? await userModel.findByPasswordResetToken(token)
-      : null;
-
-    if (!user || !user.reset_token_expires || new Date(user.reset_token_expires).getTime() < Date.now()) {
-      return res.redirect(303, '/forgot-password?flash=err:' + encodeURIComponent('That reset link is invalid or has expired. Request a new one.'));
+    const st = readOtpCookie(req);
+    if (!st || st.purpose !== 'reset' || st.stage !== 'code') {
+      return res.redirect(303, '/forgot-password?flash=err:' + encodeURIComponent('Your reset session expired. Request a new code.'));
     }
 
+    const gate = limiter.check('otp:' + st.email, req.ip);
+    if (gate.limited) {
+      return renderResetPassword(res, 429, st.email, { code: 'Too many wrong codes. Please try again in ' + limiter.minutesText(gate.retryAfterMs) + '.' });
+    }
+
+    const user = await userModel.findByEmail(st.email);
+    const code = typeof req.body.code === 'string' ? req.body.code : '';
     const password = typeof req.body.password === 'string' ? req.body.password : '';
     const password2 = typeof req.body.password_confirm === 'string' ? req.body.password_confirm : '';
+
+    // Fix the easy mistakes first so a typo in the password never costs one of the 5 code tries.
     const errors = {};
-    const passwordError = passwords.validate(password, user);
+    if (!otp.CODE_RE.test(code.replace(/\s+/g, ''))) errors.code = codeErrorText({ reason: 'format' });
+    const passwordError = passwords.validate(password, user || { email: st.email });
     if (passwordError) errors.password = passwordError;
     else if (password !== password2) errors.password_confirm = 'The two passwords do not match.';
+    if (Object.keys(errors).length > 0) return renderResetPassword(res, 422, st.email, errors);
 
-    if (Object.keys(errors).length > 0) return renderResetPassword(res, 422, token, errors);
+    const result = await otp.check('reset', st.email, code);
+    if (!result.ok || !user) {
+      const r = result.ok ? { reason: 'none' } : result;
+      if (countsAsFailure(r)) limiter.recordFailure('otp:' + st.email, req.ip);
+      return renderResetPassword(res, 422, st.email, { code: codeErrorText(r) });
+    }
+    limiter.recordSuccess('otp:' + st.email);
 
     await userModel.setPassword(user.id, password);
-    await userModel.clearPasswordResetToken(user.id);
+    if (!user.email_verified_at) await userModel.markEmailVerified(user.id);   // they just proved the mailbox is theirs
+    clearOtpCookie(res);
 
     return res.redirect(303, '/sign-in?flash=ok:' + encodeURIComponent('Password updated. Please sign in with your new password.'));
   } catch (err) {
@@ -681,13 +867,16 @@ router.post('/sign-in', signInSubmitHandler);
 
 router.get('/register', registerFormHandler);
 router.get('/my-reports/register', registerFormHandler);
-router.post('/register', registerSubmitHandler);
-router.post('/my-reports/register', registerSubmitHandler);
+router.post('/register', registerEmailSubmitHandler);
+router.post('/my-reports/register', registerEmailSubmitHandler);
+router.get('/register/details', registerDetailsFormHandler);
+router.post('/register/details', registerDetailsSubmitHandler);
 
+router.get('/verify-code', verifyCodeFormHandler);
+router.post('/verify-code', verifyCodeSubmitHandler);
+router.post('/verify-code/resend', resendCodeHandler);
 router.get('/check-email', checkEmailHandler);
-router.get('/check-email/status', verifyStatusHandler);
 router.get('/verify-email', verifyEmailHandler);
-router.post('/resend-verification', resendVerificationHandler);
 
 router.get('/forgot-password', forgotPasswordFormHandler);
 router.post('/forgot-password', forgotPasswordSubmitHandler);

@@ -76,8 +76,8 @@ These demo accounts were created with a 4-digit PIN. Each one can sign in **once
 | `MATCH_WINDOW_DAYS` | No | `30` | Day window the matching engine (FR-09) searches for candidates. |
 | `GUEST_REPORTS_PER_DAY` | No | `3` | Most guest reports one connection may send in 24 hours. |
 | `HOLDING_PERIOD_DAYS` | No | `90` | Default days before a found item may be archived as unclaimed (FR-15). |
-| `APP_URL` | For email | `http://localhost:3000` | Public base URL used to build verification / password-reset links. |
-| `BREVO_API_KEY` | For email | _(empty)_ | Brevo API key. Leave empty in development to print verification links to the terminal instead of emailing them. |
+| `APP_URL` | For email | `http://localhost:3000` | Public base URL of the site (used in notification emails). |
+| `BREVO_API_KEY` | For email | _(empty)_ | Brevo API key. Leave empty in development to print the 6-digit codes to the terminal instead of emailing them. |
 | `MAIL_FROM_EMAIL` | For email | _(empty)_ | Verified Brevo sender address. |
 | `MAIL_FROM_NAME` | No | `CSPC WhereITis` | Sender display name. |
 | `DB_SSL` | No | `true` (prod) | TLS to MySQL; set `false` for a local MySQL server. |
@@ -156,13 +156,14 @@ The schema has fourteen tables:
 | POST | `/my-reports/sign-in` | Public | Verify password (rate-limited), set signed cookie |
 | GET, POST | `/set-password` | Old PIN accounts only | Choose a new password right after the one-time PIN sign-in |
 | POST | `/my-reports/sign-out` (`/sign-out`) | Identity required | Clear the signed cookie |
-| GET | `/register` | Public | Create an account (student, staff or teacher; admin is never self-assignable) |
-| POST | `/register` | Public | Register, then send a verification email |
-| GET | `/check-email`, `/check-email/status` | Public | "Check your inbox" page and its polling endpoint |
-| GET | `/verify-email` | Public | Verify an account from the emailed link |
-| POST | `/resend-verification` | Public | Send a fresh verification link |
-| GET, POST | `/forgot-password` | Public | Email a password-reset link |
-| GET, POST | `/reset-password` | Public | Choose a new password after the emailed link |
+| GET, POST | `/register` | Public | Step 1: enter the CSPC email, a 6-digit code is emailed |
+| GET, POST | `/verify-code` | Public | Type the emailed code (registration, or an older unverified account) |
+| POST | `/verify-code/resend` | Public | Send a fresh code (once a minute) |
+| GET, POST | `/register/details` | Public | Step 2 (only after the code is accepted): name, role, ID, password; creates a verified account and signs in |
+| GET | `/verify-email` | Public | Only for links emailed before codes existed (valid 24 hours) |
+| GET | `/check-email` | Public | Old address; redirects to `/verify-code` or sign-in |
+| GET, POST | `/forgot-password` | Public | Email a 6-digit password-reset code |
+| GET, POST | `/reset-password` | Public | Type the code and the new password on one page |
 | GET, POST | `/admin/login` | Public | Staff/admin sign-in |
 | GET | `/admin` | Admin only | Dashboard, CSV export link, bulk update and lookup management links |
 | GET | `/admin/staff` | Staff or admin | Pending claims and aging found items |
@@ -196,7 +197,8 @@ Every request runs `optionalIdentity`, which sets `req.identity` and exposes it 
 - **Passwords:** scrypt with a per-account salt (`lib/passwords.js`). New users choose a password at registration; legacy demo accounts can sign in once with their old PIN and must then set a password.
 - **Google sign-in:** with `GOOGLE_CLIENT_ID` set, the auth pages render the official Google Identity Services button. The ID token is verified server-side in `routes/googleAuth.js`; CSPC email accounts are linked to an existing user or created as verified, passwordless accounts. The usual `whereitis_id` cookie is then set, so every role guard works unchanged. Without a Client ID, the same-styled button opens Google in a new tab and never claims to have signed the user into WhereITis.
 - **Verification:** registration sends a link via Brevo (`lib/mailer.js`); with `BREVO_API_KEY` unset the link is printed to the terminal instead. Accounts that predate the feature were backfilled as verified.
-- **Password reset:** `/forgot-password` emails a link, `/reset-password` stores a new scrypt hash.
+- **Password reset:** `/forgot-password` emails a 6-digit code, `/reset-password` checks it and stores a new scrypt hash.
+- **Email codes (`lib/otp.js`):** 6 random digits, stored only as an HMAC hash in `email_otps`; valid 10 minutes, single use, 5 wrong tries kill the code, one new code per minute per address, 5 wrong codes per address / 20 per IP pause code entry for 15 minutes, and 40 code requests per IP per hour.
 - **Cookie:** the default login is still a stateless, HMAC-signed `whereitis_id` cookie with the role embedded for UI purposes. Role checks never trust it: `middleware/roles.js` and `routes/adminAuth.js` re-read `users.role` from the database on every protected request. Set `SESSION_STORE=db` for revocable MySQL-backed sessions.
 - **Roles:** `user` (default), `staff`, `teacher`, `admin`. Registration can only create `user`/`staff`/`teacher`; `admin` is seeded or promoted in the database. Staff see the claims queue and guest-review queue; admins additionally get the dashboard, CSV export, bulk updates and lookup management.
 

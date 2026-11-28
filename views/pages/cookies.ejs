@@ -40,10 +40,10 @@
           <td>HttpOnly, SameSite=Lax, Secure in production</td>
         </tr>
         <tr>
-          <td><code>whereitis_verifywait</code></td>
-          <td>Only on the "check your email" page after registering</td>
-          <td>A signed, short-lived helper so the page knows which account you just created</td>
-          <td>24 hours</td>
+          <td><code>whereitis_otp</code></td>
+          <td>Only while you register, verify your email or reset a password with an emailed code</td>
+          <td>A signed, short-lived note of which email the 6-digit code was sent to and whether it has been confirmed</td>
+          <td>30 minutes</td>
           <td>HttpOnly, SameSite=Lax, Secure in production</td>
         </tr>
       </tbody>
