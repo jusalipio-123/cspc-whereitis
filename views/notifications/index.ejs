@@ -12,6 +12,21 @@
     <a class="mod-tab mod-tab--end" href="/my-reports">&larr; My reports</a>
   </nav>
 
+  <section class="notif-pref" aria-label="Email alerts">
+    <div class="notif-pref__text">
+      <strong>Email alerts <span class="notif-pref__state<%= emailPref ? ' is-on' : '' %>"><%= emailPref ? 'On' : 'Off' %></span></strong>
+      <span class="muted">
+        <%= emailPref
+          ? 'We email you when someone claims your report, sends you a message, or your claim is decided.'
+          : 'You will only see updates here. Turn this on to also get them by email.' %>
+      </span>
+    </div>
+    <form method="post" action="/notifications/email-preference" class="inline">
+      <input type="hidden" name="enabled" value="<%= emailPref ? '0' : '1' %>">
+      <button class="btn btn--ghost btn--sm" type="submit"><%= emailPref ? 'Turn off' : 'Turn on' %></button>
+    </form>
+  </section>
+
   <% if (notifications.length === 0) { %>
     <div class="empty-state">
       <h3>You're all caught up</h3>

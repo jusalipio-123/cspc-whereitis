@@ -127,6 +127,7 @@ CREATE TABLE users (
   reset_token_hash     CHAR(64) NULL,
   reset_token_expires  DATETIME NULL,
   reset_sent_at        DATETIME NULL,
+  email_notifications  TINYINT(1) NOT NULL DEFAULT 1,  -- 1 = email me about claims, messages, etc.
   UNIQUE KEY uniq_users_student_no (student_no),
   UNIQUE KEY uniq_users_email (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -474,6 +475,7 @@ CREATE TABLE IF NOT EXISTS notifications (
   body        VARCHAR(255) NOT NULL,
   link        VARCHAR(200) NOT NULL,
   is_read     TINYINT(1) NOT NULL DEFAULT 0,
+  emailed_at  DATETIME NULL,              -- when the email copy of this notification was sent
   created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_notifications_user
     FOREIGN KEY (user_id)   REFERENCES users(id)   ON DELETE CASCADE,

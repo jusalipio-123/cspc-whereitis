@@ -5,6 +5,7 @@
 // -----------------------------------------------------------------------
 
 const { pool } = require('../db');
+const notifyEmail = require('../lib/notifyEmail');
 
 // create: never throws into the caller. A failed notification must not undo
 // the real action (filing a claim, changing a status) that triggered it.
@@ -15,6 +16,8 @@ async function create({ user_id, type, report_id = null, body, link }) {
       'INSERT INTO notifications (user_id, type, report_id, body, link) VALUES (?, ?, ?, ?, ?)',
       [user_id, type, report_id, String(body).slice(0, 255), link]
     );
+    // Also email the user. Fire and forget: it never delays or fails the request.
+    notifyEmail.queue(result.insertId, { user_id, type, body: String(body).slice(0, 255), link });
     return result.insertId;
   } catch (err) {
     console.error('[notifications] could not create notification:', err.message);
@@ -79,4 +82,19 @@ async function listAll(limit = 100) {
   return rows;
 }
 
-module.exports = { create, listByUser, listAll, unreadCount, markRead, markAllRead, markLinkRead };
+// Email alert preference (users.email_notifications). On by default.
+async function getEmailPref(userId) {
+  const [rows] = await pool.execute('SELECT email_notifications FROM users WHERE id = ?', [userId]);
+  return rows.length ? !!rows[0].email_notifications : true;
+}
+
+async function setEmailPref(userId, enabled) {
+  const [r] = await pool.execute(
+    'UPDATE users SET email_notifications = ? WHERE id = ?', [enabled ? 1 : 0, userId]);
+  return r.affectedRows;
+}
+
+module.exports = {
+  create, listByUser, listAll, unreadCount, markRead, markAllRead, markLinkRead,
+  getEmailPref, setEmailPref,
+};

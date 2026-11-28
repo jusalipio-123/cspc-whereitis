@@ -1654,6 +1654,14 @@ input, textarea { caret-color: var(--brand); }
 .notif--unread { background: color-mix(in srgb, var(--brand) 6%, var(--card)); border-color: color-mix(in srgb, var(--brand) 35%, var(--border)); }
 .notif__main { display: flex; flex-direction: column; gap: var(--s-1); min-width: 0; }
 .notif__main a { font-weight: 600; }
+.notif-pref { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); padding: var(--s-3); margin: var(--s-3) 0 0; background: color-mix(in srgb, var(--brand) 4%, var(--card)); border: 1px solid var(--border); border-left: 3px solid var(--brand); border-radius: var(--radius-card); }
+.notif-pref__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: .92rem; }
+.notif-pref__state { display: inline-block; margin-left: .35rem; padding: 0 .5rem; border-radius: 999px; font-size: .72rem; font-weight: 700; background: var(--border); color: var(--muted); vertical-align: 1px; }
+.notif-pref__state.is-on { background: color-mix(in srgb, #2fb36b 20%, transparent); color: #1f7a49; }
+@media (prefers-color-scheme: dark) { .notif-pref__state.is-on { color: #6fd3a0; } }
+:root[data-theme="dark"] .notif-pref__state.is-on { color: #6fd3a0; }
+:root[data-theme="light"] .notif-pref__state.is-on { color: #1f7a49; }
+@media (max-width: 520px) { .notif-pref { flex-direction: column; align-items: flex-start; } }
 .my-links { display: flex; flex-wrap: wrap; gap: var(--s-2); }
 
 /* Message thread */

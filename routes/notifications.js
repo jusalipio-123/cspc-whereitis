@@ -15,8 +15,23 @@ router.use(requireIdentity);
 // GET /notifications
 router.get('/', async (req, res, next) => {
   try {
-    const notifications = await notificationModel.listByUser(req.identity.userId, 50);
-    res.render('notifications/index', { title: 'Notifications', notifications });
+    const [notifications, emailPref] = await Promise.all([
+      notificationModel.listByUser(req.identity.userId, 50),
+      notificationModel.getEmailPref(req.identity.userId),
+    ]);
+    res.render('notifications/index', { title: 'Notifications', notifications, emailPref });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /notifications/email-preference  (enabled=1 or enabled=0)
+router.post('/email-preference', async (req, res, next) => {
+  try {
+    const on = String((req.body || {}).enabled) === '1';
+    await notificationModel.setEmailPref(req.identity.userId, on);
+    res.redirect(303, '/notifications?flash=ok:' + encodeURIComponent(
+      on ? 'Email alerts are on' : 'Email alerts are off. You will still see everything here in your inbox.'));
   } catch (err) {
     next(err);
   }
