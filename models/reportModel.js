@@ -613,14 +613,34 @@ async function createGuest(data) {
 // scanCorpus: newest open/matched reports the Nexus scanner may score against.
 // Public fields only are selected via DETAIL_SELECT; guest contact columns
 // exist on the row but the API route must never send them to the client.
-async function scanCorpus(limit = 120) {
+// opts.kind / opts.category_id / opts.location_id narrow the pool in SQL, so
+// the row limit is spent on reports that can actually match instead of being
+// used up by newer, irrelevant ones.
+async function scanCorpus(limit = 120, opts = {}) {
   const safeN = Math.min(Math.max(Number(limit) || 120, 1), 200);
+  const where = [APPROVED, "r.status IN ('open', 'matched')"];
+  const params = [];
+  if (opts.kind === 'lost' || opts.kind === 'found') {
+    where.push('r.kind = ?');
+    params.push(opts.kind);
+  }
+  const categoryId = Number.parseInt(opts.category_id, 10);
+  if (categoryId > 0) {
+    where.push('r.category_id = ?');
+    params.push(categoryId);
+  }
+  const locationId = Number.parseInt(opts.location_id, 10);
+  if (locationId > 0) {
+    where.push('r.location_id = ?');
+    params.push(locationId);
+  }
+  params.push(String(safeN));
   const [rows] = await pool.execute(
     `${DETAIL_SELECT}
-     WHERE ${APPROVED} AND r.status IN ('open', 'matched')
+     WHERE ${where.join(' AND ')}
      ORDER BY r.created_at DESC
      LIMIT ?`,
-    [String(safeN)]
+    params
   );
   return rows;
 }
