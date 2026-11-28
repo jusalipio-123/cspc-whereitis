@@ -19,10 +19,14 @@
     if (!results) return;
     var matches = (payload && payload.matches) || [];
     if (!matches.length) {
-      results.innerHTML = '<p class="scan-empty">No strong matches in the current corpus. Try fewer filters, or <a href="/reports?q=' + encodeURIComponent((payload && payload.query) || '') + '">search the full board</a>.</p>';
+      var why = (payload && payload.hint)
+        ? esc(payload.hint)
+        : 'No reports match <strong>' + esc((payload && payload.query) || '') + '</strong>. Try different or fewer words, loosen the filters, or <a href="/reports?q=' + encodeURIComponent((payload && payload.query) || '') + '">search the full board</a>.';
+      results.innerHTML = '<p class="scan-empty">' + why + '</p>';
       return;
     }
-    results.innerHTML = matches.map(function (m) {
+    var heading = '<p class="scan-status">' + matches.length + (matches.length === 1 ? ' matching report' : ' matching reports') + '</p>';
+    results.innerHTML = heading + matches.map(function (m) {
       var r = m.report || {};
       var photo = r.photo_url
         ? '<img src="' + esc(r.photo_url) + '" alt="" width="72" height="72">'
