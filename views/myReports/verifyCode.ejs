@@ -51,7 +51,7 @@
         <button type="submit" class="btn btn--primary auth-submit" data-submit data-busy-label="Checking&hellip;">Verify</button>
       </form>
 
-      <form method="post" action="/verify-code/resend" class="auth-form" data-otp-form>
+      <form method="post" action="/verify-code/resend" class="auth-form" data-otp-form style="margin-top:.85rem">
         <% if (_next) { %><input type="hidden" name="next" value="<%= _next %>"><% } %>
         <button type="submit" class="btn btn--ghost auth-submit" data-resend data-wait="<%= _wait %>">Resend code</button>
       </form>
