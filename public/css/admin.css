@@ -315,3 +315,28 @@
   .adm-reveal.is-in .adm-reunite__fill { animation: adm-ring 1.6s var(--adm-expo) .2s both; }
   @keyframes adm-ring { from { stroke-dashoffset: var(--full); } }
 }
+
+/* ---- additions: value labels, bar glow, ring end-dot ---- */
+.adm-val { fill: var(--ink); font-size: 10px; font-weight: 700; font-variant-numeric: tabular-nums; opacity: .85; pointer-events: none; transition: opacity .25s var(--adm-expo); }
+.adm-chart:has(.adm-bar:hover) .adm-val { opacity: .3; }
+@media (max-width: 600px) { .adm-val { display: none; } }
+.adm-bar--lost  { filter: drop-shadow(0 6px 8px color-mix(in srgb, var(--accent-red) 38%, transparent)); }
+.adm-bar--found { filter: drop-shadow(0 6px 8px color-mix(in srgb, var(--brand) 38%, transparent)); }
+.adm-bar--lost:hover  { filter: brightness(1.12) saturate(1.1) drop-shadow(0 8px 12px color-mix(in srgb, var(--accent-red) 46%, transparent)); }
+.adm-bar--found:hover { filter: brightness(1.12) saturate(1.1) drop-shadow(0 8px 12px color-mix(in srgb, var(--brand) 46%, transparent)); }
+.adm-reunite__orb { transform-origin: 65px 65px; transform: rotate(var(--deg, 0deg)); }
+.adm-reunite__dot { fill: #fff; stroke: var(--green); stroke-width: 3; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .adm-anim .adm-reveal:not(.is-in) .adm-val { opacity: 0; }
+  .adm-anim .adm-reveal:not(.is-in) .adm-reunite__orb { transform: rotate(0deg); }
+  .adm-anim .adm-reveal:not(.is-in) .adm-reunite__dot { opacity: 0; }
+  /* labels settle just after their bar lands */
+  .adm-reveal.is-in .adm-val { animation: adm-fade-up .5s var(--adm-expo) both; animation-delay: calc(1s + var(--i, 0) * 34ms); }
+  /* a dot rides the ring to its end point, pulses three times, then rests */
+  .adm-reveal.is-in .adm-reunite__orb { animation: adm-orbit 1.6s var(--adm-expo) .2s both; }
+  .adm-reveal.is-in .adm-reunite__dot { animation: adm-dot-in .3s ease-out .2s both, adm-pulse 1.6s ease-out 1.9s 3; }
+  @keyframes adm-orbit { from { transform: rotate(0deg); } to { transform: rotate(var(--deg, 0deg)); } }
+  @keyframes adm-dot-in { from { opacity: 0; } }
+  @keyframes adm-pulse { 0%, 100% { stroke-width: 3; } 50% { stroke-width: 7; } }
+}

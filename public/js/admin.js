@@ -73,6 +73,7 @@
   /* ---------- chart cards: play when scrolled into view ---------- */
   function play(card) {
     card.classList.add('is-in');
+    card._admInAt = Date.now();                             // the donut waits for the entrance before it starts cycling
     if (!still) { countAll(card, 250); }
   }
 
@@ -191,6 +192,26 @@
     }
     for (var s = 0; s < segs.length; s++) { bind(segs[s]); }
     for (var r = 0; r < rows.length; r++) { bind(rows[r]); }
+
+    // Idle tour: after the entrance, the donut highlights one category at a time, then rests on the total.
+    // It stops while the pointer or keyboard is on the chart, when the tab is hidden, or when the card is off-screen.
+    // Set DONUT_TOUR to false to turn it off.
+    var DONUT_TOUR = true;
+    if (DONUT_TOUR && !still && segs.length > 1) {
+      var held = false, at = -1, card = host.closest('.adm-reveal');
+      host.addEventListener('mouseenter', function () { held = true; });
+      host.addEventListener('mouseleave', function () { held = false; });
+      host.addEventListener('focusin', function () { held = true; });
+      host.addEventListener('focusout', function () { held = false; });
+      window.setInterval(function () {
+        if (held || document.hidden || !card || !card.classList.contains('is-in')) { return; }
+        if (Date.now() - (card._admInAt || 0) < 3200) { return; }
+        var box = card.getBoundingClientRect();
+        if (box.bottom < 0 || box.top > window.innerHeight) { return; }
+        at = at >= segs.length - 1 ? -1 : at + 1;
+        focus(at < 0 ? null : String(at));
+      }, 2600);
+    }
   }
 
   function init() {

@@ -67,6 +67,7 @@
         <circle class="adm-reunite__track" cx="65" cy="65" r="52"/>
         <circle class="adm-reunite__fill" cx="65" cy="65" r="52" transform="rotate(-90 65 65)"
                 style="--full:<%= _RC.toFixed(2) %>;stroke-dasharray:<%= _RC.toFixed(2) %>;stroke-dashoffset:<%= (_RC * (1 - _pct / 100)).toFixed(2) %>"/>
+        <% if (_pct > 0) { %><g class="adm-reunite__orb" style="--deg:<%= (_pct * 3.6).toFixed(1) %>deg"><circle class="adm-reunite__dot" cx="65" cy="13" r="6"/></g><% } %>
       </svg>
       <p class="adm-reunite__pct"><span data-count="<%= _pct %>" data-dur="1500"><%= _pct %></span>%</p>
     </div>
@@ -200,6 +201,7 @@
              const bh = PH * b[0] / _nice; %>
           <rect class="adm-bar adm-bar--<%= b[1] %>" tabindex="0" style="--i:<%= i * 2 + b[3] %>" data-tip="<%= k.full %>: <%= b[0] %> <%= b[2].toLowerCase() %>" data-kind="<%= b[1] %>"
                 x="<%= (gx + b[3] * (BW + 4)).toFixed(1) %>" y="<%= (PT + PH - bh).toFixed(1) %>" width="<%= BW %>" height="<%= bh.toFixed(1) %>" rx="3"/>
+          <text class="adm-val" style="--i:<%= i * 2 + b[3] %>" x="<%= (gx + b[3] * (BW + 4) + BW / 2).toFixed(1) %>" y="<%= (PT + PH - bh - 6).toFixed(1) %>" text-anchor="middle" aria-hidden="true"><%= b[0] %></text>
         <% }); %>
         <text class="adm-axis adm-axis--x" style="--i:<%= i %>" x="<%= (PL + i * STEP + STEP / 2).toFixed(1) %>" y="<%= H - 8 %>" text-anchor="middle"><%= k.label %></text>
       <% }); %>
